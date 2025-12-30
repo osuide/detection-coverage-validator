@@ -18,6 +18,7 @@ Standard-Level Aggregation:
 - Metrics: enabled_controls_count, disabled_controls_count, techniques_covered_count
 """
 
+from datetime import datetime
 from typing import Any, Optional
 from botocore.exceptions import ClientError
 
@@ -267,8 +268,12 @@ class SecurityHubScanner(BaseScanner):
 
         # Phase 3: Fetch actual compliance findings (detection effectiveness)
         # This shows what violations the Security Hub detections actually found
+        # Uses incremental filtering when last_scan_at is provided
         if first_client:
-            findings_by_standard = self._get_findings_by_standard(first_client)
+            findings_by_standard = self._get_findings_by_standard(
+                first_client,
+                last_scan_at=options.get("last_scan_at") if options else None,
+            )
 
             if findings_by_standard:
                 # Add findings to each standard's detection raw_config
@@ -990,6 +995,7 @@ class SecurityHubScanner(BaseScanner):
     def _get_findings_by_standard(
         self,
         client: Any,
+        last_scan_at: Optional[datetime] = None,
     ) -> dict[str, dict[str, Any]]:
         """Fetch actual compliance findings grouped by Security Hub standard.
 
@@ -999,8 +1005,16 @@ class SecurityHubScanner(BaseScanner):
         This provides "detection effectiveness" data - showing what violations
         the Security Hub detections actually found.
 
+        Incremental Scanning:
+        When last_scan_at is provided, only fetches findings updated since
+        that time. This significantly reduces API calls for subsequent scans.
+        Note: For accurate compliance percentages, a full scan should be done
+        periodically (e.g., weekly) as this incremental approach may miss
+        findings that haven't changed.
+
         Args:
             client: SecurityHub boto3 client
+            last_scan_at: Optional datetime to filter findings updated since
 
         Returns:
             Dict of standard_id -> {
@@ -1020,11 +1034,27 @@ class SecurityHubScanner(BaseScanner):
             paginator = client.get_paginator("get_findings")
 
             # Filter for active Security Hub findings (compliance checks)
-            filters = {
+            filters: dict[str, Any] = {
                 "RecordState": [{"Value": "ACTIVE", "Comparison": "EQUALS"}],
                 "WorkflowStatus": [{"Value": "NEW", "Comparison": "EQUALS"}],
                 "ProductName": [{"Value": "Security Hub", "Comparison": "EQUALS"}],
             }
+
+            # Add UpdatedAt filter for incremental scanning
+            if last_scan_at:
+                # Convert to ISO format with timezone
+                # Security Hub expects ISO 8601 format
+                updated_since = last_scan_at.isoformat()
+                filters["UpdatedAt"] = [
+                    {
+                        "Start": updated_since,
+                        "DateRange": {"Value": 7, "Unit": "DAYS"},  # Fallback max
+                    }
+                ]
+                self.logger.info(
+                    "securityhub_incremental_findings",
+                    updated_since=updated_since,
+                )
 
             for page in paginator.paginate(Filters=filters, MaxResults=100):
                 for finding in page.get("Findings", []):

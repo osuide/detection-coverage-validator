@@ -233,7 +233,10 @@ class ScanService:
             await self._cache_scan_status(scan)
 
             raw_detections, scanner_errors = await self._scan_detections(
-                session, region_config, scan.detection_types
+                session,
+                region_config,
+                scan.detection_types,
+                last_scan_at=account.last_scan_at,
             )
 
             # Store any scanner errors in scan results
@@ -637,6 +640,7 @@ class ScanService:
         session: boto3.Session,
         region_config: RegionConfig,
         detection_types: list[str],
+        last_scan_at: Optional[datetime] = None,
     ) -> tuple[list[RawDetection], list[str]]:
         """Run all applicable scanners in parallel with proper global/regional handling.
 
@@ -645,15 +649,30 @@ class ScanService:
         global_region. Regional services (like GuardDuty) are scanned in each
         regional_region.
 
+        Incremental Scanning:
+        When last_scan_at is provided, scanners that support it will only fetch
+        resources updated since that time. This significantly reduces API calls
+        and data transfer for subsequent scans. Scanners without incremental
+        support will do a full scan.
+
         Args:
             session: boto3 session with credentials
             region_config: Configuration specifying regional and global regions
             detection_types: List of detection types to scan for
+            last_scan_at: Optional datetime of last successful scan for incremental scanning
 
         Returns:
             Tuple of (detections, errors) where errors is a list of
             scanner failure messages to include in scan results.
         """
+        # Prepare scan options with incremental scanning support
+        scan_options: dict[str, Any] = {}
+        if last_scan_at:
+            scan_options["last_scan_at"] = last_scan_at
+            self.logger.info(
+                "incremental_scan_enabled",
+                last_scan_at=last_scan_at.isoformat(),
+            )
         # Determine which scanners to use
         scanners: list[BaseScanner] = []
         if not detection_types or "cloudwatch_logs_insights" in detection_types:
@@ -697,12 +716,13 @@ class ScanService:
                         regions=scan_regions,
                     )
 
-                detections = await scanner.scan(scan_regions)
+                detections = await scanner.scan(scan_regions, options=scan_options)
                 self.logger.info(
                     "scanner_complete",
                     scanner=scanner.__class__.__name__,
                     count=len(detections),
                     regions_scanned=len(scan_regions),
+                    incremental=bool(scan_options.get("last_scan_at")),
                 )
                 return detections, None
             except Exception as e:
