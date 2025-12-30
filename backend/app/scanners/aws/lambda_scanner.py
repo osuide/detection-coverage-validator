@@ -87,7 +87,10 @@ class LambdaScanner(BaseScanner):
         try:
             paginator = client.get_paginator("list_functions")
 
-            for page in paginator.paginate():
+            # Non-blocking paginate
+            pages = await self.run_sync(lambda: list(paginator.paginate()))
+
+            for page in pages:
                 for function in page.get("Functions", []):
                     # Get detailed function info
                     function_info = await self._get_function_info(client, function)
@@ -133,7 +136,9 @@ class LambdaScanner(BaseScanner):
 
         # Get environment variables (sanitized - no secrets)
         try:
-            config = client.get_function_configuration(FunctionName=function_name)
+            config = await self.run_sync(
+                client.get_function_configuration, FunctionName=function_name
+            )
             env_vars = config.get("Environment", {}).get("Variables", {})
             # Sanitize environment variables (remove potential secrets)
             info["environment"] = self._sanitize_env_vars(env_vars)
@@ -143,7 +148,10 @@ class LambdaScanner(BaseScanner):
         # Get event source mappings (triggers)
         try:
             esm_paginator = client.get_paginator("list_event_source_mappings")
-            for page in esm_paginator.paginate(FunctionName=function_name):
+            pages = await self.run_sync(
+                lambda: list(esm_paginator.paginate(FunctionName=function_name))
+            )
+            for page in pages:
                 for mapping in page.get("EventSourceMappings", []):
                     info["event_source_mappings"].append(
                         {
@@ -158,14 +166,16 @@ class LambdaScanner(BaseScanner):
 
         # Get function tags
         try:
-            tags_response = client.list_tags(Resource=function_arn)
+            tags_response = await self.run_sync(client.list_tags, Resource=function_arn)
             info["tags"] = tags_response.get("Tags", {})
         except ClientError:
             pass
 
         # Get function policy (to identify triggers)
         try:
-            policy_response = client.get_policy(FunctionName=function_name)
+            policy_response = await self.run_sync(
+                client.get_policy, FunctionName=function_name
+            )
             policy = policy_response.get("Policy", "{}")
             triggers = self._extract_triggers_from_policy(policy)
             info["triggers"] = triggers

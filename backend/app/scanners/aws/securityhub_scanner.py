@@ -158,9 +158,9 @@ class SecurityHubScanner(BaseScanner):
             try:
                 client = self.session.client("securityhub", region_name=region)
 
-                # Check if Security Hub is enabled
+                # Check if Security Hub is enabled (non-blocking)
                 try:
-                    hub = client.describe_hub()
+                    hub = await self.run_sync(client.describe_hub)
                     hub_arn = hub.get("HubArn", "")
                 except ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -175,7 +175,9 @@ class SecurityHubScanner(BaseScanner):
 
                 # Get enabled standards (only once, from first region with Security Hub)
                 if not enabled_standards:
-                    enabled_standards = self._get_enabled_standards(client, region)
+                    enabled_standards = await self._get_enabled_standards(
+                        client, region
+                    )
                     first_client = client  # Store for later per-standard queries
                     self.logger.info(
                         "securityhub_enabled_standards",
@@ -185,7 +187,7 @@ class SecurityHubScanner(BaseScanner):
                     )
 
                 # Get CSPM control status for this region
-                region_status = self._get_cspm_control_status(client, region)
+                region_status = await self._get_cspm_control_status(client, region)
 
                 if region_status:
                     if not cspm_scanned:
@@ -705,7 +707,7 @@ class SecurityHubScanner(BaseScanner):
 
         return techniques
 
-    def _get_enabled_standards(
+    async def _get_enabled_standards(
         self,
         client: Any,
         region: str,
@@ -727,7 +729,9 @@ class SecurityHubScanner(BaseScanner):
         try:
             paginator = client.get_paginator("get_enabled_standards")
 
-            for page in paginator.paginate():
+            # Non-blocking paginate
+            pages = await self.run_sync(lambda: list(paginator.paginate()))
+            for page in pages:
                 for subscription in page.get("StandardsSubscriptions", []):
                     standards_arn = subscription.get("StandardsArn", "")
                     status = subscription.get("StandardsStatus", "")
@@ -1232,7 +1236,7 @@ class SecurityHubScanner(BaseScanner):
 
         return result
 
-    def _get_cspm_control_status(
+    async def _get_cspm_control_status(
         self,
         client: Any,
         region: str,
@@ -1245,22 +1249,24 @@ class SecurityHubScanner(BaseScanner):
         controls = {}
 
         try:
-            # Get control definitions
+            # Get control definitions (non-blocking)
             control_ids = []
             paginator = client.get_paginator("list_security_control_definitions")
 
-            for page in paginator.paginate():
+            pages = await self.run_sync(lambda: list(paginator.paginate()))
+            for page in pages:
                 for control_def in page.get("SecurityControlDefinitions", []):
                     control_ids.append(control_def["SecurityControlId"])
 
             if not control_ids:
                 return {}
 
-            # Batch get control details
+            # Batch get control details (non-blocking)
             for batch in _chunk_list(control_ids, 100):
                 try:
-                    response = client.batch_get_security_controls(
-                        SecurityControlIds=batch
+                    response = await self.run_sync(
+                        client.batch_get_security_controls,
+                        SecurityControlIds=batch,
                     )
 
                     for control in response.get("SecurityControls", []):

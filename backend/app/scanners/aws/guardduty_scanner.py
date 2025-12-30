@@ -63,16 +63,18 @@ class GuardDutyScanner(BaseScanner):
         client = self.session.client("guardduty", region_name=region)
 
         try:
-            # List all detectors
+            # List all detectors (non-blocking)
             paginator = client.get_paginator("list_detectors")
             detector_ids = []
 
-            for page in paginator.paginate():
+            for page in await self.run_sync(lambda: list(paginator.paginate())):
                 detector_ids.extend(page.get("DetectorIds", []))
 
             # Get details for each detector
             for detector_id in detector_ids:
-                detector_detections = self._scan_detector(client, detector_id, region)
+                detector_detections = await self._scan_detector(
+                    client, detector_id, region
+                )
                 detections.extend(detector_detections)
 
         except ClientError as e:
@@ -83,7 +85,7 @@ class GuardDutyScanner(BaseScanner):
 
         return detections
 
-    def _scan_detector(
+    async def _scan_detector(
         self,
         client: Any,
         detector_id: str,
@@ -93,8 +95,8 @@ class GuardDutyScanner(BaseScanner):
         detections = []
 
         try:
-            # Get detector details
-            detector = client.get_detector(DetectorId=detector_id)
+            # Get detector details (non-blocking)
+            detector = await self.run_sync(client.get_detector, DetectorId=detector_id)
 
             # Get configured features
             features = detector.get("Features", [])
@@ -110,7 +112,7 @@ class GuardDutyScanner(BaseScanner):
                 detection = RawDetection(
                     name=f"GuardDuty-{category['name']}",
                     detection_type=DetectionType.GUARDDUTY_FINDING,
-                    source_arn=f"arn:aws:guardduty:{region}:{self._get_account_id(client)}:detector/{detector_id}",
+                    source_arn=f"arn:aws:guardduty:{region}:{await self._get_account_id()}:detector/{detector_id}",
                     region=region,
                     raw_config={
                         "detector_id": detector_id,
@@ -132,11 +134,12 @@ class GuardDutyScanner(BaseScanner):
 
         return detections
 
-    def _get_account_id(self, client: Any) -> str:
+    async def _get_account_id(self) -> str:
         """Get AWS account ID from STS."""
         try:
             sts = self.session.client("sts")
-            return sts.get_caller_identity()["Account"]
+            identity = await self.run_sync(sts.get_caller_identity)
+            return identity["Account"]
         except Exception:
             return "unknown"
 

@@ -59,10 +59,13 @@ class CloudWatchLogsInsightsScanner(BaseScanner):
                 if next_token:
                     kwargs["nextToken"] = next_token
 
-                response = client.describe_query_definitions(**kwargs)
+                # Non-blocking API call
+                response = await self.run_sync(
+                    client.describe_query_definitions, **kwargs
+                )
 
                 for query_def in response.get("queryDefinitions", []):
-                    detection = self._parse_query_definition(query_def, region)
+                    detection = await self._parse_query_definition(query_def, region)
                     if detection:
                         detections.append(detection)
 
@@ -78,7 +81,7 @@ class CloudWatchLogsInsightsScanner(BaseScanner):
 
         return detections
 
-    def _parse_query_definition(
+    async def _parse_query_definition(
         self,
         query_def: dict[str, Any],
         region: str,
@@ -95,7 +98,7 @@ class CloudWatchLogsInsightsScanner(BaseScanner):
         )
 
         # Build ARN
-        account_id = self._get_account_id()
+        account_id = await self._get_account_id()
         arn = f"arn:aws:logs:{region}:{account_id}:query-definition:{query_id}"
 
         return RawDetection(
@@ -115,11 +118,12 @@ class CloudWatchLogsInsightsScanner(BaseScanner):
             target_services=target_services or None,
         )
 
-    def _get_account_id(self) -> str:
+    async def _get_account_id(self) -> str:
         """Get the current AWS account ID."""
         try:
             sts = self.session.client("sts")
-            return sts.get_caller_identity()["Account"]
+            identity = await self.run_sync(sts.get_caller_identity)
+            return identity["Account"]
         except Exception:
             return "unknown"
 
@@ -154,7 +158,12 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
 
         paginator = client.get_paginator("describe_alarms")
 
-        for page in paginator.paginate(AlarmTypes=["MetricAlarm"]):
+        # Non-blocking paginate - collect all pages first
+        pages = await self.run_sync(
+            lambda: list(paginator.paginate(AlarmTypes=["MetricAlarm"]))
+        )
+
+        for page in pages:
             for alarm in page.get("MetricAlarms", []):
                 # Filter out AWS-managed operational alarms
                 if self._is_aws_managed_operational(alarm):
