@@ -21,10 +21,12 @@ import {
   Info,
 } from 'lucide-react'
 import { complianceApi, CloudApplicability } from '../../services/complianceApi'
+import { detectionsApi, Detection, DetectionEffectiveness } from '../../services/api'
 import { FrameworkCard } from './FrameworkCard'
 import { FamilyCoverageChart } from './FamilyCoverageChart'
 import { ControlsTable } from './ControlsTable'
 import { CoverageDetailModal } from './CoverageDetailModal'
+import { SecurityPostureCard } from '../SecurityPostureCard'
 
 type ModalType = 'covered' | 'partial' | 'uncovered' | 'total' | 'cloud_detectable' | 'customer' | 'provider' | 'not_assessable' | null
 
@@ -100,6 +102,36 @@ export function ComplianceCoverageContent({ accountId, initialModalState }: Comp
     enabled: !!accountId,
   })
 
+  // Fetch Security Hub detections for Security Posture section
+  const { data: allDetections } = useQuery({
+    queryKey: ['securityHubDetections', accountId],
+    queryFn: () => detectionsApi.list({
+      cloud_account_id: accountId,
+      limit: 500,
+    }),
+    enabled: !!accountId,
+  })
+
+  // Extract Security Hub standards with detection effectiveness data
+  const securityPostureData = (allDetections?.items ?? [])
+    .filter((d: Detection) => {
+      if (d.detection_type !== 'security_hub') return false
+      const rawConfig = d.raw_config as Record<string, unknown> | undefined
+      return rawConfig?.standard_id && rawConfig?.detection_effectiveness
+    })
+    .map((d: Detection) => {
+      const rawConfig = d.raw_config as Record<string, unknown>
+      return {
+        standardId: rawConfig.standard_id as string,
+        standardName: rawConfig.standard_name as string,
+        effectiveness: rawConfig.detection_effectiveness as DetectionEffectiveness,
+        region: d.region,
+        // Detection coverage info (controls enabled)
+        enabledControls: rawConfig.enabled_controls_count as number,
+        totalControls: rawConfig.total_controls_count as number,
+      }
+    })
+
   // Get detailed coverage for selected framework
   const { data: coverage, isLoading: coverageLoading } = useQuery({
     queryKey: ['compliance-coverage', accountId, selectedFramework],
@@ -144,6 +176,73 @@ export function ComplianceCoverageContent({ accountId, initialModalState }: Comp
 
   return (
     <div className="space-y-6">
+      {/* Security Hub Posture - Side-by-side Detection Coverage & Effectiveness */}
+      {securityPostureData.length > 0 && (
+        <div className="bg-gray-800 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-medium text-white flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-400" />
+                Security Hub Posture
+              </h3>
+              <p className="text-sm text-gray-400 mt-1">
+                Detection effectiveness from Security Hub standards
+              </p>
+            </div>
+          </div>
+
+          {/* Side-by-side cards for each Security Hub standard */}
+          <div className="space-y-4">
+            {securityPostureData.map((data) => (
+              <div
+                key={data.standardId}
+                className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 bg-gray-900/50 rounded-lg"
+              >
+                {/* Left: Detection Coverage */}
+                <div className="bg-gray-700/30 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-blue-400" />
+                    Detection Coverage
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-400">Controls Enabled</span>
+                        <span className="text-white font-medium">
+                          {data.enabledControls} / {data.totalControls}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500"
+                          style={{
+                            width: `${data.totalControls > 0 ? (data.enabledControls / data.totalControls) * 100 : 0}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {data.totalControls > 0
+                        ? `${Math.round((data.enabledControls / data.totalControls) * 100)}% of controls are actively monitoring your resources`
+                        : 'No controls configured'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right: Detection Effectiveness (what we found) */}
+                <SecurityPostureCard
+                  standardId={data.standardId}
+                  standardName={data.standardName}
+                  effectiveness={data.effectiveness}
+                  region={data.region}
+                  pageSize={5}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Framework Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {summary.map((fw) => (
