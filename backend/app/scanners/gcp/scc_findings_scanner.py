@@ -335,8 +335,10 @@ class SCCModuleStatusScanner(BaseScanner):
             org_settings_name = f"organizations/{org_id}/organizationSettings"
 
             try:
-                org_settings = client.get_organization_settings(
-                    request={"name": org_settings_name}
+                # Use run_sync to avoid blocking the event loop
+                org_settings = await self.run_sync(
+                    client.get_organization_settings,
+                    request={"name": org_settings_name},
                 )
                 is_enabled = org_settings.enable_asset_discovery
             except Exception:

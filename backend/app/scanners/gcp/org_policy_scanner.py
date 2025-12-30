@@ -272,7 +272,17 @@ class OrgPolicyScanner(BaseScanner):
         async def list_children(parent: str) -> None:
             try:
                 request = {"parent": parent}
-                for folder in rm_client.list_folders(request=request):
+
+                # Use run_sync to avoid blocking the event loop
+                def fetch_folders() -> list:
+                    folders = []
+                    for folder in rm_client.list_folders(request=request):
+                        folders.append(folder)
+                    return folders
+
+                folders = await self.run_sync(fetch_folders)
+
+                for folder in folders:
                     all_folders.append(folder)
                     await list_children(folder.name)
             except Exception:
@@ -472,7 +482,10 @@ class EffectiveOrgPolicyScanner(BaseScanner):
             name = f"{resource}/policies/{constraint}"
 
             # Get the effective policy (computed from hierarchy)
-            policy = client.get_effective_policy(request={"name": name})
+            # Use run_sync to avoid blocking the event loop
+            policy = await self.run_sync(
+                client.get_effective_policy, request={"name": name}
+            )
 
             policy_info = SECURITY_POLICY_CONSTRAINTS.get(constraint, {})
 
