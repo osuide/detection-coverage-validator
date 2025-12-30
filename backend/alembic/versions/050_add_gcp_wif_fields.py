@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "050_add_gcp_wif"
-down_revision = "049_create_test"
+down_revision = "049_create_test_users"
 branch_labels = None
 depends_on = None
 

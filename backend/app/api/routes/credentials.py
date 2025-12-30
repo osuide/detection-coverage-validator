@@ -249,6 +249,10 @@ async def get_setup_instructions(
             project_id=account.account_id,
         )
 
+        # Get A13E's AWS account ID for WIF setup
+        settings = get_settings()
+        a13e_account_id = settings.a13e_aws_account_id
+
         return SetupInstructionsResponse(
             provider="gcp",
             external_id=None,
@@ -258,16 +262,32 @@ async def get_setup_instructions(
             not_requested=PERMISSIONS_NOT_REQUESTED["gcp"],
             cloudformation_template_url=None,
             terraform_module_url="/api/v1/credentials/templates/gcp/terraform",
-            gcloud_commands=gcloud_commands,
+            gcloud_commands=[
+                "# Option 1: Automated WIF setup (RECOMMENDED)",
+                "curl -sL https://app.a13e.io/api/v1/credentials/templates/gcp/wif-setup -o gcp_wif_setup.sh",
+                "chmod +x gcp_wif_setup.sh",
+                f"./gcp_wif_setup.sh --project {account.account_id} --aws-account {a13e_account_id}",
+                "",
+                "# Option 2: Manual gcloud commands",
+                *gcloud_commands,
+            ],
             manual_steps=[
-                "Go to GCP IAM Console → Roles → Create Role",
-                "Name it 'A13E Detection Scanner' and add the permissions listed above",
-                "Go to Service Accounts → Create Service Account",
-                "Name it 'a13e-scanner' with description 'A13E Detection Coverage Scanner'",
-                "Grant the custom role to the service account",
-                "For Workload Identity: Note the service account email (e.g., a13e-scanner@PROJECT.iam.gserviceaccount.com)",
-                "For SA Key: Go to Keys → Add Key → Create new key → JSON",
-                "Return here with the service account email (and key file if using SA Key method)",
+                "RECOMMENDED: Use Workload Identity Federation (WIF) for keyless authentication",
+                "",
+                "Option A - Automated Setup:",
+                "  1. Download the WIF setup script from /api/v1/credentials/templates/gcp/wif-setup",
+                f"  2. Run: ./gcp_wif_setup.sh --project {account.account_id} --aws-account {a13e_account_id}",
+                "  3. Copy the output values and return here to complete setup",
+                "",
+                "Option B - Manual Setup:",
+                "  1. Go to GCP IAM Console → Workload Identity Federation",
+                "  2. Create a new pool named 'a13e-pool'",
+                "  3. Add an AWS provider with A13E's account ID",
+                "  4. Create service account 'a13e-scanner' with read-only security permissions",
+                "  5. Grant the WIF pool permission to impersonate the service account",
+                "  6. Return here with the service account email",
+                "",
+                "NOTE: Service account keys are NOT recommended for security reasons.",
             ],
         )
 
@@ -716,6 +736,7 @@ _ALLOWED_TEMPLATES = {
     "terraform/aws/main.tf",
     "terraform/gcp/main.tf",
     "gcp_setup.sh",
+    "gcp_wif_setup.sh",
 }
 
 
@@ -787,8 +808,22 @@ async def get_gcp_terraform_template() -> dict:
 
 @router.get("/templates/gcp/setup-script", response_class=PlainTextResponse)
 async def get_gcp_setup_script() -> dict:
-    """Download GCP setup shell script."""
+    """Download GCP setup shell script (legacy - uses service account impersonation)."""
     return _read_template("gcp_setup.sh")
+
+
+@router.get("/templates/gcp/wif-setup", response_class=PlainTextResponse)
+async def get_gcp_wif_setup_script() -> str:
+    """Download GCP Workload Identity Federation setup script.
+
+    This is the recommended setup method for GCP accounts.
+    Uses WIF for keyless authentication from AWS to GCP.
+
+    Usage:
+        chmod +x gcp_wif_setup.sh
+        ./gcp_wif_setup.sh --project YOUR_PROJECT --aws-account A13E_AWS_ACCOUNT
+    """
+    return _read_template("gcp_wif_setup.sh")
 
 
 # === Helper Functions ===
