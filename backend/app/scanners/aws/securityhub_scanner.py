@@ -284,26 +284,60 @@ class SecurityHubScanner(BaseScanner):
         # Phase 3: Fetch actual compliance findings (detection effectiveness)
         # This shows what violations the Security Hub detections actually found
         # Uses incremental filtering when last_scan_at is provided
+        #
+        # IMPORTANT: We ALWAYS set detection_effectiveness for standard detections,
+        # even if no findings exist. This ensures the Security Posture card displays
+        # properly (it requires both standard_id AND detection_effectiveness).
+        # If no findings, show 100% compliance (no failed controls).
         if first_client:
-            findings_by_standard = self._get_findings_by_standard(
+            findings_by_standard = await self._get_findings_by_standard(
                 first_client,
                 last_scan_at=options.get("last_scan_at") if options else None,
             )
 
-            if findings_by_standard:
-                # Add findings to each standard's detection raw_config
-                for detection in all_detections:
-                    standard_id = detection.raw_config.get("standard_id")
-                    if standard_id and standard_id in findings_by_standard:
+            # Add detection_effectiveness to ALL standard detections
+            # Use findings data if available, otherwise set default (100% compliance)
+            standards_with_findings = 0
+            standards_with_defaults = 0
+
+            for detection in all_detections:
+                standard_id = detection.raw_config.get("standard_id")
+                if standard_id:
+                    if standard_id in findings_by_standard:
+                        # Use actual findings data
                         detection.raw_config["detection_effectiveness"] = (
                             findings_by_standard[standard_id]
                         )
+                        standards_with_findings += 1
+                    else:
+                        # No findings = 100% compliant (all controls passing)
+                        # This ensures the Security Posture card can display this standard
+                        enabled_count = detection.raw_config.get(
+                            "enabled_controls_count", 0
+                        )
+                        detection.raw_config["detection_effectiveness"] = {
+                            "total_controls": enabled_count,
+                            "passed_count": enabled_count,
+                            "failed_count": 0,
+                            "compliance_percent": 100,
+                            "by_severity": {
+                                "CRITICAL": 0,
+                                "HIGH": 0,
+                                "MEDIUM": 0,
+                                "LOW": 0,
+                                "INFORMATIONAL": 0,
+                            },
+                            "top_failing_controls": [],
+                            "all_failing_controls": [],
+                        }
+                        standards_with_defaults += 1
 
-                self.logger.info(
-                    "securityhub_findings_complete",
-                    standards_with_findings=len(findings_by_standard),
-                    total_detections=len(all_detections),
-                )
+            self.logger.info(
+                "securityhub_findings_complete",
+                standards_with_findings=standards_with_findings,
+                standards_with_defaults=standards_with_defaults,
+                total_detections=len(all_detections),
+            )
 
         return all_detections
 
@@ -1015,7 +1049,7 @@ class SecurityHubScanner(BaseScanner):
 
         return detections
 
-    def _get_findings_by_standard(
+    async def _get_findings_by_standard(
         self,
         client: Any,
         last_scan_at: Optional[datetime] = None,
@@ -1057,9 +1091,10 @@ class SecurityHubScanner(BaseScanner):
             paginator = client.get_paginator("get_findings")
 
             # Filter for active Security Hub findings (compliance checks)
+            # Note: We include both NEW and NOTIFIED workflow status to capture
+            # all active compliance issues, not just unacknowledged ones
             filters: dict[str, Any] = {
                 "RecordState": [{"Value": "ACTIVE", "Comparison": "EQUALS"}],
-                "WorkflowStatus": [{"Value": "NEW", "Comparison": "EQUALS"}],
                 "ProductName": [{"Value": "Security Hub", "Comparison": "EQUALS"}],
             }
 
@@ -1079,7 +1114,12 @@ class SecurityHubScanner(BaseScanner):
                     updated_since=updated_since,
                 )
 
-            for page in paginator.paginate(Filters=filters, MaxResults=100):
+            # Non-blocking pagination using thread pool
+            pages = await self.run_sync(
+                lambda: list(paginator.paginate(Filters=filters, MaxResults=100))
+            )
+
+            for page in pages:
                 for finding in page.get("Findings", []):
                     compliance = finding.get("Compliance", {})
                     compliance_status = compliance.get("Status", "NOT_AVAILABLE")
