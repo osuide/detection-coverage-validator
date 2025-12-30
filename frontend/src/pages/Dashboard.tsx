@@ -70,9 +70,10 @@ export default function Dashboard() {
     queryFn: () => scansApi.list(),
   })
 
-  const { data: detectionsData } = useQuery({
-    queryKey: ['detections', selectedAccount?.id],
-    queryFn: () => detectionsApi.list({ cloud_account_id: selectedAccount?.id, limit: 500 }),
+  // Use dedicated endpoint for source counts (more efficient than fetching all detections)
+  const { data: sourceCountsData } = useQuery({
+    queryKey: ['detectionSourceCounts', selectedAccount?.id],
+    queryFn: () => detectionsApi.getSourceCounts({ cloud_account_id: selectedAccount?.id }),
     enabled: !!selectedAccount,
   })
 
@@ -81,9 +82,9 @@ export default function Dashboard() {
     queryFn: () => scanStatusApi.get(),
   })
 
-  // Calculate detection source counts
-  const sourceCounts = (detectionsData?.items ?? []).reduce((acc, d) => {
-    acc[d.detection_type] = (acc[d.detection_type] || 0) + 1
+  // Convert source counts array to object for lookup
+  const sourceCounts = (sourceCountsData?.counts ?? []).reduce((acc, item) => {
+    acc[item.detection_type] = item.count
     return acc
   }, {} as Record<string, number>)
 

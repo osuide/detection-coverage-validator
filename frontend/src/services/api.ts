@@ -300,6 +300,16 @@ export interface DetectionDetail extends Detection {
   is_managed: boolean
 }
 
+export interface DetectionSourceCount {
+  detection_type: string
+  count: number
+}
+
+export interface DetectionSourceCountsResponse {
+  counts: DetectionSourceCount[]
+  total: number
+}
+
 export const detectionsApi = {
   list: (params?: { cloud_account_id?: string; page?: number; limit?: number }) =>
     api.get<{ items: Detection[]; total: number }>('/detections', { params }).then(r => r.data),
@@ -308,6 +318,8 @@ export const detectionsApi = {
     api.get<{ detection_id: string; detection_name: string; mappings: DetectionMapping[] }>(
       `/detections/${id}/mappings`
     ).then(r => r.data),
+  getSourceCounts: (params?: { cloud_account_id?: string }) =>
+    api.get<DetectionSourceCountsResponse>('/detections/sources/counts', { params }).then(r => r.data),
 }
 
 export const coverageApi = {

@@ -213,6 +213,77 @@ async def list_detections(
     )
 
 
+class DetectionSourceCount(BaseModel):
+    """Count of detections by source type."""
+
+    detection_type: str
+    count: int
+
+
+class DetectionSourceCountsResponse(BaseModel):
+    """Response containing detection counts by source."""
+
+    counts: list[DetectionSourceCount]
+    total: int
+
+
+@router.get(
+    "/sources/counts",
+    response_model=DetectionSourceCountsResponse,
+    dependencies=[Depends(require_scope("read:detections"))],
+)
+async def get_detection_source_counts(
+    cloud_account_id: Optional[UUID] = None,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+) -> DetectionSourceCountsResponse:
+    """Get detection counts grouped by source type.
+
+    This is more efficient than fetching all detections for dashboard display.
+    Only counts active detections (excludes REMOVED status).
+    """
+    # Security: Get allowed accounts for ACL filtering
+    allowed_accounts = get_allowed_account_filter(auth)
+
+    # If user has restricted access with empty list, return empty result
+    if allowed_accounts is not None and len(allowed_accounts) == 0:
+        return DetectionSourceCountsResponse(counts=[], total=0)
+
+    # Security: Check account-level ACL if filtering by specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
+    # Build the aggregation query
+    query = (
+        select(Detection.detection_type, func.count(Detection.id).label("count"))
+        .join(CloudAccount, Detection.cloud_account_id == CloudAccount.id)
+        .where(
+            CloudAccount.organization_id == auth.organization_id,
+            Detection.status != DetectionStatus.REMOVED,
+        )
+        .group_by(Detection.detection_type)
+    )
+
+    # Apply account filter
+    if cloud_account_id:
+        query = query.where(Detection.cloud_account_id == cloud_account_id)
+    elif allowed_accounts is not None:
+        query = query.where(Detection.cloud_account_id.in_(allowed_accounts))
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    counts = [
+        DetectionSourceCount(detection_type=row.detection_type.value, count=row.count)
+        for row in rows
+    ]
+    total = sum(c.count for c in counts)
+
+    return DetectionSourceCountsResponse(counts=counts, total=total)
+
+
 @router.get("/{detection_id}", response_model=DetectionResponse)
 async def get_detection(
     detection_id: UUID,
