@@ -1119,9 +1119,43 @@ class SecurityHubScanner(BaseScanner):
                 lambda: list(paginator.paginate(Filters=filters, MaxResults=100))
             )
 
+            # Log API response summary
+            total_pages = len(pages)
+            total_findings_in_response = sum(
+                len(page.get("Findings", [])) for page in pages
+            )
+            self.logger.info(
+                "securityhub_getfindings_response",
+                total_pages=total_pages,
+                total_findings_in_response=total_findings_in_response,
+                filters_used=list(filters.keys()),
+            )
+
+            # Log sample finding structure for debugging (first finding only)
+            if pages and pages[0].get("Findings"):
+                sample_finding = pages[0]["Findings"][0]
+                self.logger.info(
+                    "securityhub_sample_finding",
+                    generator_id=sample_finding.get("GeneratorId", "N/A"),
+                    compliance_status=sample_finding.get("Compliance", {}).get(
+                        "Status", "N/A"
+                    ),
+                    associated_standards_count=len(
+                        sample_finding.get("Compliance", {}).get(
+                            "AssociatedStandards", []
+                        )
+                    ),
+                    types=sample_finding.get("Types", [])[:2],
+                    product_fields_keys=list(
+                        sample_finding.get("ProductFields", {}).keys()
+                    )[:5],
+                )
+
             total_findings = 0
             findings_with_standards = 0
             findings_without_standards = 0
+            findings_skipped_no_status = 0
+            findings_skipped_no_control_id = 0
 
             for page in pages:
                 for finding in page.get("Findings", []):
@@ -1131,6 +1165,7 @@ class SecurityHubScanner(BaseScanner):
 
                     # Skip findings without compliance status
                     if compliance_status not in ["PASSED", "FAILED"]:
+                        findings_skipped_no_status += 1
                         continue
 
                     # Extract control ID from GeneratorId
@@ -1140,6 +1175,7 @@ class SecurityHubScanner(BaseScanner):
                     if "/" in generator_id:
                         control_id = generator_id.split("/")[-1]
                     if not control_id:
+                        findings_skipped_no_control_id += 1
                         continue
 
                     # Get severity
@@ -1147,20 +1183,70 @@ class SecurityHubScanner(BaseScanner):
                     title = finding.get("Title", "")
 
                     # Extract which standards this finding applies to
-                    # Try AssociatedStandards first (CSPM consolidated findings)
+                    # Multiple fallback strategies for different Security Hub configurations
+                    associated_standards = []
+
+                    # Strategy 1: AssociatedStandards (CSPM consolidated findings - preferred)
                     associated_standards = compliance.get("AssociatedStandards", [])
 
-                    # Fallback: Use ProductFields.StandardsArn for legacy findings
+                    # Strategy 2: ProductFields for legacy findings
                     if not associated_standards:
                         product_fields = finding.get("ProductFields", {})
+                        # Try StandardsArn (FSBP, PCI-DSS)
                         standards_arn = product_fields.get("StandardsArn", "")
                         if standards_arn:
                             associated_standards = [{"StandardsId": standards_arn}]
                         else:
-                            # Try StandardsGuideArn as another fallback
+                            # Try StandardsGuideArn (CIS)
                             guide_arn = product_fields.get("StandardsGuideArn", "")
                             if guide_arn:
                                 associated_standards = [{"StandardsId": guide_arn}]
+
+                    # Strategy 3: Parse Types field (always present in ASFF)
+                    # Types like: "Software and Configuration Checks/.../AWS-Foundational-Security-Best-Practices"
+                    if not associated_standards:
+                        types = finding.get("Types", [])
+                        for finding_type in types:
+                            if (
+                                "AWS-Foundational-Security-Best-Practices"
+                                in finding_type
+                            ):
+                                associated_standards.append(
+                                    {
+                                        "StandardsId": "aws-foundational-security-best-practices"
+                                    }
+                                )
+                            elif "CIS-AWS-Foundations-Benchmark" in finding_type:
+                                associated_standards.append(
+                                    {"StandardsId": "cis-aws-foundations-benchmark"}
+                                )
+                            elif "PCI-DSS" in finding_type:
+                                associated_standards.append({"StandardsId": "pci-dss"})
+                            elif (
+                                "NIST-800-53" in finding_type
+                                or "NIST SP 800-53" in finding_type
+                            ):
+                                associated_standards.append(
+                                    {"StandardsId": "nist-800-53"}
+                                )
+                            elif (
+                                "NIST-800-171" in finding_type
+                                or "NIST SP 800-171" in finding_type
+                            ):
+                                associated_standards.append(
+                                    {"StandardsId": "nist-800-171"}
+                                )
+
+                    # Strategy 4: If control exists, assume FSBP (most comprehensive standard)
+                    # This is a last resort - FSBP includes most service controls
+                    if not associated_standards and control_id:
+                        # Only use this for service-based control IDs (e.g., S3.8, EC2.2)
+                        if "." in control_id and control_id.split(".")[0].isalpha():
+                            associated_standards = [
+                                {
+                                    "StandardsId": "aws-foundational-security-best-practices"
+                                }
+                            ]
 
                     if not associated_standards:
                         findings_without_standards += 1
@@ -1171,6 +1257,7 @@ class SecurityHubScanner(BaseScanner):
                                 generator_id=generator_id,
                                 control_id=control_id,
                                 compliance_status=compliance_status,
+                                types=finding.get("Types", [])[:3],
                                 product_fields_keys=list(
                                     finding.get("ProductFields", {}).keys()
                                 )[:10],
@@ -1214,13 +1301,18 @@ class SecurityHubScanner(BaseScanner):
                                 "failed"
                             ] += 1
 
-            # Log summary for debugging
+            # Log detailed summary for debugging
             self.logger.info(
                 "securityhub_findings_processed",
                 total_findings=total_findings,
-                findings_with_standards=findings_with_standards,
+                findings_skipped_no_status=findings_skipped_no_status,
+                findings_skipped_no_control_id=findings_skipped_no_control_id,
                 findings_without_standards=findings_without_standards,
+                findings_with_standards=findings_with_standards,
                 standards_found=list(findings_by_standard.keys()),
+                controls_per_standard={
+                    std: len(controls) for std, controls in findings_by_standard.items()
+                },
             )
 
             # Aggregate into summary per standard
