@@ -783,6 +783,69 @@ Look for these log entries:
 - `securityhub_cached_full_response` - Response cached for next scan
 - `cache_get_failed` / `cache_set_failed` - Redis issues
 
+### Security Hub GetFindings API (December 2025)
+
+**Key Lessons Learned** from debugging the Security Posture card:
+
+#### 1. IAM Permission Required
+The scanner needs `securityhub:GetFindings` permission. Without it:
+```
+AccessDeniedException: User is not authorized to perform: securityhub:GetFindings
+```
+This permission is defined in `app/models/cloud_credential.py` → `AWS_IAM_POLICY_DOCUMENT`.
+
+#### 2. DateFilter Schema is Strict
+AWS GetFindings `UpdatedAt` filter requires **exactly one** of:
+- `DateRange` object alone: `{"DateRange": {"Unit": "DAYS", "Value": 7}}`
+- `Start` AND `End` together: `{"Start": "...", "End": "..."}`
+
+**These are INVALID:**
+```python
+# WRONG - Start alone without End
+{"Start": "2025-01-01T00:00:00Z"}
+
+# WRONG - Start with DateRange
+{"Start": "2025-01-01T00:00:00Z", "DateRange": {"Unit": "DAYS", "Value": 7}}
+```
+
+#### 3. Incremental Filtering Breaks Compliance Calculation
+**Critical insight**: Using `UpdatedAt` filter for "findings since last scan" causes false 100% compliance!
+
+**Why?** A control that failed last week but hasn't been remediated (unchanged) won't appear in incremental results. The Security Posture card needs ALL active findings.
+
+**Solution**: Don't use `UpdatedAt` filter for compliance data. Fetch all active findings:
+```python
+filters = {
+    "RecordState": [{"Value": "ACTIVE", "Comparison": "EQUALS"}],
+    "ProductName": [{"Value": "Security Hub", "Comparison": "EQUALS"}],
+}
+# NO UpdatedAt filter - get ALL findings
+```
+
+#### 4. Defensive Access for Cached Data
+Always use `.get()` when accessing cached dictionary data:
+```python
+# WRONG - KeyError if 'status' missing from cached data
+control_status = control_data["status"]
+
+# CORRECT - defensive access with fallback
+control_status = control_data.get("status", control_data.get("SecurityControlStatus"))
+```
+
+#### 5. Finding-to-Standard Mapping
+Security Hub findings can be mapped to standards via multiple fields (in order of preference):
+1. `Compliance.AssociatedStandards` - CSPM consolidated findings
+2. `ProductFields.StandardsArn` - Legacy FSBP/PCI findings
+3. `ProductFields.StandardsGuideArn` - Legacy CIS findings
+4. `Types` field parsing - e.g., `"Software and Configuration Checks/.../AWS-Foundational-Security-Best-Practices"`
+
+**Debugging logs to check:**
+```
+securityhub_getfindings_response total_findings_in_response=X
+securityhub_findings_processed findings_with_standards=Y standards_found=['fsbp', 'cis', 'nist']
+securityhub_get_findings_error error="..." (check for API errors)
+```
+
 ### Observability (Future)
 
 | Priority | Feature | Cost | Notes |
