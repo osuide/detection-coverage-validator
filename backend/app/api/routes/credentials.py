@@ -3,7 +3,6 @@
 Provides secure credential management for connecting AWS and GCP accounts.
 """
 
-import json
 from pathlib import Path as _Path
 from typing import Optional
 from uuid import UUID
@@ -58,48 +57,39 @@ class AWSCredentialCreate(BaseModel):
 class GCPCredentialCreate(BaseModel):
     """Request to create GCP credential.
 
-    For WIF (recommended): Provide service_account_email, pool_id, provider_id
-    For SA Key (deprecated): Provide service_account_key
+    Only Workload Identity Federation (WIF) is supported.
+    Service account keys are NOT accepted for security reasons.
+
+    A13E is a security tool - using JSON keys would contradict our mission.
+    WIF provides keyless, short-lived credentials with no secrets to manage.
     """
 
     cloud_account_id: UUID
     credential_type: str = Field(
         default="gcp_workload_identity",
-        pattern="^(gcp_workload_identity|gcp_service_account_key)$",
+        pattern="^gcp_workload_identity$",  # Only WIF accepted
     )
-    service_account_email: Optional[str] = None
-    service_account_key: Optional[str] = None  # JSON string - DEPRECATED
+    service_account_email: str  # Required for WIF
 
-    # WIF-specific fields (for gcp_workload_identity type)
+    # WIF-specific fields
     pool_id: str = Field(default="a13e-pool", description="WIF pool ID")
     provider_id: str = Field(default="aws", description="WIF provider ID")
     pool_location: str = Field(default="global", description="WIF pool location")
 
-    @field_validator("service_account_key")
+    @field_validator("credential_type")
     @classmethod
-    def validate_key(cls, v: Optional[str]) -> Optional[str]:
-        """Validate GCP service account key format.
+    def validate_wif_only(cls, v: str) -> str:
+        """Ensure only WIF credentials are accepted.
 
-        M7: Sanitise error messages to prevent key data leakage in logs.
-
-        NOTE: Service account keys are DEPRECATED for security reasons.
-        Use Workload Identity Federation (WIF) instead.
+        Service account keys are rejected for security reasons.
+        A13E practices what we preach - no stored credentials.
         """
-        if v:
-            try:
-                key_data = json.loads(v)
-                if "private_key" not in key_data:
-                    # M7: Generic error - don't reveal what fields are present/missing
-                    raise ValueError("Invalid service account key format")
-            except json.JSONDecodeError as e:
-                # M7: Don't include the actual JSON error which may contain key fragments
-                raise ValueError(
-                    "Service account key must be valid JSON. "
-                    f"Parse error at position {e.pos if hasattr(e, 'pos') else 'unknown'}"
-                )
-            except Exception:
-                # M7: Catch-all to prevent any key data in error messages
-                raise ValueError("Invalid service account key format")
+        if v != "gcp_workload_identity":
+            raise ValueError(
+                "Service account keys are not accepted for security reasons. "
+                "Use Workload Identity Federation (WIF) instead. "
+                "Run the WIF setup script to configure keyless authentication."
+            )
         return v
 
 
@@ -408,31 +398,19 @@ async def create_gcp_credential(
     )
     credential = result.scalar_one_or_none()
 
-    cred_type = CredentialType(body.credential_type)
-
-    # Warn if using deprecated service account key
-    if cred_type == CredentialType.GCP_SERVICE_ACCOUNT_KEY:
-        logger.warning(
-            "deprecated_credential_type",
-            account_id=str(body.cloud_account_id),
-            message="Service account keys are deprecated. Use Workload Identity Federation.",
-        )
+    # GCP only accepts WIF - credential_type is validated by Pydantic
+    cred_type = CredentialType.GCP_WORKLOAD_IDENTITY
 
     if credential:
+        # Update existing credential to WIF
         credential.credential_type = cred_type
         credential.gcp_project_id = account.account_id
         credential.gcp_service_account_email = body.service_account_email
-
-        # WIF-specific fields
-        if cred_type == CredentialType.GCP_WORKLOAD_IDENTITY:
-            credential.gcp_workload_identity_pool = body.pool_id
-            credential.gcp_wif_provider_id = body.provider_id
-            credential.gcp_wif_pool_location = body.pool_location
-
-        # Deprecated: Service account key
-        if body.service_account_key:
-            credential.set_gcp_service_account_key(body.service_account_key)
-
+        credential.gcp_workload_identity_pool = body.pool_id
+        credential.gcp_wif_provider_id = body.provider_id
+        credential.gcp_wif_pool_location = body.pool_location
+        # Clear any legacy SA key if present
+        credential._encrypted_key = None
         credential.status = CredentialStatus.PENDING
     else:
         credential = CloudCredential(
@@ -441,20 +419,12 @@ async def create_gcp_credential(
             credential_type=cred_type,
             gcp_project_id=account.account_id,
             gcp_service_account_email=body.service_account_email,
+            gcp_workload_identity_pool=body.pool_id,
+            gcp_wif_provider_id=body.provider_id,
+            gcp_wif_pool_location=body.pool_location,
             status=CredentialStatus.PENDING,
             created_by=auth.user.id,
         )
-
-        # WIF-specific fields
-        if cred_type == CredentialType.GCP_WORKLOAD_IDENTITY:
-            credential.gcp_workload_identity_pool = body.pool_id
-            credential.gcp_wif_provider_id = body.provider_id
-            credential.gcp_wif_pool_location = body.pool_location
-
-        # Deprecated: Service account key
-        if body.service_account_key:
-            credential.set_gcp_service_account_key(body.service_account_key)
-
         db.add(credential)
 
     await db.commit()
@@ -469,13 +439,10 @@ async def create_gcp_credential(
         resource_id=str(credential.id),
         details={
             "action": "gcp_credential_created",
-            "type": body.credential_type,
+            "type": "gcp_workload_identity",
             "service_account": body.service_account_email,
-            "wif_pool_id": (
-                body.pool_id
-                if cred_type == CredentialType.GCP_WORKLOAD_IDENTITY
-                else None
-            ),
+            "wif_pool_id": body.pool_id,
+            "wif_provider_id": body.provider_id,
         },
         ip_address=request.client.host if request.client else None,
         success=True,
@@ -734,8 +701,7 @@ _TEMPLATE_DIR = (_Path(__file__).parent.parent.parent / "templates").resolve()
 _ALLOWED_TEMPLATES = {
     "aws_cloudformation.yaml",
     "terraform/aws/main.tf",
-    "terraform/gcp/main.tf",
-    "gcp_setup.sh",
+    "terraform/gcp/main.tf",  # WIF-based setup
     "gcp_wif_setup.sh",
 }
 
@@ -807,17 +773,11 @@ async def get_gcp_terraform_template() -> dict:
 
 
 @router.get("/templates/gcp/setup-script", response_class=PlainTextResponse)
-async def get_gcp_setup_script() -> dict:
-    """Download GCP setup shell script (legacy - uses service account impersonation)."""
-    return _read_template("gcp_setup.sh")
-
-
-@router.get("/templates/gcp/wif-setup", response_class=PlainTextResponse)
-async def get_gcp_wif_setup_script() -> str:
+async def get_gcp_setup_script() -> str:
     """Download GCP Workload Identity Federation setup script.
 
-    This is the recommended setup method for GCP accounts.
     Uses WIF for keyless authentication from AWS to GCP.
+    No service account keys required.
 
     Usage:
         chmod +x gcp_wif_setup.sh

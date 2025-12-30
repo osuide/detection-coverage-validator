@@ -6,7 +6,7 @@ Create Date: 2024-12-18
 
 Adds secure storage for cloud provider credentials:
 - AWS IAM Role ARN and External ID (no secrets stored)
-- GCP Service Account details and encrypted keys
+- GCP WIF configuration (no secrets stored - keyless auth)
 - Permission tracking and validation status
 """
 
@@ -26,8 +26,7 @@ def upgrade():
         """
         CREATE TYPE credential_type AS ENUM (
             'aws_iam_role',
-            'gcp_workload_identity',
-            'gcp_service_account_key'
+            'gcp_workload_identity'
         )
     """
     )

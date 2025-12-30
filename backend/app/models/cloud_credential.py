@@ -1,12 +1,11 @@
 """Cloud credential models for secure AWS/GCP access.
 
 Security Best Practices Implemented:
-1. Credentials encrypted at rest using Fernet (AES-128-CBC)
+1. No stored secrets - AWS uses IAM role assumption, GCP uses WIF
 2. External ID for AWS to prevent confused deputy attacks
-3. No storage of long-lived access keys (use IAM roles/service accounts)
-4. Audit logging of credential access
-5. Credential validation before storage
-6. Automatic credential rotation reminders
+3. Audit logging of credential access
+4. Credential validation before use
+5. Short-lived credentials (1 hour max for GCP WIF)
 """
 
 import enum
@@ -15,26 +14,21 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from cryptography.fernet import Fernet
 from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-from app.core.config import get_settings
 
 
 class CredentialType(str, enum.Enum):
     """Type of cloud credential."""
 
-    # AWS: Cross-account IAM role (RECOMMENDED)
+    # AWS: Cross-account IAM role
     AWS_IAM_ROLE = "aws_iam_role"
 
-    # GCP: Workload Identity Federation (RECOMMENDED)
+    # GCP: Workload Identity Federation (keyless, secure)
     GCP_WORKLOAD_IDENTITY = "gcp_workload_identity"
-
-    # GCP: Service Account Key (less secure, but simpler)
-    GCP_SERVICE_ACCOUNT_KEY = "gcp_service_account_key"
 
 
 class CredentialStatus(str, enum.Enum):
@@ -51,7 +45,10 @@ class CloudCredential(Base):
     """Secure storage for cloud provider credentials.
 
     For AWS: Stores Role ARN and External ID (no secrets)
-    For GCP: Stores Service Account email or encrypted key
+    For GCP: Stores WIF configuration (no secrets - keyless authentication)
+
+    Security: No long-lived secrets are stored. AWS uses IAM role assumption,
+    GCP uses Workload Identity Federation for short-lived credentials.
     """
 
     __tablename__ = "cloud_credentials"
@@ -122,8 +119,8 @@ class CloudCredential(Base):
         String(64), nullable=True, default="global"
     )
 
-    # GCP Service Account Key (ENCRYPTED - this IS a secret)
-    # Only used for gcp_service_account_key type
+    # Legacy encrypted key column - kept for schema compatibility
+    # Not used: GCP uses WIF (no stored secrets)
     _encrypted_key: Mapped[Optional[str]] = mapped_column(
         "encrypted_key", Text, nullable=True
     )
@@ -167,56 +164,8 @@ class CloudCredential(Base):
         """
         return f"a13e-{secrets.token_hex(16)}"
 
-    @staticmethod
-    def _get_encryption_key() -> bytes:
-        """Get encryption key from settings.
-
-        Validates the key by attempting to create a Fernet instance,
-        which ensures the key is properly formatted base64.
-        """
-        settings = get_settings()
-        key = settings.credential_encryption_key
-        if not key:
-            raise ValueError("CREDENTIAL_ENCRYPTION_KEY not configured")
-        try:
-            # Validate key by creating Fernet instance
-            key_value = key.get_secret_value()
-            Fernet(key_value.encode())
-            return key_value.encode()
-        except Exception as e:
-            raise ValueError(f"Invalid encryption key: {e}")
-
-    def set_gcp_service_account_key(self, key_json: str) -> None:
-        """Encrypt and store GCP service account key.
-
-        WARNING: Service account keys are a security risk.
-        Workload Identity Federation is preferred.
-
-        M14: Tracks key rotation for audit trail.
-        """
-        if self.credential_type != CredentialType.GCP_SERVICE_ACCOUNT_KEY:
-            raise ValueError(
-                "This credential type does not support service account keys"
-            )
-
-        # M14: Track rotation if key already exists
-        if self._encrypted_key is not None:
-            self.key_rotated_at = datetime.now(timezone.utc)
-            self.key_rotation_count = (self.key_rotation_count or 0) + 1
-
-        fernet = Fernet(self._get_encryption_key())
-        self._encrypted_key = fernet.encrypt(key_json.encode()).decode()
-
-    def get_gcp_service_account_key(self) -> Optional[str]:
-        """Decrypt and retrieve GCP service account key."""
-        if not self._encrypted_key:
-            return None
-
-        fernet = Fernet(self._get_encryption_key())
-        return fernet.decrypt(self._encrypted_key.encode()).decode()
-
     def clear_sensitive_data(self) -> None:
-        """Clear any sensitive data (for credential rotation)."""
+        """Clear any sensitive data (legacy - no secrets stored with WIF)."""
         self._encrypted_key = None
 
     @property

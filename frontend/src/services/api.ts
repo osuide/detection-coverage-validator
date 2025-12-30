@@ -426,11 +426,13 @@ export const credentialsApi = {
   createAWSCredential: (data: { cloud_account_id: string; role_arn: string }) =>
     api.post<CloudCredential>('/credentials/aws', data).then(r => r.data),
 
+  // GCP uses WIF only - no service account keys for security
   createGCPCredential: (data: {
     cloud_account_id: string
-    credential_type: 'gcp_workload_identity' | 'gcp_service_account_key'
+    credential_type: 'gcp_workload_identity'
     service_account_email?: string
-    service_account_key?: string
+    pool_id?: string
+    provider_id?: string
   }) => api.post<CloudCredential>('/credentials/gcp', data).then(r => r.data),
 
   validate: (accountId: string) =>

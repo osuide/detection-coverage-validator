@@ -1,18 +1,16 @@
-"""GCP Credential Service - Secure access using Service Account impersonation.
+"""GCP Credential Service - Secure access using Workload Identity Federation.
 
 Security Best Practices:
-1. Prefers Workload Identity Federation (no key storage)
-2. Falls back to Service Account Key (encrypted at rest)
+1. Uses Workload Identity Federation (WIF) for keyless authentication
+2. No service account keys stored - all credentials are short-lived
 3. Validates all permissions before accepting connection
 4. Uses minimum required OAuth scopes
-5. All credentials are temporary/session-based
+5. All credentials are temporary (1 hour max)
 """
 
-import json
 from typing import Any, Optional
 
 from google.auth import impersonated_credentials
-from google.oauth2 import service_account
 from google.cloud import logging_v2
 from google.cloud import monitoring_v3
 import structlog
@@ -93,51 +91,25 @@ class GCPCredentialService:
             lifetime=min(lifetime, 3600),
         )
 
-    def get_credentials_from_key(self, key_json: str) -> Any:
-        """Get credentials from a service account key.
-
-        WARNING: This is less secure than impersonation.
-        Only use when Workload Identity is not available.
-
-        Args:
-            key_json: JSON string of the service account key
-
-        Returns:
-            Service account credentials object
-        """
-        key_data = json.loads(key_json)
-
-        return service_account.Credentials.from_service_account_info(
-            key_data,
-            scopes=self.REQUIRED_SCOPES,
-        )
-
     def get_credentials(self, credential: CloudCredential) -> Any:
-        """Get appropriate credentials for a CloudCredential.
+        """Get credentials for a CloudCredential using WIF.
 
         Args:
-            credential: CloudCredential object
+            credential: CloudCredential object (must be GCP_WORKLOAD_IDENTITY type)
 
         Returns:
             Google credentials object
         """
-        if credential.credential_type == CredentialType.GCP_WORKLOAD_IDENTITY:
-            if not credential.gcp_service_account_email:
-                raise ValueError("Service account email required for workload identity")
-            return self.get_impersonated_credentials(
-                credential.gcp_service_account_email
-            )
-
-        elif credential.credential_type == CredentialType.GCP_SERVICE_ACCOUNT_KEY:
-            key_json = credential.get_gcp_service_account_key()
-            if not key_json:
-                raise ValueError("Service account key not found")
-            return self.get_credentials_from_key(key_json)
-
-        else:
+        if credential.credential_type != CredentialType.GCP_WORKLOAD_IDENTITY:
             raise ValueError(
-                f"Unsupported credential type: {credential.credential_type}"
+                f"Unsupported credential type: {credential.credential_type}. "
+                "Only GCP_WORKLOAD_IDENTITY is supported."
             )
+
+        if not credential.gcp_service_account_email:
+            raise ValueError("Service account email required for workload identity")
+
+        return self.get_impersonated_credentials(credential.gcp_service_account_email)
 
     async def validate_credentials(self, credential: CloudCredential) -> dict:
         """Validate GCP credentials and check permissions.
@@ -145,11 +117,11 @@ class GCPCredentialService:
         Returns:
             dict with validation results
         """
-        if credential.credential_type not in [
-            CredentialType.GCP_WORKLOAD_IDENTITY,
-            CredentialType.GCP_SERVICE_ACCOUNT_KEY,
-        ]:
-            raise ValueError("Invalid credential type for GCP validation")
+        if credential.credential_type != CredentialType.GCP_WORKLOAD_IDENTITY:
+            raise ValueError(
+                "Invalid credential type for GCP validation. "
+                "Only GCP_WORKLOAD_IDENTITY is supported."
+            )
 
         if not credential.gcp_project_id:
             return {

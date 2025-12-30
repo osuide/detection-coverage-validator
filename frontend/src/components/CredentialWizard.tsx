@@ -37,12 +37,13 @@ export default function CredentialWizard({
   const queryClient = useQueryClient()
   const [step, setStep] = useState<WizardStep>('instructions')
   const [copied, setCopied] = useState<string | null>(null)
-  const [gcpCredentialType, setGcpCredentialType] = useState<'gcp_workload_identity' | 'gcp_service_account_key'>('gcp_workload_identity')
 
   // Form data
   const [awsRoleArn, setAwsRoleArn] = useState('')
   const [gcpServiceAccountEmail, setGcpServiceAccountEmail] = useState('')
-  const [gcpServiceAccountKey, setGcpServiceAccountKey] = useState('')
+  // WIF configuration (no SA keys - security best practice)
+  const [gcpWifPoolId, setGcpWifPoolId] = useState('a13e-pool')
+  const [gcpWifProviderId, setGcpWifProviderId] = useState('aws')
 
   // Fetch setup instructions
   const { data: instructions, isLoading: instructionsLoading } = useQuery({
@@ -67,13 +68,14 @@ export default function CredentialWizard({
     },
   })
 
-  // Create GCP credential
+  // Create GCP credential (WIF only - no SA keys for security)
   const createGcpMutation = useMutation({
     mutationFn: (data: {
       cloud_account_id: string
-      credential_type: 'gcp_workload_identity' | 'gcp_service_account_key'
+      credential_type: 'gcp_workload_identity'
       service_account_email?: string
-      service_account_key?: string
+      pool_id?: string
+      provider_id?: string
     }) => credentialsApi.createGCPCredential(data),
     onSuccess: () => {
       refetchCredential()
@@ -106,11 +108,13 @@ export default function CredentialWizard({
         role_arn: awsRoleArn,
       })
     } else {
+      // GCP: WIF only - no service account keys for security
       createGcpMutation.mutate({
         cloud_account_id: cloudAccountId,
-        credential_type: gcpCredentialType,
+        credential_type: 'gcp_workload_identity',
         service_account_email: gcpServiceAccountEmail || undefined,
-        service_account_key: gcpCredentialType === 'gcp_service_account_key' ? gcpServiceAccountKey : undefined,
+        pool_id: gcpWifPoolId,
+        provider_id: gcpWifProviderId,
       })
     }
   }
@@ -586,14 +590,14 @@ export default function CredentialWizard({
                 <div className="bg-gray-50 rounded-lg p-3">
                   <h6 className="font-medium text-gray-900 mb-2 text-sm">Step-by-Step Instructions</h6>
                   <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
-                    <li>Go to <strong>GCP Console → IAM & Admin → Roles → Create Role</strong></li>
-                    <li>Name it <strong>"A13E Detection Scanner"</strong></li>
-                    <li>Add the permissions listed below (31 permissions total)</li>
+                    <li>Go to <strong>GCP Console → IAM & Admin → Workload Identity Federation</strong></li>
+                    <li>Create a new pool named <strong>"a13e-pool"</strong></li>
+                    <li>Add an <strong>AWS provider</strong> with A13E's AWS account ID</li>
                     <li>Go to <strong>IAM & Admin → Service Accounts → Create</strong></li>
                     <li>Name it <strong>"a13e-scanner"</strong></li>
                     <li>Grant the custom role to the service account</li>
+                    <li>Grant the WIF pool <strong>Workload Identity User</strong> permission on the service account</li>
                     <li>Copy the <strong>service account email</strong> (e.g., a13e-scanner@PROJECT.iam.gserviceaccount.com)</li>
-                    <li>For SA Key auth: Go to <strong>Keys → Add Key → Create new key → JSON</strong></li>
                   </ol>
                 </div>
 
@@ -708,49 +712,33 @@ export default function CredentialWizard({
       )
     }
 
-    // GCP Credentials
+    // GCP Credentials - WIF only (no service account keys for security)
     return (
       <div className="space-y-6">
         <div>
-          <h4 className="font-medium text-gray-900 mb-3">Enter GCP Credentials</h4>
+          <h4 className="font-medium text-gray-900 mb-3">Enter WIF Configuration</h4>
           <p className="text-sm text-gray-600 mb-4">
-            Provide the service account details for A13E to access your GCP project.
+            Provide the Workload Identity Federation details from your GCP setup.
           </p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Authentication Method
-          </label>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => setGcpCredentialType('gcp_workload_identity')}
-              className={`border-2 rounded-lg p-4 text-left transition-colors ${
-                gcpCredentialType === 'gcp_workload_identity'
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="font-medium">Workload Identity</div>
-              <p className="text-sm text-gray-600 mt-1">Keyless, recommended for production</p>
-            </button>
-            <button
-              onClick={() => setGcpCredentialType('gcp_service_account_key')}
-              className={`border-2 rounded-lg p-4 text-left transition-colors ${
-                gcpCredentialType === 'gcp_service_account_key'
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="font-medium">Service Account Key</div>
-              <p className="text-sm text-gray-600 mt-1">JSON key file (encrypted at rest)</p>
-            </button>
+        {/* Security notice */}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Shield className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h5 className="font-medium text-green-900">Workload Identity Federation</h5>
+              <p className="text-sm text-green-700 mt-1">
+                A13E uses keyless authentication via WIF. No service account keys to manage,
+                rotate, or risk leaking. All credentials are short-lived (1 hour max).
+              </p>
+            </div>
           </div>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Service Account Email
+            Service Account Email <span className="text-red-500">*</span>
           </label>
           <input
             type="email"
@@ -759,25 +747,39 @@ export default function CredentialWizard({
             placeholder="a13e-scanner@my-project.iam.gserviceaccount.com"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
           />
+          <p className="text-xs text-gray-500 mt-1">
+            The service account A13E will impersonate via WIF
+          </p>
         </div>
 
-        {gcpCredentialType === 'gcp_service_account_key' && (
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Service Account Key (JSON)
+              WIF Pool ID
             </label>
-            <textarea
-              value={gcpServiceAccountKey}
-              onChange={(e) => setGcpServiceAccountKey(e.target.value)}
-              placeholder='{"type": "service_account", "project_id": "...", ...}'
-              rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-xs"
+            <input
+              type="text"
+              value={gcpWifPoolId}
+              onChange={(e) => setGcpWifPoolId(e.target.value)}
+              placeholder="a13e-pool"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Your key will be encrypted using AES-256 before storage.
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Default: a13e-pool</p>
           </div>
-        )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              WIF Provider ID
+            </label>
+            <input
+              type="text"
+              value={gcpWifProviderId}
+              onChange={(e) => setGcpWifProviderId(e.target.value)}
+              placeholder="aws"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">Default: aws</p>
+          </div>
+        </div>
 
         {createGcpMutation.error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -800,7 +802,7 @@ export default function CredentialWizard({
           </button>
           <button
             onClick={handleSubmitCredentials}
-            disabled={!gcpServiceAccountEmail || (gcpCredentialType === 'gcp_service_account_key' && !gcpServiceAccountKey) || createGcpMutation.isPending}
+            disabled={!gcpServiceAccountEmail || createGcpMutation.isPending}
             className="btn-primary flex items-center disabled:opacity-50"
           >
             {createGcpMutation.isPending ? (
