@@ -116,7 +116,16 @@ class OrgLogSinkScanner(BaseScanner):
             parent = f"organizations/{org_id}"
             request = {"parent": parent}
 
-            for sink in client.list_sinks(request=request):
+            # Use run_sync to avoid blocking the event loop
+            def fetch_sinks() -> list:
+                sinks = []
+                for sink in client.list_sinks(request=request):
+                    sinks.append(sink)
+                return sinks
+
+            sinks = await self.run_sync(fetch_sinks)
+
+            for sink in sinks:
                 detection = self._create_sink_detection(
                     sink=sink,
                     parent_type="organization",
@@ -174,7 +183,17 @@ class OrgLogSinkScanner(BaseScanner):
         async def list_children(parent: str) -> None:
             try:
                 request = {"parent": parent}
-                for folder in rm_client.list_folders(request=request):
+
+                # Use run_sync to avoid blocking the event loop
+                def fetch_folders() -> list:
+                    folders = []
+                    for folder in rm_client.list_folders(request=request):
+                        folders.append(folder)
+                    return folders
+
+                folders = await self.run_sync(fetch_folders)
+
+                for folder in folders:
                     all_folders.append(folder)
                     await list_children(folder.name)
             except Exception as e:
@@ -197,7 +216,16 @@ class OrgLogSinkScanner(BaseScanner):
             parent = f"folders/{folder_id}"
             request = {"parent": parent}
 
-            for sink in client.list_sinks(request=request):
+            # Use run_sync to avoid blocking the event loop
+            def fetch_sinks() -> list:
+                sinks = []
+                for sink in client.list_sinks(request=request):
+                    sinks.append(sink)
+                return sinks
+
+            sinks = await self.run_sync(fetch_sinks)
+
+            for sink in sinks:
                 detection = self._create_sink_detection(
                     sink=sink,
                     parent_type="folder",
@@ -315,7 +343,16 @@ class OrgLogBucketScanner(BaseScanner):
             parent = f"organizations/{org_id}/locations/global"
             request = {"parent": parent}
 
-            for bucket in client.list_buckets(request=request):
+            # Use run_sync to avoid blocking the event loop
+            def fetch_buckets() -> list:
+                buckets = []
+                for bucket in client.list_buckets(request=request):
+                    buckets.append(bucket)
+                return buckets
+
+            buckets = await self.run_sync(fetch_buckets)
+
+            for bucket in buckets:
                 detection = self._create_bucket_detection(bucket, org_id)
                 if detection:
                     detections.append(detection)

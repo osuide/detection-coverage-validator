@@ -85,7 +85,17 @@ class EventarcScanner(BaseScanner):
             parent = f"projects/{project_id}/locations/{region}"
             request = {"parent": parent}
 
-            for trigger in client.list_triggers(request=request):
+            # Use run_sync to avoid blocking the event loop
+            # GCP client methods are synchronous
+            def fetch_triggers() -> list:
+                triggers = []
+                for trigger in client.list_triggers(request=request):
+                    triggers.append(trigger)
+                return triggers
+
+            triggers = await self.run_sync(fetch_triggers)
+
+            for trigger in triggers:
                 detection = self._parse_trigger(trigger, project_id, region)
                 if detection:
                     detections.append(detection)

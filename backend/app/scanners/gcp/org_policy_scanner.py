@@ -200,7 +200,17 @@ class OrgPolicyScanner(BaseScanner):
             parent = f"{resource_type}s/{resource_id}"
             request = {"parent": parent}
 
-            for policy in client.list_policies(request=request):
+            # Use run_sync to avoid blocking the event loop
+            # GCP client methods are synchronous
+            def fetch_policies() -> list:
+                policies = []
+                for policy in client.list_policies(request=request):
+                    policies.append(policy)
+                return policies
+
+            policies = await self.run_sync(fetch_policies)
+
+            for policy in policies:
                 detection = self._create_policy_detection(
                     policy=policy,
                     resource_type=resource_type,

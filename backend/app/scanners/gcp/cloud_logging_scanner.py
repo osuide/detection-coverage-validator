@@ -81,7 +81,17 @@ class CloudLoggingScanner(BaseScanner):
             parent = f"projects/{project_id}"
             request = {"parent": parent}
 
-            for metric in client.list_log_metrics(request=request):
+            # Use run_sync to avoid blocking the event loop
+            # GCP client methods are synchronous
+            def fetch_log_metrics() -> list:
+                metrics = []
+                for metric in client.list_log_metrics(request=request):
+                    metrics.append(metric)
+                return metrics
+
+            metrics = await self.run_sync(fetch_log_metrics)
+
+            for metric in metrics:
                 detection = self._parse_log_metric(metric, project_id)
                 if detection:
                     detections.append(detection)

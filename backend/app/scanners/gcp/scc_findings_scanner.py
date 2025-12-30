@@ -149,7 +149,16 @@ class SCCFindingsScanner(BaseScanner):
                 "order_by": "event_time desc",
             }
 
-            for finding in client.list_findings(request=request):
+            # Use run_sync to avoid blocking the event loop
+            def fetch_findings() -> list:
+                findings = []
+                for finding in client.list_findings(request=request):
+                    findings.append(finding)
+                return findings
+
+            findings = await self.run_sync(fetch_findings)
+
+            for finding in findings:
                 finding_data = finding.finding
                 category = finding_data.category
 
@@ -340,7 +349,16 @@ class SCCModuleStatusScanner(BaseScanner):
             enabled_modules = []
             module_details: dict[str, dict] = {}
 
-            for source in client.list_sources(request=request):
+            # Use run_sync to avoid blocking the event loop
+            def fetch_sources() -> list:
+                sources = []
+                for source in client.list_sources(request=request):
+                    sources.append(source)
+                return sources
+
+            sources = await self.run_sync(fetch_sources)
+
+            for source in sources:
                 display_name = source.display_name or ""
                 source_name = source.name
 

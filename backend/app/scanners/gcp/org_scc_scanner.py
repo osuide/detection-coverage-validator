@@ -123,7 +123,16 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
         try:
             request = {"parent": parent}
 
-            for config in client.list_notification_configs(request=request):
+            # Use run_sync to avoid blocking the event loop
+            def fetch_notification_configs() -> list:
+                configs = []
+                for config in client.list_notification_configs(request=request):
+                    configs.append(config)
+                return configs
+
+            configs = await self.run_sync(fetch_notification_configs)
+
+            for config in configs:
                 detection = self._create_notification_detection(config, org_id)
                 if detection:
                     detections.append(detection)
@@ -184,7 +193,16 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
         try:
             request = {"parent": parent}
 
-            for source in client.list_sources(request=request):
+            # Use run_sync to avoid blocking the event loop
+            def fetch_sources() -> list:
+                sources = []
+                for source in client.list_sources(request=request):
+                    sources.append(source)
+                return sources
+
+            sources = await self.run_sync(fetch_sources)
+
+            for source in sources:
                 detection = self._create_source_detection(source, org_id)
                 if detection:
                     detections.append(detection)
@@ -246,7 +264,16 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
         try:
             request = {"parent": parent}
 
-            for export in client.list_big_query_exports(request=request):
+            # Use run_sync to avoid blocking the event loop
+            def fetch_bq_exports() -> list:
+                exports = []
+                for export in client.list_big_query_exports(request=request):
+                    exports.append(export)
+                return exports
+
+            exports = await self.run_sync(fetch_bq_exports)
+
+            for export in exports:
                 detection = self._create_export_detection(export, org_id)
                 if detection:
                     detections.append(detection)
@@ -308,7 +335,16 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
         try:
             request = {"parent": parent}
 
-            for mute_config in client.list_mute_configs(request=request):
+            # Use run_sync to avoid blocking the event loop
+            def fetch_mute_configs() -> list:
+                configs = []
+                for mute_config in client.list_mute_configs(request=request):
+                    configs.append(mute_config)
+                return configs
+
+            mute_configs = await self.run_sync(fetch_mute_configs)
+
+            for mute_config in mute_configs:
                 detection = self._create_mute_detection(mute_config, org_id)
                 if detection:
                     detections.append(detection)
@@ -407,16 +443,31 @@ class SCCSecurityPostureScanner(BaseScanner):
             client = securityposture_v1.SecurityPostureClient(credentials=self.session)
 
             parent = f"organizations/{org_id}/locations/global"
-
-            # List postures
             request = {"parent": parent}
-            for posture in client.list_postures(request=request):
+
+            # Use run_sync to avoid blocking the event loop
+            # List postures
+            def fetch_postures() -> list:
+                postures = []
+                for posture in client.list_postures(request=request):
+                    postures.append(posture)
+                return postures
+
+            postures = await self.run_sync(fetch_postures)
+            for posture in postures:
                 detection = self._create_posture_detection(posture, org_id)
                 if detection:
                     detections.append(detection)
 
             # List posture deployments
-            for deployment in client.list_posture_deployments(request=request):
+            def fetch_deployments() -> list:
+                deployments = []
+                for deployment in client.list_posture_deployments(request=request):
+                    deployments.append(deployment)
+                return deployments
+
+            deployments = await self.run_sync(fetch_deployments)
+            for deployment in deployments:
                 detection = self._create_deployment_detection(deployment, org_id)
                 if detection:
                     detections.append(detection)

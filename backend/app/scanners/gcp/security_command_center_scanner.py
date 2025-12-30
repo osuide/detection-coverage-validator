@@ -92,7 +92,17 @@ class SecurityCommandCenterScanner(BaseScanner):
             # List notification configs
             request = {"parent": parent}
 
-            for config in client.list_notification_configs(request=request):
+            # Use run_sync to avoid blocking the event loop
+            # GCP client methods are synchronous
+            def fetch_notification_configs() -> list:
+                configs = []
+                for config in client.list_notification_configs(request=request):
+                    configs.append(config)
+                return configs
+
+            configs = await self.run_sync(fetch_notification_configs)
+
+            for config in configs:
                 detection = self._parse_notification_config(config, parent)
                 if detection:
                     detections.append(detection)
@@ -157,7 +167,17 @@ class SecurityCommandCenterScanner(BaseScanner):
             # List sources (finding producers)
             request = {"parent": parent}
 
-            for source in client.list_sources(request=request):
+            # Use run_sync to avoid blocking the event loop
+            # GCP client methods are synchronous
+            def fetch_finding_sources() -> list:
+                sources = []
+                for source in client.list_sources(request=request):
+                    sources.append(source)
+                return sources
+
+            sources = await self.run_sync(fetch_finding_sources)
+
+            for source in sources:
                 detection = self._parse_finding_source(source, parent)
                 if detection:
                     detections.append(detection)
