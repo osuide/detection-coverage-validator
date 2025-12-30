@@ -185,15 +185,27 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     avatar_url: Optional[str] = None
-    timezone: Optional[str] = "UTC"  # Default to UTC if not set
-    email_verified: bool = False  # Default to False if NULL in database
-    mfa_enabled: bool = False  # Default to False if NULL in database
+    timezone: Optional[str] = "UTC"
+    email_verified: bool = False
+    mfa_enabled: bool = False
     created_at: datetime
     role: Optional[str] = (
         None  # User's role in current org context (populated at runtime)
     )
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("email_verified", "mfa_enabled", mode="before")
+    @classmethod
+    def convert_none_to_false(cls, v: bool | None) -> bool:
+        """Convert NULL database values to False."""
+        return v if v is not None else False
+
+    @field_validator("timezone", mode="before")
+    @classmethod
+    def convert_none_timezone(cls, v: str | None) -> str:
+        """Convert NULL timezone to UTC."""
+        return v if v is not None else "UTC"
 
 
 class UserUpdateRequest(BaseModel):
@@ -211,11 +223,23 @@ class OrganizationResponse(BaseModel):
     name: str
     slug: str
     logo_url: Optional[str] = None
-    plan: str = "free"  # Default to free if NULL in database
-    require_mfa: bool = False  # Default to False if NULL in database
+    plan: str = "free"
+    require_mfa: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("plan", mode="before")
+    @classmethod
+    def convert_none_plan(cls, v: str | None) -> str:
+        """Convert NULL plan to free."""
+        return v if v is not None else "free"
+
+    @field_validator("require_mfa", mode="before")
+    @classmethod
+    def convert_none_require_mfa(cls, v: bool | None) -> bool:
+        """Convert NULL require_mfa to False."""
+        return v if v is not None else False
 
 
 class OrganizationCreateRequest(BaseModel):
