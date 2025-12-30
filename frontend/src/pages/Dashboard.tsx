@@ -10,10 +10,11 @@ import {
   Lock,
   Bell
 } from 'lucide-react'
-import { coverageApi, scansApi, detectionsApi, scanStatusApi } from '../services/api'
+import { coverageApi, scansApi, detectionsApi, scanStatusApi, Detection, DetectionEffectiveness } from '../services/api'
 import { Link } from 'react-router-dom'
 import CoverageGauge from '../components/CoverageGauge'
 import TacticHeatmap from '../components/TacticHeatmap'
+import { SecurityPostureCard, SecurityPostureEmptyState } from '../components/SecurityPostureCard'
 import { useSelectedAccount } from '../hooks/useSelectedAccount'
 
 const detectionSourceConfig: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
@@ -81,6 +82,34 @@ export default function Dashboard() {
     queryKey: ['scanStatus'],
     queryFn: () => scanStatusApi.get(),
   })
+
+  // Fetch all detections (we'll filter for Security Hub client-side)
+  const { data: allDetections } = useQuery({
+    queryKey: ['allDetections', selectedAccount?.id],
+    queryFn: () => detectionsApi.list({
+      cloud_account_id: selectedAccount?.id,
+      limit: 500, // Get all detections
+    }),
+    enabled: !!selectedAccount,
+  })
+
+  // Extract Security Hub standards with detection effectiveness data
+  const securityPostureData = (allDetections?.items ?? [])
+    .filter((d: Detection) => {
+      // Only Security Hub detections with effectiveness data
+      if (d.detection_type !== 'security_hub') return false
+      const rawConfig = d.raw_config as Record<string, unknown> | undefined
+      return rawConfig?.standard_id && rawConfig?.detection_effectiveness
+    })
+    .map((d: Detection) => {
+      const rawConfig = d.raw_config as Record<string, unknown>
+      return {
+        standardId: rawConfig.standard_id as string,
+        standardName: rawConfig.standard_name as string,
+        effectiveness: rawConfig.detection_effectiveness as DetectionEffectiveness,
+        region: d.region,
+      }
+    })
 
   // Convert source counts array to object for lookup
   const sourceCounts = (sourceCountsData?.counts ?? []).reduce((acc, item) => {
@@ -284,6 +313,39 @@ export default function Dashboard() {
             )
           })}
         </div>
+      </div>
+
+      {/* Security Posture - Detection Effectiveness from Security Hub */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-white">Security Posture</h3>
+            <p className="text-sm text-gray-400">Detection effectiveness from Security Hub standards</p>
+          </div>
+          {securityPostureData.length > 0 && (
+            <Link
+              to="/compliance"
+              className="text-sm text-blue-400 hover:text-blue-300"
+            >
+              View Details →
+            </Link>
+          )}
+        </div>
+        {securityPostureData.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {securityPostureData.map((data) => (
+              <SecurityPostureCard
+                key={data.standardId}
+                standardId={data.standardId}
+                standardName={data.standardName}
+                effectiveness={data.effectiveness}
+                region={data.region}
+              />
+            ))}
+          </div>
+        ) : (
+          <SecurityPostureEmptyState />
+        )}
       </div>
 
       {/* Top Gaps */}

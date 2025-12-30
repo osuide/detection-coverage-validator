@@ -716,6 +716,46 @@ export interface OrganisationEvaluationSummaryResponse {
   generated_at: string
 }
 
+// Security Hub Detection Effectiveness Types
+// Tracks actual compliance findings (PASSED/FAILED) from Security Hub standards
+export interface FailingControlItem {
+  control_id: string
+  title: string
+  failed_count: number
+  passed_count: number
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFORMATIONAL'
+}
+
+export interface DetectionEffectiveness {
+  total_controls: number
+  passed_count: number
+  failed_count: number
+  compliance_percent: number
+  by_severity: Record<string, number>
+  top_failing_controls: FailingControlItem[]
+  all_failing_controls: FailingControlItem[]
+}
+
+export interface SecurityHubStandardDetection extends Detection {
+  raw_config: {
+    hub_arn: string
+    standard_id: string
+    standard_name: string
+    enabled_controls_count: number
+    disabled_controls_count: number
+    total_controls_count: number
+    techniques_covered_count: number
+    techniques_covered: string[]
+    controls: Array<{
+      control_id: string
+      title: string
+      status: 'ENABLED' | 'DISABLED'
+      severity: string
+    }>
+    detection_effectiveness?: DetectionEffectiveness
+  }
+}
+
 export const evaluationHistoryApi = {
   // Detection history
   getDetectionHistory: (detectionId: string, params?: {

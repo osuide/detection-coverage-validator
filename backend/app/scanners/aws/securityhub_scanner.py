@@ -265,6 +265,26 @@ class SecurityHubScanner(BaseScanner):
                 )
                 all_detections.extend(grouped_detections)
 
+        # Phase 3: Fetch actual compliance findings (detection effectiveness)
+        # This shows what violations the Security Hub detections actually found
+        if first_client:
+            findings_by_standard = self._get_findings_by_standard(first_client)
+
+            if findings_by_standard:
+                # Add findings to each standard's detection raw_config
+                for detection in all_detections:
+                    standard_id = detection.raw_config.get("standard_id")
+                    if standard_id and standard_id in findings_by_standard:
+                        detection.raw_config["detection_effectiveness"] = (
+                            findings_by_standard[standard_id]
+                        )
+
+                self.logger.info(
+                    "securityhub_findings_complete",
+                    standards_with_findings=len(findings_by_standard),
+                    total_detections=len(all_detections),
+                )
+
         return all_detections
 
     def _group_controls_by_standard(
@@ -966,6 +986,221 @@ class SecurityHubScanner(BaseScanner):
             )
 
         return detections
+
+    def _get_findings_by_standard(
+        self,
+        client: Any,
+    ) -> dict[str, dict[str, Any]]:
+        """Fetch actual compliance findings grouped by Security Hub standard.
+
+        Calls the GetFindings API to retrieve PASSED/FAILED compliance status
+        for each control, then aggregates by standard.
+
+        This provides "detection effectiveness" data - showing what violations
+        the Security Hub detections actually found.
+
+        Args:
+            client: SecurityHub boto3 client
+
+        Returns:
+            Dict of standard_id -> {
+                "total_controls": int,
+                "passed_count": int,
+                "failed_count": int,
+                "compliance_percent": int,
+                "by_severity": {"CRITICAL": int, "HIGH": int, ...},
+                "top_failing_controls": [...],
+                "all_failing_controls": [...],
+            }
+        """
+        # Track findings by standard -> control_id -> status counts
+        findings_by_standard: dict[str, dict[str, dict]] = {}
+
+        try:
+            paginator = client.get_paginator("get_findings")
+
+            # Filter for active Security Hub findings (compliance checks)
+            filters = {
+                "RecordState": [{"Value": "ACTIVE", "Comparison": "EQUALS"}],
+                "WorkflowStatus": [{"Value": "NEW", "Comparison": "EQUALS"}],
+                "ProductName": [{"Value": "Security Hub", "Comparison": "EQUALS"}],
+            }
+
+            for page in paginator.paginate(Filters=filters, MaxResults=100):
+                for finding in page.get("Findings", []):
+                    compliance = finding.get("Compliance", {})
+                    compliance_status = compliance.get("Status", "NOT_AVAILABLE")
+
+                    # Skip findings without compliance status
+                    if compliance_status not in ["PASSED", "FAILED"]:
+                        continue
+
+                    # Extract control ID from GeneratorId
+                    # Format: "security-control/S3.8" or similar
+                    generator_id = finding.get("GeneratorId", "")
+                    control_id = None
+                    if "/" in generator_id:
+                        control_id = generator_id.split("/")[-1]
+                    if not control_id:
+                        continue
+
+                    # Get severity
+                    severity = finding.get("Severity", {}).get("Label", "MEDIUM")
+                    title = finding.get("Title", "")
+
+                    # Extract which standards this finding applies to
+                    associated_standards = compliance.get("AssociatedStandards", [])
+
+                    for standard in associated_standards:
+                        standards_id = standard.get("StandardsId", "")
+                        standard_key = self._normalise_standard_id(standards_id)
+                        if not standard_key:
+                            continue
+
+                        # Initialise standard dict if needed
+                        if standard_key not in findings_by_standard:
+                            findings_by_standard[standard_key] = {}
+
+                        # Initialise control dict if needed
+                        if control_id not in findings_by_standard[standard_key]:
+                            findings_by_standard[standard_key][control_id] = {
+                                "passed": 0,
+                                "failed": 0,
+                                "severity": severity,
+                                "title": title,
+                            }
+
+                        # Increment counts
+                        if compliance_status == "PASSED":
+                            findings_by_standard[standard_key][control_id][
+                                "passed"
+                            ] += 1
+                        elif compliance_status == "FAILED":
+                            findings_by_standard[standard_key][control_id][
+                                "failed"
+                            ] += 1
+
+            # Aggregate into summary per standard
+            return self._aggregate_findings_by_standard(findings_by_standard)
+
+        except ClientError as e:
+            self.logger.warning(
+                "securityhub_get_findings_error",
+                error=str(e),
+            )
+            return {}
+
+    def _normalise_standard_id(self, standards_arn: str) -> str:
+        """Convert Security Hub ARN to normalised standard ID.
+
+        Args:
+            standards_arn: ARN like 'arn:aws:securityhub:::standards/aws-foundational-security-best-practices/v/1.0.0'
+
+        Returns:
+            Normalised ID like 'fsbp', 'cis', 'pci', etc. or empty string if unknown
+        """
+        if not standards_arn:
+            return ""
+
+        standards_arn_lower = standards_arn.lower()
+
+        if "aws-foundational-security-best-practices" in standards_arn_lower:
+            return "fsbp"
+        elif "cis-aws-foundations-benchmark" in standards_arn_lower:
+            return "cis"
+        elif "pci-dss" in standards_arn_lower:
+            return "pci"
+        elif "nist-800-53" in standards_arn_lower:
+            return "nist"
+        elif "nist-800-171" in standards_arn_lower:
+            return "nist171"
+        elif "aws-resource-tagging-standard" in standards_arn_lower:
+            return "tagging"
+
+        return ""
+
+    def _aggregate_findings_by_standard(
+        self,
+        findings_by_standard: dict[str, dict[str, dict]],
+    ) -> dict[str, dict[str, Any]]:
+        """Aggregate control-level findings into standard-level summaries.
+
+        Args:
+            findings_by_standard: Dict of standard_id -> control_id -> finding data
+
+        Returns:
+            Dict of standard_id -> aggregated summary with pass/fail counts
+        """
+        result: dict[str, dict[str, Any]] = {}
+
+        for standard_id, controls in findings_by_standard.items():
+            passed_controls = []
+            failed_controls = []
+            by_severity = {
+                "CRITICAL": 0,
+                "HIGH": 0,
+                "MEDIUM": 0,
+                "LOW": 0,
+                "INFORMATIONAL": 0,
+            }
+
+            for control_id, data in controls.items():
+                # A control fails if ANY finding is failed
+                if data["failed"] > 0:
+                    failed_controls.append(
+                        {
+                            "control_id": control_id,
+                            "title": data["title"],
+                            "failed_count": data["failed"],
+                            "passed_count": data["passed"],
+                            "severity": data["severity"],
+                        }
+                    )
+                    severity = data["severity"]
+                    if severity in by_severity:
+                        by_severity[severity] += 1
+                else:
+                    passed_controls.append(control_id)
+
+            # Sort failing controls by severity then by failed count
+            severity_order = {
+                "CRITICAL": 0,
+                "HIGH": 1,
+                "MEDIUM": 2,
+                "LOW": 3,
+                "INFORMATIONAL": 4,
+            }
+            failed_controls.sort(
+                key=lambda x: (
+                    severity_order.get(x["severity"], 5),
+                    -x["failed_count"],
+                )
+            )
+
+            total = len(controls)
+            passed = len(passed_controls)
+            failed = len(failed_controls)
+
+            result[standard_id] = {
+                "total_controls": total,
+                "passed_count": passed,
+                "failed_count": failed,
+                "compliance_percent": (round(passed / total * 100) if total > 0 else 0),
+                "by_severity": by_severity,
+                "top_failing_controls": failed_controls[:10],
+                "all_failing_controls": failed_controls,
+            }
+
+            self.logger.info(
+                "securityhub_findings_aggregated",
+                standard=standard_id,
+                total_controls=total,
+                passed=passed,
+                failed=failed,
+                compliance_percent=result[standard_id]["compliance_percent"],
+            )
+
+        return result
 
     def _get_cspm_control_status(
         self,
