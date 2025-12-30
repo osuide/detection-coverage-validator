@@ -239,6 +239,8 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
         if namespace in operational_namespaces:
             # But still include if it has security keywords in the name
             name_lower = name.lower()
+            description_lower = (alarm.get("AlarmDescription") or "").lower()
+            text_to_check = f"{name_lower} {description_lower}"
             security_keywords = [
                 "unauthorized",
                 "security",
@@ -251,8 +253,13 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
                 "intrusion",
                 "attack",
                 "malicious",
+                "error",  # Application errors
+                "dlq",  # Dead letter queues
+                "dead-letter",
+                "injection",
+                "alert",
             ]
-            if not any(kw in name_lower for kw in security_keywords):
+            if not any(kw in text_to_check for kw in security_keywords):
                 return True
 
         return False
@@ -275,7 +282,7 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
             "AWS/Detective",
         ]
 
-        # Security-related keywords in alarm names
+        # Security-related keywords in alarm names/descriptions/namespaces
         security_keywords = [
             "unauthorized",
             "security",
@@ -319,6 +326,19 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
             "network",
             "egress",
             "ingress",
+            # Additional keywords for common security-relevant alarms
+            "error",  # Lambda/application errors can indicate attacks
+            "injection",  # SQL injection, prompt injection, etc.
+            "dlq",  # Dead letter queues indicate processing failures
+            "dead-letter",  # Alternative DLQ naming
+            "lambda",  # Lambda function monitoring
+            "waf",  # Web Application Firewall
+            "bot",  # Bot detection
+            "rate-limit",  # Rate limiting alerts
+            "throttl",  # Throttling (partial match for throttle/throttled)
+            "block",  # Blocked requests/IPs
+            "forbidden",  # 403 errors
+            "alert",  # Generic security alerts
         ]
 
         namespace = alarm.get("Namespace", "")
@@ -329,8 +349,9 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
         if namespace in security_namespaces:
             return True
 
-        # Include if name or description contains security keywords
-        text_to_check = f"{name} {description}"
+        # Include if namespace, name, or description contains security keywords
+        # Include namespace to catch custom security namespaces like "MyApp/Security"
+        text_to_check = f"{namespace.lower()} {name} {description}"
         if any(kw in text_to_check for kw in security_keywords):
             return True
 
