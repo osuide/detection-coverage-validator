@@ -84,7 +84,6 @@ export function SecurityFunctionBreakdown({ breakdown, compact = false }: Props)
   // Full vertical layout with progress bars
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-medium text-gray-300">Security Functions (NIST CSF)</h4>
       {FUNCTION_CONFIG.map(({ key, label, description, colour, bgColour, Icon }) => {
         const count = breakdown[key]
         const percent = (count / total) * 100
