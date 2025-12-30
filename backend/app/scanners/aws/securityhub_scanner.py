@@ -24,6 +24,10 @@ from botocore.exceptions import ClientError
 
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
+from app.core.cache import (
+    get_cached_securityhub_controls,
+    cache_securityhub_controls,
+)
 
 
 def _chunk_list(items: list, chunk_size: int) -> list[list]:
@@ -153,6 +157,7 @@ class SecurityHubScanner(BaseScanner):
         first_cspm_region = None
         first_client = None  # Store client for per-standard control queries
         hub_arn = ""
+        account_id = ""  # For caching
 
         for region in regions:
             try:
@@ -162,6 +167,12 @@ class SecurityHubScanner(BaseScanner):
                 try:
                     hub = await self.run_sync(client.describe_hub)
                     hub_arn = hub.get("HubArn", "")
+                    # Extract account_id from hub_arn for caching
+                    # Format: arn:aws:securityhub:region:account_id:hub/default
+                    if hub_arn and not account_id:
+                        arn_parts = hub_arn.split(":")
+                        if len(arn_parts) >= 5:
+                            account_id = arn_parts[4]
                 except ClientError as e:
                     error_code = e.response["Error"]["Code"]
                     if error_code in [
@@ -186,8 +197,10 @@ class SecurityHubScanner(BaseScanner):
                         standards=[s.get("standard_id") for s in enabled_standards],
                     )
 
-                # Get CSPM control status for this region
-                region_status = await self._get_cspm_control_status(client, region)
+                # Get CSPM control status for this region (with caching)
+                region_status = await self._get_cspm_control_status(
+                    client, region, account_id=account_id
+                )
 
                 if region_status:
                     if not cspm_scanned:
@@ -219,12 +232,12 @@ class SecurityHubScanner(BaseScanner):
                         )
 
                 # Scan insights per-region (they can differ)
-                insights_detections = self._scan_insights(client, region, hub_arn)
+                insights_detections = await self._scan_insights(client, region, hub_arn)
                 all_detections.extend(insights_detections)
 
                 # If CSPM not available, fall back to legacy for this region
                 if not region_status and not cspm_scanned:
-                    standards_detections = self._scan_enabled_standards(
+                    standards_detections = await self._scan_enabled_standards(
                         client, region, hub_arn
                     )
                     all_detections.extend(standards_detections)
@@ -238,7 +251,7 @@ class SecurityHubScanner(BaseScanner):
         if cspm_control_data:
             if enabled_standards:
                 # Best path: Use actual enabled standards from GetEnabledStandards API
-                grouped_detections = self._create_detections_per_enabled_standard(
+                grouped_detections = await self._create_detections_per_enabled_standard(
                     cspm_control_data,
                     enabled_standards,
                     hub_arn,
@@ -773,7 +786,7 @@ class SecurityHubScanner(BaseScanner):
 
         return enabled
 
-    def _get_standard_controls(
+    async def _get_standard_controls(
         self,
         client: Any,
         subscription_arn: str,
@@ -795,7 +808,13 @@ class SecurityHubScanner(BaseScanner):
         try:
             paginator = client.get_paginator("describe_standards_controls")
 
-            for page in paginator.paginate(StandardsSubscriptionArn=subscription_arn):
+            # Non-blocking paginate
+            pages = await self.run_sync(
+                lambda: list(
+                    paginator.paginate(StandardsSubscriptionArn=subscription_arn)
+                )
+            )
+            for page in pages:
                 for control in page.get("Controls", []):
                     control_arn = control.get("StandardsControlArn", "")
 
@@ -840,7 +859,7 @@ class SecurityHubScanner(BaseScanner):
 
         return controls
 
-    def _create_detections_per_enabled_standard(
+    async def _create_detections_per_enabled_standard(
         self,
         cspm_control_data: dict[str, dict],
         enabled_standards: list[dict],
@@ -884,7 +903,7 @@ class SecurityHubScanner(BaseScanner):
             # Get controls for THIS specific standard using legacy API
             standard_controls = []
             if client and subscription_arn:
-                standard_controls = self._get_standard_controls(
+                standard_controls = await self._get_standard_controls(
                     client, subscription_arn
                 )
 
@@ -1240,13 +1259,31 @@ class SecurityHubScanner(BaseScanner):
         self,
         client: Any,
         region: str,
+        account_id: str = "",
     ) -> dict[str, dict]:
         """Get CSPM control status for a region.
 
         Returns a dict of control_id -> control data including status.
         Returns empty dict if CSPM API is not available.
+
+        Caching Strategy:
+        - Static metadata (title, description, severity, remediation_url) is cached
+          for 24 hours since it rarely changes
+        - Dynamic status is always fetched fresh
+        - Cached metadata is merged with fresh status on subsequent scans
         """
         controls = {}
+
+        # Try to get cached control metadata (static fields only)
+        cached_metadata = None
+        if account_id:
+            cached_metadata = await get_cached_securityhub_controls(account_id)
+            if cached_metadata:
+                self.logger.info(
+                    "securityhub_using_cached_metadata",
+                    account_id=account_id,
+                    cached_controls=len(cached_metadata),
+                )
 
         try:
             # Get control definitions (non-blocking)
@@ -1262,6 +1299,7 @@ class SecurityHubScanner(BaseScanner):
                 return {}
 
             # Batch get control details (non-blocking)
+            metadata_to_cache = {}
             for batch in _chunk_list(control_ids, 100):
                 try:
                     response = await self.run_sync(
@@ -1271,21 +1309,64 @@ class SecurityHubScanner(BaseScanner):
 
                     for control in response.get("SecurityControls", []):
                         control_id = control.get("SecurityControlId", "")
-                        controls[control_id] = {
+
+                        # Get static metadata from cache if available
+                        cached = (
+                            cached_metadata.get(control_id) if cached_metadata else None
+                        )
+
+                        # Build control data - use cache for static fields if available
+                        control_data = {
                             "control_id": control_id,
                             "control_arn": control.get("SecurityControlArn"),
+                            "title": (
+                                cached.get("title") if cached else control.get("Title")
+                            ),
+                            "description": (
+                                cached.get("description")
+                                if cached
+                                else control.get("Description")
+                            ),
+                            "status": control.get(
+                                "SecurityControlStatus"
+                            ),  # Always fresh
+                            "severity": (
+                                cached.get("severity")
+                                if cached
+                                else control.get("SeverityRating")
+                            ),
+                            "update_status": control.get(
+                                "UpdateStatus"
+                            ),  # Always fresh
+                            "parameters": control.get("Parameters", {}),  # Always fresh
+                            "remediation_url": (
+                                cached.get("remediation_url")
+                                if cached
+                                else control.get("RemediationUrl")
+                            ),
+                        }
+                        controls[control_id] = control_data
+
+                        # Collect static metadata for caching
+                        metadata_to_cache[control_id] = {
                             "title": control.get("Title"),
                             "description": control.get("Description"),
-                            "status": control.get("SecurityControlStatus"),
                             "severity": control.get("SeverityRating"),
-                            "update_status": control.get("UpdateStatus"),
-                            "parameters": control.get("Parameters", {}),
                             "remediation_url": control.get("RemediationUrl"),
                         }
 
                 except ClientError:
                     # If batch fails, continue with next batch
                     pass
+
+            # Cache the static metadata for future scans (if not already cached)
+            if account_id and metadata_to_cache and not cached_metadata:
+                await cache_securityhub_controls(account_id, metadata_to_cache)
+                self.logger.info(
+                    "securityhub_cached_metadata",
+                    account_id=account_id,
+                    controls_cached=len(metadata_to_cache),
+                )
 
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
@@ -1312,12 +1393,21 @@ class SecurityHubScanner(BaseScanner):
         client = self.session.client("securityhub", region_name=region)
 
         try:
-            # Check if Security Hub is enabled
-            hub = client.describe_hub()
+            # Check if Security Hub is enabled (non-blocking)
+            hub = await self.run_sync(client.describe_hub)
             hub_arn = hub.get("HubArn", "")
 
-            # Get CSPM controls for this region
-            region_status = self._get_cspm_control_status(client, region)
+            # Extract account_id from hub_arn for caching
+            account_id = ""
+            if hub_arn:
+                arn_parts = hub_arn.split(":")
+                if len(arn_parts) >= 5:
+                    account_id = arn_parts[4]
+
+            # Get CSPM controls for this region (with caching)
+            region_status = await self._get_cspm_control_status(
+                client, region, account_id=account_id
+            )
 
             if region_status:
                 # Create grouped standard detections (single-region status only)
@@ -1390,7 +1480,7 @@ class SecurityHubScanner(BaseScanner):
 
         return associations
 
-    def _scan_enabled_standards(
+    async def _scan_enabled_standards(
         self,
         client: Any,
         region: str,
@@ -1402,7 +1492,9 @@ class SecurityHubScanner(BaseScanner):
         try:
             paginator = client.get_paginator("get_enabled_standards")
 
-            for page in paginator.paginate():
+            # Non-blocking paginate
+            pages = await self.run_sync(lambda: list(paginator.paginate()))
+            for page in pages:
                 for subscription in page.get("StandardsSubscriptions", []):
                     standard_arn = subscription.get("StandardsArn", "")
                     status = subscription.get("StandardsStatus", "")
@@ -1412,7 +1504,7 @@ class SecurityHubScanner(BaseScanner):
 
                     if status == "READY":
                         # Get controls for this standard
-                        controls = self._get_standard_controls(
+                        controls = await self._get_standard_controls(
                             client, subscription.get("StandardsSubscriptionArn", "")
                         )
 
@@ -1483,7 +1575,7 @@ class SecurityHubScanner(BaseScanner):
             "description": f"Security Hub standard: {standard_arn}",
         }
 
-    def _scan_insights(
+    async def _scan_insights(
         self,
         client: Any,
         region: str,
@@ -1495,7 +1587,9 @@ class SecurityHubScanner(BaseScanner):
         try:
             paginator = client.get_paginator("get_insights")
 
-            for page in paginator.paginate():
+            # Non-blocking paginate
+            pages = await self.run_sync(lambda: list(paginator.paginate()))
+            for page in pages:
                 for insight in page.get("Insights", []):
                     insight_arn = insight.get("InsightArn", "")
                     name = insight.get("Name", "")
