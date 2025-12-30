@@ -211,8 +211,8 @@ class OrganizationResponse(BaseModel):
     name: str
     slug: str
     logo_url: Optional[str] = None
-    plan: str
-    require_mfa: bool
+    plan: str = "free"  # Default to free if NULL in database
+    require_mfa: bool = False  # Default to False if NULL in database
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
