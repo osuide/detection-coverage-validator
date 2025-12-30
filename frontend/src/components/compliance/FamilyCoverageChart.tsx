@@ -207,7 +207,7 @@ export function FamilyCoverageChart({ coverage }: FamilyCoverageChartProps) {
           <span className="text-xs text-gray-400">Provider Managed</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-xs text-gray-400 bg-gray-700 px-1.5 py-0.5 rounded">Mixed</span>
+          <span className="inline-flex items-center text-xs text-gray-400 bg-gray-700 border border-gray-600 px-1.5 py-0.5 rounded">Mixed</span>
         </div>
       </div>
 
