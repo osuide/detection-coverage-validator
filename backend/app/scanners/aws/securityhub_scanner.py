@@ -1108,16 +1108,13 @@ class SecurityHubScanner(BaseScanner):
             }
 
             # Add UpdatedAt filter for incremental scanning
+            # Note: AWS doesn't allow combining Start/End with DateRange
+            # Use only Start for "updated since last scan"
             if last_scan_at:
                 # Convert to ISO format with timezone
                 # Security Hub expects ISO 8601 format
                 updated_since = last_scan_at.isoformat()
-                filters["UpdatedAt"] = [
-                    {
-                        "Start": updated_since,
-                        "DateRange": {"Value": 7, "Unit": "DAYS"},  # Fallback max
-                    }
-                ]
+                filters["UpdatedAt"] = [{"Start": updated_since}]
                 self.logger.info(
                     "securityhub_incremental_findings",
                     updated_since=updated_since,
