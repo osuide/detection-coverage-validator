@@ -444,8 +444,43 @@ async def login(
     )
 
     # Create user response with role
-    user_response = UserResponse.model_validate(user)
-    user_response.role = user_role
+    try:
+        user_response = UserResponse.model_validate(user)
+        user_response.role = user_role
+    except Exception as e:
+        logger.error(
+            "login_user_response_validation_failed",
+            user_id=str(user.id),
+            error=str(e),
+            user_data={
+                "email": user.email,
+                "timezone": user.timezone,
+                "email_verified": user.email_verified,
+                "mfa_enabled": user.mfa_enabled,
+                "created_at": str(user.created_at) if user.created_at else None,
+            },
+        )
+        raise
+
+    # Validate organization response
+    org_response = None
+    if org:
+        try:
+            org_response = OrganizationResponse.model_validate(org)
+        except Exception as e:
+            logger.error(
+                "login_org_response_validation_failed",
+                org_id=str(org.id),
+                error=str(e),
+                org_data={
+                    "name": org.name,
+                    "slug": org.slug,
+                    "plan": org.plan,
+                    "require_mfa": org.require_mfa,
+                    "created_at": str(org.created_at) if org.created_at else None,
+                },
+            )
+            raise
 
     # Set httpOnly cookies for secure session management
     csrf_token = generate_csrf_token()
@@ -456,7 +491,7 @@ async def login(
         refresh_token=refresh_token,  # Still in body for backwards compatibility
         expires_in=settings.access_token_expire_minutes * 60,
         user=user_response,
-        organization=OrganizationResponse.model_validate(org) if org else None,
+        organization=org_response,
         requires_mfa=False,
     )
 

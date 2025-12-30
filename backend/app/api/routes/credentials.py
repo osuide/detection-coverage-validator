@@ -32,6 +32,7 @@ from app.models.cloud_credential import (
 )
 from app.services.aws_credential_service import aws_credential_service
 from app.services.gcp_credential_service import gcp_credential_service
+from app.services.gcp_wif_service import gcp_wif_service, GCPWIFError
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -55,14 +56,24 @@ class AWSCredentialCreate(BaseModel):
 
 
 class GCPCredentialCreate(BaseModel):
-    """Request to create GCP credential."""
+    """Request to create GCP credential.
+
+    For WIF (recommended): Provide service_account_email, pool_id, provider_id
+    For SA Key (deprecated): Provide service_account_key
+    """
 
     cloud_account_id: UUID
     credential_type: str = Field(
-        ..., pattern="^(gcp_workload_identity|gcp_service_account_key)$"
+        default="gcp_workload_identity",
+        pattern="^(gcp_workload_identity|gcp_service_account_key)$",
     )
     service_account_email: Optional[str] = None
-    service_account_key: Optional[str] = None  # JSON string
+    service_account_key: Optional[str] = None  # JSON string - DEPRECATED
+
+    # WIF-specific fields (for gcp_workload_identity type)
+    pool_id: str = Field(default="a13e-pool", description="WIF pool ID")
+    provider_id: str = Field(default="aws", description="WIF provider ID")
+    pool_location: str = Field(default="global", description="WIF pool location")
 
     @field_validator("service_account_key")
     @classmethod
@@ -70,6 +81,9 @@ class GCPCredentialCreate(BaseModel):
         """Validate GCP service account key format.
 
         M7: Sanitise error messages to prevent key data leakage in logs.
+
+        NOTE: Service account keys are DEPRECATED for security reasons.
+        Use Workload Identity Federation (WIF) instead.
         """
         if v:
             try:
@@ -87,6 +101,15 @@ class GCPCredentialCreate(BaseModel):
                 # M7: Catch-all to prevent any key data in error messages
                 raise ValueError("Invalid service account key format")
         return v
+
+
+class GCPWIFValidationResponse(BaseModel):
+    """Response from GCP WIF validation."""
+
+    valid: bool
+    message: str
+    steps_completed: list[str]
+    steps_failed: list[str]
 
 
 class CredentialResponse(BaseModel):
@@ -336,7 +359,11 @@ async def create_gcp_credential(
     auth: AuthContext = Depends(require_role(UserRole.ADMIN, UserRole.OWNER)),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Create or update GCP credential."""
+    """Create or update GCP credential.
+
+    For WIF (recommended): Provide service_account_email, pool_id, provider_id.
+    Service account keys are DEPRECATED for security reasons.
+    """
     # Verify account belongs to org
     result = await db.execute(
         select(CloudAccount).where(
@@ -363,12 +390,29 @@ async def create_gcp_credential(
 
     cred_type = CredentialType(body.credential_type)
 
+    # Warn if using deprecated service account key
+    if cred_type == CredentialType.GCP_SERVICE_ACCOUNT_KEY:
+        logger.warning(
+            "deprecated_credential_type",
+            account_id=str(body.cloud_account_id),
+            message="Service account keys are deprecated. Use Workload Identity Federation.",
+        )
+
     if credential:
         credential.credential_type = cred_type
         credential.gcp_project_id = account.account_id
         credential.gcp_service_account_email = body.service_account_email
+
+        # WIF-specific fields
+        if cred_type == CredentialType.GCP_WORKLOAD_IDENTITY:
+            credential.gcp_workload_identity_pool = body.pool_id
+            credential.gcp_wif_provider_id = body.provider_id
+            credential.gcp_wif_pool_location = body.pool_location
+
+        # Deprecated: Service account key
         if body.service_account_key:
             credential.set_gcp_service_account_key(body.service_account_key)
+
         credential.status = CredentialStatus.PENDING
     else:
         credential = CloudCredential(
@@ -380,8 +424,17 @@ async def create_gcp_credential(
             status=CredentialStatus.PENDING,
             created_by=auth.user.id,
         )
+
+        # WIF-specific fields
+        if cred_type == CredentialType.GCP_WORKLOAD_IDENTITY:
+            credential.gcp_workload_identity_pool = body.pool_id
+            credential.gcp_wif_provider_id = body.provider_id
+            credential.gcp_wif_pool_location = body.pool_location
+
+        # Deprecated: Service account key
         if body.service_account_key:
             credential.set_gcp_service_account_key(body.service_account_key)
+
         db.add(credential)
 
     await db.commit()
@@ -398,6 +451,11 @@ async def create_gcp_credential(
             "action": "gcp_credential_created",
             "type": body.credential_type,
             "service_account": body.service_account_email,
+            "wif_pool_id": (
+                body.pool_id
+                if cred_type == CredentialType.GCP_WORKLOAD_IDENTITY
+                else None
+            ),
         },
         ip_address=request.client.host if request.client else None,
         success=True,
@@ -406,6 +464,105 @@ async def create_gcp_credential(
     await db.commit()
 
     return _credential_to_response(credential)
+
+
+@router.post(
+    "/gcp/wif/validate/{cloud_account_id}",
+    response_model=GCPWIFValidationResponse,
+    dependencies=[Depends(require_scope("write:credentials"))],
+)
+async def validate_gcp_wif(
+    cloud_account_id: UUID,
+    request: Request,
+    auth: AuthContext = Depends(require_role(UserRole.ADMIN, UserRole.OWNER)),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Validate GCP Workload Identity Federation configuration.
+
+    Tests the full WIF flow:
+    1. Get AWS OIDC token
+    2. Exchange for GCP credentials
+    3. Impersonate service account
+    4. Verify permissions
+    """
+    # Get credential
+    result = await db.execute(
+        select(CloudCredential).where(
+            CloudCredential.cloud_account_id == cloud_account_id,
+            CloudCredential.organization_id == auth.organization_id,
+        )
+    )
+    credential = result.scalar_one_or_none()
+    if not credential:
+        raise HTTPException(status_code=404, detail="Credential not found")
+
+    if credential.credential_type != CredentialType.GCP_WORKLOAD_IDENTITY:
+        raise HTTPException(
+            status_code=400,
+            detail="Credential is not WIF type. Use standard validation endpoint.",
+        )
+
+    # Get WIF configuration
+    wif_config = credential.get_wif_configuration()
+    if not wif_config:
+        raise HTTPException(
+            status_code=400,
+            detail="Incomplete WIF configuration. Missing project_id or service_account_email.",
+        )
+
+    # Validate WIF configuration
+    try:
+        validation_result = await gcp_wif_service.validate_wif_configuration(wif_config)
+    except GCPWIFError as e:
+        logger.error(
+            "wif_validation_error",
+            cloud_account_id=str(cloud_account_id),
+            error=str(e),
+        )
+        return GCPWIFValidationResponse(
+            valid=False,
+            message=f"WIF validation error: {str(e)}",
+            steps_completed=[],
+            steps_failed=["validation"],
+        )
+
+    # Update credential status based on validation
+    from datetime import datetime, timezone
+
+    if validation_result["valid"]:
+        credential.status = CredentialStatus.VALID
+        credential.status_message = "WIF configuration validated successfully"
+    else:
+        credential.status = CredentialStatus.INVALID
+        credential.status_message = validation_result["message"]
+
+    credential.last_validated_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    # Audit log
+    audit_log = AuditLog(
+        organization_id=auth.organization_id,
+        user_id=auth.user.id,
+        action=AuditLogAction.ORG_SETTINGS_UPDATED,
+        resource_type="cloud_credential",
+        resource_id=str(credential.id),
+        details={
+            "action": "wif_validated",
+            "valid": validation_result["valid"],
+            "steps_completed": validation_result["steps_completed"],
+        },
+        ip_address=request.client.host if request.client else None,
+        success=validation_result["valid"],
+    )
+    db.add(audit_log)
+    await db.commit()
+
+    return GCPWIFValidationResponse(
+        valid=validation_result["valid"],
+        message=validation_result["message"],
+        steps_completed=validation_result["steps_completed"],
+        steps_failed=validation_result["steps_failed"],
+    )
 
 
 @router.post(

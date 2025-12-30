@@ -13,7 +13,7 @@ import enum
 import secrets
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from cryptography.fernet import Fernet
 from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Integer, String, Text
@@ -109,8 +109,17 @@ class CloudCredential(Base):
     gcp_service_account_email: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True
     )
+    # WIF pool name - stores pool ID (e.g., "a13e-pool")
     gcp_workload_identity_pool: Mapped[Optional[str]] = mapped_column(
         String(512), nullable=True
+    )
+    # WIF provider ID within the pool (e.g., "aws" for AWS federation)
+    gcp_wif_provider_id: Mapped[Optional[str]] = mapped_column(
+        String(128), nullable=True, default="aws"
+    )
+    # WIF pool location (always "global" for AWS federation)
+    gcp_wif_pool_location: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, default="global"
     )
 
     # GCP Service Account Key (ENCRYPTED - this IS a secret)
@@ -225,6 +234,60 @@ class CloudCredential(Base):
         # Re-validate if last check was more than 24 hours ago
         age = datetime.now(timezone.utc) - self.last_validated_at
         return age.total_seconds() > 86400
+
+    @property
+    def is_gcp_wif(self) -> bool:
+        """Check if this credential uses GCP Workload Identity Federation."""
+        return self.credential_type == CredentialType.GCP_WORKLOAD_IDENTITY
+
+    def get_wif_configuration(self) -> Optional[Any]:
+        """Get WIF configuration for this credential.
+
+        Returns:
+            WIFConfiguration object if this is a WIF credential, None otherwise
+        """
+        if not self.is_gcp_wif:
+            return None
+
+        if not self.gcp_project_id or not self.gcp_service_account_email:
+            return None
+
+        # Import here to avoid circular imports
+        from app.services.gcp_wif_service import WIFConfiguration
+
+        return WIFConfiguration(
+            project_id=self.gcp_project_id,
+            pool_location=self.gcp_wif_pool_location or "global",
+            pool_id=self.gcp_workload_identity_pool or "a13e-pool",
+            provider_id=self.gcp_wif_provider_id or "aws",
+            service_account_email=self.gcp_service_account_email,
+        )
+
+    def set_wif_configuration(
+        self,
+        project_id: str,
+        service_account_email: str,
+        pool_id: str = "a13e-pool",
+        provider_id: str = "aws",
+        pool_location: str = "global",
+    ) -> None:
+        """Set WIF configuration fields.
+
+        Args:
+            project_id: GCP project ID
+            service_account_email: Service account to impersonate
+            pool_id: WIF pool ID
+            provider_id: WIF provider ID (default: aws)
+            pool_location: WIF pool location (default: global)
+        """
+        self.credential_type = CredentialType.GCP_WORKLOAD_IDENTITY
+        self.gcp_project_id = project_id
+        self.gcp_service_account_email = service_account_email
+        self.gcp_workload_identity_pool = pool_id
+        self.gcp_wif_provider_id = provider_id
+        self.gcp_wif_pool_location = pool_location
+        # Clear any encrypted key since WIF doesn't use it
+        self._encrypted_key = None
 
     def __repr__(self) -> str:
         return (

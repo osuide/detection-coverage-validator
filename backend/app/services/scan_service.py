@@ -31,6 +31,13 @@ from app.scanners.aws.guardduty_scanner import GuardDutyScanner
 from app.scanners.aws.config_scanner import ConfigRulesScanner
 from app.scanners.aws.securityhub_scanner import SecurityHubScanner
 from app.scanners.base import RawDetection, BaseScanner
+
+# GCP scanners use BaseScanner interface with credentials passed to constructor
+from app.scanners.gcp.cloud_logging_scanner import CloudLoggingScanner
+from app.scanners.gcp.security_command_center_scanner import (
+    SecurityCommandCenterScanner,
+)
+from app.scanners.gcp.eventarc_scanner import EventarcScanner
 from app.mappers.pattern_mapper import PatternMapper
 from app.services.coverage_service import CoverageService
 from app.services.drift_detection_service import DriftDetectionService
@@ -40,6 +47,7 @@ from app.services.evaluation_history_service import (
     create_state_change_alert,
 )
 from app.services.aws_credential_service import aws_credential_service
+from app.services.gcp_wif_service import gcp_wif_service, GCPWIFError, WIFConfiguration
 from app.services.region_discovery_service import region_discovery_service
 from app.core.service_registry import get_all_regions, get_default_regions
 from app.core.cache import (
@@ -209,49 +217,97 @@ class ScanService:
             await self.db.commit()
             await self._cache_scan_status(scan)
 
-            # Get boto3 session (with assumed role credentials)
-            session = await self._get_boto3_session(account)
+            # Route to provider-specific credential and scan logic
+            is_gcp = account.provider == CloudProvider.GCP
 
-            # Determine regions to scan using new multi-region logic
-            # This may trigger auto-discovery if mode=AUTO and no regions cached
-            region_config = await self._determine_scan_regions(scan, account, session)
+            if is_gcp:
+                # GCP: Use Workload Identity Federation
+                gcp_credentials, wif_config = await self._get_gcp_credentials(account)
 
-            self.logger.info(
-                "scan_regions_determined",
-                scan_id=str(scan_id),
-                regional_regions=region_config.regional_regions,
-                global_region=region_config.global_region,
-                mode=(
-                    account.get_region_scan_mode().value
-                    if account.region_config
-                    else "default"
-                ),
-            )
+                # For GCP, use default regions if not specified
+                region_config = await self._determine_gcp_scan_regions(scan, account)
 
-            # Scan for detections
-            scan.current_step = "Scanning for detections"
-            scan.progress_percent = 10
-            await self.db.commit()
-            await self._cache_scan_status(scan)
-
-            # Determine if this should be a full scan or incremental scan
-            # Full scan is forced weekly to ensure accurate compliance data
-            force_full_scan = await should_force_full_scan(str(account.id))
-            effective_last_scan_at = None if force_full_scan else account.last_scan_at
-
-            if force_full_scan:
                 self.logger.info(
-                    "forcing_full_scan",
-                    account_id=str(account.id),
-                    reason="weekly_fallback",
+                    "gcp_scan_regions_determined",
+                    scan_id=str(scan_id),
+                    project_id=wif_config.project_id,
+                    locations=region_config.regional_regions,
                 )
 
-            raw_detections, scanner_errors = await self._scan_detections(
-                session,
-                region_config,
-                scan.detection_types,
-                last_scan_at=effective_last_scan_at,
-            )
+                # Scan for detections
+                scan.current_step = "Scanning GCP for detections"
+                scan.progress_percent = 10
+                await self.db.commit()
+                await self._cache_scan_status(scan)
+
+                # Determine if this should be a full scan
+                force_full_scan = await should_force_full_scan(str(account.id))
+                effective_last_scan_at = (
+                    None if force_full_scan else account.last_scan_at
+                )
+
+                if force_full_scan:
+                    self.logger.info(
+                        "forcing_full_scan",
+                        account_id=str(account.id),
+                        reason="weekly_fallback",
+                    )
+
+                raw_detections, scanner_errors = await self._scan_gcp_detections(
+                    gcp_credentials,
+                    wif_config,
+                    region_config,
+                    scan.detection_types,
+                    last_scan_at=effective_last_scan_at,
+                )
+            else:
+                # AWS: Use IAM Role assumption
+                session = await self._get_boto3_session(account)
+
+                # Determine regions to scan using new multi-region logic
+                # This may trigger auto-discovery if mode=AUTO and no regions cached
+                region_config = await self._determine_scan_regions(
+                    scan, account, session
+                )
+
+                self.logger.info(
+                    "scan_regions_determined",
+                    scan_id=str(scan_id),
+                    regional_regions=region_config.regional_regions,
+                    global_region=region_config.global_region,
+                    mode=(
+                        account.get_region_scan_mode().value
+                        if account.region_config
+                        else "default"
+                    ),
+                )
+
+                # Scan for detections
+                scan.current_step = "Scanning for detections"
+                scan.progress_percent = 10
+                await self.db.commit()
+                await self._cache_scan_status(scan)
+
+                # Determine if this should be a full scan or incremental scan
+                # Full scan is forced weekly to ensure accurate compliance data
+                force_full_scan = await should_force_full_scan(str(account.id))
+                effective_last_scan_at = (
+                    None if force_full_scan else account.last_scan_at
+                )
+
+                if force_full_scan:
+                    self.logger.info(
+                        "forcing_full_scan",
+                        account_id=str(account.id),
+                        reason="weekly_fallback",
+                    )
+
+                raw_detections, scanner_errors = await self._scan_detections(
+                    session,
+                    region_config,
+                    scan.detection_types,
+                    last_scan_at=effective_last_scan_at,
+                )
 
             # Store any scanner errors in scan results
             if scanner_errors:
@@ -580,6 +636,61 @@ class ScanService:
             return "global"  # GCP uses "global" for organisation-level services
         return "us-east-1"
 
+    async def _determine_gcp_scan_regions(
+        self,
+        scan: Scan,
+        account: CloudAccount,
+    ) -> RegionConfig:
+        """Determine which GCP locations to scan.
+
+        GCP scanning is generally project-scoped rather than region-scoped,
+        but some services (like Eventarc) are regional.
+
+        Args:
+            scan: The scan request (may have region overrides)
+            account: The cloud account with region configuration
+
+        Returns:
+            RegionConfig with locations to scan
+        """
+        # Scan-level override takes precedence
+        if scan.regions:
+            return RegionConfig(
+                regional_regions=scan.regions,
+                global_region="global",
+            )
+
+        # Get configured regions from account, or use GCP defaults
+        provider = "gcp"
+        default_regions = get_default_regions(provider)
+
+        # Check account configuration
+        if account.region_config:
+            config_regions = account.region_config.get("regions", [])
+            if config_regions:
+                return RegionConfig(
+                    regional_regions=config_regions,
+                    global_region="global",
+                )
+
+        # Default: scan common GCP regions
+        # Most GCP security services are global or multi-regional
+        effective_regions = (
+            default_regions
+            if default_regions
+            else [
+                "us-central1",
+                "us-east1",
+                "europe-west1",
+                "asia-east1",
+            ]
+        )
+
+        return RegionConfig(
+            regional_regions=effective_regions,
+            global_region="global",
+        )
+
     async def _get_boto3_session(self, account: CloudAccount) -> boto3.Session:
         """Get boto3 session for the account using stored credentials.
 
@@ -657,6 +768,193 @@ class ScanService:
             raise ValueError(
                 f"Failed to assume role for account {account.account_id}: {str(e)}"
             )
+
+    async def _get_gcp_credentials(
+        self, account: CloudAccount
+    ) -> tuple[Any, WIFConfiguration]:
+        """Get GCP credentials for the account using Workload Identity Federation.
+
+        This method:
+        1. Looks up the CloudCredential for the account
+        2. Validates it's a GCP WIF credential
+        3. Uses the WIF service to obtain short-lived credentials
+
+        Returns:
+            Tuple of (credentials, wif_config)
+
+        Raises:
+            ValueError: If credentials are invalid or WIF fails
+        """
+        if DEV_MODE:
+            self.logger.info(
+                "dev_mode_gcp_session",
+                account_id=str(account.id),
+                msg="Using default GCP credentials in dev mode",
+            )
+            # In dev mode, use application default credentials
+            from google.auth import default as gcp_default
+
+            creds, project = gcp_default()
+            # Create a mock WIF config for dev mode
+            wif_config = WIFConfiguration(
+                project_id=account.account_id,
+                service_account_email=f"dev-scanner@{account.account_id}.iam.gserviceaccount.com",
+            )
+            return creds, wif_config
+
+        # Get the credential for this account
+        result = await self.db.execute(
+            select(CloudCredential).where(
+                CloudCredential.cloud_account_id == account.id
+            )
+        )
+        credential = result.scalar_one_or_none()
+
+        if not credential:
+            raise ValueError(
+                f"No credentials found for GCP account {account.account_id}"
+            )
+
+        if credential.status != CredentialStatus.VALID:
+            raise ValueError(
+                f"Credentials for GCP account {account.account_id} are not valid. "
+                f"Status: {credential.status.value}. Please re-validate credentials."
+            )
+
+        if credential.credential_type != CredentialType.GCP_WORKLOAD_IDENTITY:
+            raise ValueError(
+                f"Unsupported GCP credential type: {credential.credential_type.value}. "
+                f"Only Workload Identity Federation is supported for security reasons. "
+                f"Service account keys are not accepted."
+            )
+
+        # Get WIF configuration from credential
+        wif_config = credential.get_wif_configuration()
+        if not wif_config:
+            raise ValueError(
+                f"Incomplete WIF configuration for GCP account {account.account_id}. "
+                f"Missing project_id or service_account_email."
+            )
+
+        # Get credentials via WIF
+        self.logger.info(
+            "obtaining_gcp_wif_credentials",
+            account_id=str(account.id),
+            project_id=wif_config.project_id,
+            service_account=wif_config.service_account_email,
+        )
+
+        try:
+            result = await gcp_wif_service.get_credentials(wif_config)
+            return result.credentials, wif_config
+        except GCPWIFError as e:
+            self.logger.error(
+                "gcp_wif_failed",
+                account_id=str(account.id),
+                project_id=wif_config.project_id,
+                error=str(e),
+            )
+            raise ValueError(
+                f"Failed to obtain GCP credentials for account {account.account_id}: {str(e)}"
+            )
+
+    async def _scan_gcp_detections(
+        self,
+        credentials: Any,
+        wif_config: WIFConfiguration,
+        region_config: RegionConfig,
+        detection_types: list[str],
+        last_scan_at: Optional[datetime] = None,
+    ) -> tuple[list[RawDetection], list[str]]:
+        """Run all applicable GCP scanners in parallel.
+
+        GCP scanners use the BaseScanner interface with:
+        - session = GCP credentials
+        - options["project_id"] = GCP project ID
+
+        Args:
+            credentials: GCP credentials obtained via WIF
+            wif_config: WIF configuration with project details
+            region_config: Configuration specifying locations to scan
+            detection_types: List of detection types to scan for
+            last_scan_at: Optional datetime of last successful scan
+
+        Returns:
+            Tuple of (detections, errors) where errors is a list of
+            scanner failure messages to include in scan results.
+        """
+        scan_options: dict[str, Any] = {
+            "project_id": wif_config.project_id,
+        }
+        if last_scan_at:
+            scan_options["last_scan_at"] = last_scan_at
+
+        # Build list of GCP scanners
+        # GCP scanners use BaseScanner(session=credentials)
+        scanners: list[BaseScanner] = []
+
+        if not detection_types or "gcp_cloud_logging" in detection_types:
+            scanners.append(CloudLoggingScanner(credentials))
+        if not detection_types or "gcp_security_command_center" in detection_types:
+            scanners.append(SecurityCommandCenterScanner(credentials))
+        if not detection_types or "gcp_eventarc" in detection_types:
+            scanners.append(EventarcScanner(credentials))
+
+        async def run_gcp_scanner(
+            scanner: BaseScanner,
+        ) -> tuple[list[RawDetection], str | None]:
+            """Run a GCP scanner."""
+            try:
+                # GCP services are mostly global, use "global" as region
+                # Regional services like Eventarc will handle locations internally
+                locations = region_config.regional_regions or ["global"]
+
+                detections = await scanner.scan(locations, options=scan_options)
+
+                self.logger.info(
+                    "gcp_scanner_complete",
+                    scanner=scanner.__class__.__name__,
+                    count=len(detections),
+                    locations_scanned=len(locations),
+                )
+                return detections, None
+            except Exception as e:
+                error_msg = f"{scanner.__class__.__name__}: {str(e)}"
+                self.logger.error(
+                    "gcp_scanner_error",
+                    scanner=scanner.__class__.__name__,
+                    error=str(e),
+                )
+                return [], error_msg
+
+        self.logger.info(
+            "starting_gcp_parallel_scan",
+            scanner_count=len(scanners),
+            scanners=[s.__class__.__name__ for s in scanners],
+            project_id=wif_config.project_id,
+        )
+
+        results = await asyncio.gather(
+            *[run_gcp_scanner(scanner) for scanner in scanners],
+            return_exceptions=False,
+        )
+
+        all_detections: list[RawDetection] = []
+        scan_errors: list[str] = []
+
+        for detections, error in results:
+            all_detections.extend(detections)
+            if error:
+                scan_errors.append(error)
+
+        self.logger.info(
+            "gcp_parallel_scan_complete",
+            total_detections=len(all_detections),
+            scanner_errors=len(scan_errors),
+            project_id=wif_config.project_id,
+        )
+
+        return all_detections, scan_errors
 
     async def _scan_detections(
         self,
