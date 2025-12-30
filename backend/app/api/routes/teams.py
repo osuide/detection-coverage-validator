@@ -21,7 +21,13 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_role, require_scope
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    require_feature,
+    require_role,
+    require_scope,
+)
 from app.models.user import (
     OrganizationMember,
     UserRole,
@@ -110,6 +116,23 @@ async def get_member_count(db: AsyncSession, org_id: UUID) -> int:
     return result.scalar() or 0
 
 
+async def get_pending_invite_count(db: AsyncSession, org_id: UUID) -> int:
+    """Get pending invite count for an organization."""
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(func.count(OrganizationMember.id)).where(
+            and_(
+                OrganizationMember.organization_id == org_id,
+                OrganizationMember.status == MembershipStatus.PENDING,
+                OrganizationMember.invite_expires_at > now,
+            )
+        )
+    )
+    return result.scalar() or 0
+
+
 async def log_team_action(
     db: AsyncSession,
     user_id: UUID,
@@ -178,10 +201,13 @@ async def list_members(
 
 @router.get("/invites", response_model=list[PendingInviteResponse])
 async def list_pending_invites(
-    auth: AuthContext = Depends(require_role(UserRole.ADMIN)),
+    auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ) -> list[PendingInviteResponse]:
-    """List pending invites for the current organization."""
+    """List pending invites for the current organization.
+
+    Note: FREE tier users will see an empty list as they cannot create invites.
+    """
     if not auth.organization_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -219,18 +245,22 @@ async def list_pending_invites(
 
 
 @router.post(
-    "/invites", response_model=InviteResponse, status_code=status.HTTP_201_CREATED
+    "/invites",
+    response_model=InviteResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_feature("team_invites"))],
 )
 async def invite_member(
     request: Request,
     body: InviteRequest,
     background_tasks: BackgroundTasks,
-    auth: AuthContext = Depends(require_role(UserRole.ADMIN)),
+    auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
     Invite a new member to the organization.
 
+    Requires team_invites feature (Individual tier or higher).
     Only admins and owners can invite new members.
     Owners cannot be invited directly - they must be promoted from admin.
     """
@@ -246,6 +276,29 @@ async def invite_member(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot invite as owner. Promote an existing admin instead.",
         )
+
+    # Check team member limit
+    from app.models.billing import Subscription
+
+    sub_result = await db.execute(
+        select(Subscription).where(Subscription.organization_id == auth.organization_id)
+    )
+    subscription = sub_result.scalar_one_or_none()
+
+    if subscription:
+        max_members = subscription.get_tier_limit("max_team_members")
+        if max_members is not None:  # None means unlimited (Enterprise)
+            current_count = await get_member_count(db, auth.organization_id)
+            pending_count = await get_pending_invite_count(db, auth.organization_id)
+
+            if current_count + pending_count >= max_members:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        f"Team member limit ({max_members}) reached. "
+                        "Upgrade to Pro for more team members."
+                    ),
+                )
 
     # Check if already a member or has pending invite
     existing_member = await db.execute(
@@ -347,14 +400,21 @@ async def invite_member(
     )
 
 
-@router.delete("/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/invites/{invite_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_feature("team_invites"))],
+)
 async def cancel_invite(
     request: Request,
     invite_id: UUID,
-    auth: AuthContext = Depends(require_role(UserRole.ADMIN)),
+    auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Cancel a pending invite."""
+    """Cancel a pending invite.
+
+    Requires team_invites feature (Individual tier or higher).
+    """
     if not auth.organization_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -490,7 +550,7 @@ async def update_member_role(
     request: Request,
     member_id: UUID,
     body: UpdateMemberRoleRequest,
-    auth: AuthContext = Depends(require_role(UserRole.ADMIN)),
+    auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ) -> MemberResponse:
     """
@@ -544,8 +604,8 @@ async def update_member_role(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only owners can transfer ownership",
             )
-        # Transfer ownership atomically with row-level locking to prevent race conditions
-        # Lock both membership records to ensure consistent state
+        # Transfer ownership atomically with row-level locking to prevent
+        # race conditions. Lock both membership records for consistent state.
         await db.execute(
             select(OrganizationMember)
             .where(OrganizationMember.id.in_([member.id, auth.membership.id]))
@@ -599,7 +659,7 @@ async def update_member_role(
 async def remove_member(
     request: Request,
     member_id: UUID,
-    auth: AuthContext = Depends(require_role(UserRole.ADMIN)),
+    auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """

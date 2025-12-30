@@ -196,7 +196,10 @@ def _is_trusted_proxy(peer_ip: str) -> bool:
         # This is fail-closed behaviour to prevent XFF spoofing
         logger.warning(
             "trust_proxy_headers_without_cidrs",
-            message="trust_proxy_headers is True but no trusted_proxy_cidrs configured - ignoring proxy headers",
+            message=(
+                "trust_proxy_headers is True but no trusted_proxy_cidrs "
+                "configured - ignoring proxy headers"
+            ),
         )
         return False
 
@@ -697,7 +700,9 @@ def require_feature(feature: str) -> Callable:
         if not subscription:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="No subscription found. Please subscribe to access this feature.",
+                detail=(
+                    "No subscription found. " "Please subscribe to access this feature."
+                ),
             )
 
         # Check subscription status - must be active to access features
@@ -706,19 +711,38 @@ def require_feature(feature: str) -> Callable:
         if subscription.status != SubscriptionStatus.ACTIVE:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Your subscription is not active. Please update your payment method.",
+                detail=(
+                    "Your subscription is not active. "
+                    "Please update your payment method."
+                ),
             )
 
         if not subscription.has_feature(feature):
             # Provide feature-specific upgrade messages
             feature_messages = {
-                "scheduled_scans": "Scheduled scans require Individual tier (£29/mo) or higher. Automate your security coverage analysis with recurring scans.",
-                "org_features": "Organisation features require Pro tier (£250/mo) or higher. Manage teams, delegate scanning, and get org-wide dashboards.",
-                "api_access": "API access requires Individual tier (£29/mo) or higher. Integrate detection coverage into your CI/CD pipeline.",
+                "scheduled_scans": (
+                    "Scheduled scans require Individual tier (£29/mo) or higher. "
+                    "Automate your security coverage analysis with recurring scans."
+                ),
+                "org_features": (
+                    "Organisation features require Pro tier (£250/mo) or higher. "
+                    "Manage teams, delegate scanning, and get org-wide dashboards."
+                ),
+                "api_access": (
+                    "API access requires Individual tier (£29/mo) or higher. "
+                    "Integrate detection coverage into your CI/CD pipeline."
+                ),
+                "team_invites": (
+                    "Team member invitations require Individual tier (£29/mo) "
+                    "or higher. Collaborate with your team by upgrading."
+                ),
             }
             detail = feature_messages.get(
                 feature,
-                "This feature requires a paid subscription. Upgrade to Individual (£29/mo) to unlock more capabilities.",
+                (
+                    "This feature requires a paid subscription. "
+                    "Upgrade to Individual (£29/mo) to unlock more capabilities."
+                ),
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -776,7 +800,9 @@ def require_tier(*tiers: Any) -> Callable:
         if not subscription:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="No subscription found. Please subscribe to access this feature.",
+                detail=(
+                    "No subscription found. " "Please subscribe to access this feature."
+                ),
             )
 
         # Check subscription status - must be active
@@ -785,14 +811,20 @@ def require_tier(*tiers: Any) -> Callable:
         if subscription.status != SubscriptionStatus.ACTIVE:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Your subscription is not active. Please update your payment method.",
+                detail=(
+                    "Your subscription is not active. "
+                    "Please update your payment method."
+                ),
             )
 
         if subscription.tier not in tiers:
             tier_names = ", ".join(t.value.title() for t in tiers)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"This feature requires {tier_names} tier. Please upgrade your subscription.",
+                detail=(
+                    f"This feature requires {tier_names} tier. "
+                    "Please upgrade your subscription."
+                ),
             )
 
         return auth

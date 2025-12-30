@@ -318,6 +318,68 @@ Related dependencies in `app/core/security.py`:
 - `require_org_features()` - Requires Pro/Enterprise subscription with org features
 - `require_feature(feature)` - Requires specific subscription feature
 
+## Team Invites Feature Gating
+
+**Team member invitations are a paid feature.** FREE tier users operate in single-user mode.
+
+### Tier Limits
+
+| Tier | Team Members | Can Invite |
+|------|--------------|------------|
+| FREE | 1 (owner only) | No |
+| INDIVIDUAL | Up to 3 | Yes |
+| PRO | Up to 10 | Yes |
+| ENTERPRISE | Unlimited | Yes |
+
+### User Experience by Tier
+
+**FREE Tier:**
+- Can view team members list (shows only themselves)
+- "Invite Member" button is replaced with upgrade prompt
+- Sees message: "Team member invitations require Individual tier (£29/mo) or higher"
+- Link to billing/upgrade page
+
+**INDIVIDUAL Tier:**
+- Can invite up to 3 team members total (including owner)
+- Sees member count and limit in UI
+- Warning shown when approaching limit
+
+**PRO Tier:**
+- Can invite up to 10 team members total
+- Full team management features
+
+**ENTERPRISE Tier:**
+- Unlimited team members
+- No limit warnings shown
+
+### Implementation Details
+
+**Backend:**
+- Feature flag: `team_invites` in `TIER_LIMITS` (billing.py)
+- Endpoint gating: `require_feature("team_invites")` on `POST /api/v1/teams/invites`
+- Member limit check before creating invite (includes pending invites in count)
+
+**Frontend:**
+- `TeamManagement.tsx` fetches subscription via `billingApi.getSubscription()`
+- Uses `isFreeTier()` helper from `billingApi.ts` to check tier
+- Shows `UpgradePrompt` component for FREE users instead of invite button
+
+### API Responses
+
+**403 Forbidden (FREE tier attempting to invite):**
+```json
+{
+  "detail": "Team member invitations require Individual tier (£29/mo) or higher. Collaborate with your team by upgrading."
+}
+```
+
+**403 Forbidden (member limit reached):**
+```json
+{
+  "detail": "Team member limit (3) reached. Upgrade to Pro for more team members."
+}
+```
+
 ## Service-Aware Coverage Implementation (COMPLETE)
 
 ### Problem Statement

@@ -74,6 +74,7 @@ TIER_LIMITS = {
             "org_features": False,
             "org_scanning": False,
             "code_analysis": False,
+            "team_invites": False,  # Single-user only on FREE tier
         },
     },
     AccountTier.INDIVIDUAL: {
@@ -98,6 +99,7 @@ TIER_LIMITS = {
             "code_analysis": True,
             "org_features": False,
             "org_scanning": False,
+            "team_invites": True,  # Can invite up to max_team_members
         },
     },
     AccountTier.PRO: {
@@ -125,6 +127,7 @@ TIER_LIMITS = {
             "org_dashboard": True,
             "auto_discovery": True,
             "delegated_scanning": True,
+            "team_invites": True,
         },
     },
     AccountTier.ENTERPRISE: {
@@ -158,6 +161,7 @@ TIER_LIMITS = {
             "unlimited_accounts": True,
             "dedicated_support": True,
             "custom_integrations": True,
+            "team_invites": True,
         },
     },
     # Legacy tiers (deprecated, kept for backward compatibility)
@@ -180,6 +184,7 @@ TIER_LIMITS = {
             "alerts": False,
             "api_access": False,
             "org_scanning": False,
+            "team_invites": False,  # Single-user only
         },
     },
     AccountTier.SUBSCRIBER: {
@@ -203,6 +208,7 @@ TIER_LIMITS = {
             "code_analysis": True,
             "org_features": True,  # Legacy SUBSCRIBER had org features
             "org_scanning": True,
+            "team_invites": True,
         },
     },
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Users,
   UserPlus,
@@ -11,10 +12,13 @@ import {
   X,
   Clock,
   Trash2,
+  Lock,
+  ArrowRight,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
 import { teamsApi, Member, PendingInvite, UserRole } from '../services/teamsApi'
+import { billingApi, Subscription, isFreeTier } from '../services/billingApi'
 
 const roleConfig: Record<UserRole, { label: string; icon: typeof Crown; color: string; description: string }> = {
   owner: {
@@ -47,6 +51,7 @@ export default function TeamManagement() {
   const { accessToken, user } = useAuth()
   const [members, setMembers] = useState<Member[]>([])
   const [invites, setInvites] = useState<PendingInvite[]>([])
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -66,6 +71,9 @@ export default function TeamManagement() {
   const canManageTeam = ['owner', 'admin'].includes(currentUserRole)
   const isOwner = currentUserRole === 'owner'
 
+  // Check if user can invite (has team_invites feature)
+  const canInviteMembers = subscription && !isFreeTier(subscription.tier)
+
   useEffect(() => {
     loadTeamData()
   }, [accessToken])
@@ -77,12 +85,21 @@ export default function TeamManagement() {
     setError(null)
 
     try {
-      const [membersData, invitesData] = await Promise.all([
+      // Fetch members and subscription in parallel
+      const [membersData, subscriptionData] = await Promise.all([
         teamsApi.getMembers(accessToken),
-        canManageTeam ? teamsApi.getPendingInvites(accessToken).catch(() => []) : Promise.resolve([]),
+        billingApi.getSubscription(accessToken).catch(() => null),
       ])
       setMembers(membersData)
-      setInvites(invitesData)
+      setSubscription(subscriptionData)
+
+      // Fetch pending invites if user is admin/owner (we need membersData first)
+      const currentMember = membersData.find(m => m.user_id === user?.id)
+      const userCanManage = currentMember && ['owner', 'admin'].includes(currentMember.role)
+      if (userCanManage) {
+        const invitesData = await teamsApi.getPendingInvites(accessToken).catch(() => [])
+        setInvites(invitesData)
+      }
     } catch (err) {
       console.error('Failed to load team data:', err)
       setError('Failed to load team members')
@@ -183,19 +200,74 @@ export default function TeamManagement() {
         <div>
           <h1 className="text-2xl font-bold text-white">Team Management</h1>
           <p className="mt-1 text-sm text-gray-400">
-            Manage your organization's team members and permissions
+            Manage your organisation's team members and permissions
           </p>
         </div>
         {canManageTeam && (
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Invite Member
-          </button>
+          canInviteMembers ? (
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite Member
+            </button>
+          ) : (
+            <Link
+              to="/settings/billing"
+              className="inline-flex items-center px-4 py-2 border border-cyan-600 text-sm font-medium rounded-lg text-cyan-400 hover:bg-cyan-900/30 transition-colors"
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              Upgrade to Invite Members
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Link>
+          )
         )}
       </div>
+
+      {/* Upgrade banner for FREE tier users */}
+      {canManageTeam && !canInviteMembers && (
+        <div className="bg-gradient-to-r from-cyan-900/30 to-blue-900/30 border border-cyan-700/50 rounded-xl p-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-cyan-500/20 rounded-lg">
+              <Users className="h-6 w-6 text-cyan-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-white mb-1">
+                Collaborate with your team
+              </h3>
+              <p className="text-gray-400 mb-4">
+                Upgrade to Individual (£29/mo) to invite up to 3 team members, or Pro (£250/mo) for up to 10 members
+                with organisation-wide features.
+              </p>
+              <Link
+                to="/settings/billing"
+                className="inline-flex items-center px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                View Plans
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Team member limit info for paid tiers */}
+      {canManageTeam && canInviteMembers && subscription?.max_team_members && (
+        <div className="flex items-center justify-between px-4 py-3 bg-gray-800/50 rounded-lg border border-gray-700">
+          <span className="text-sm text-gray-400">
+            Team members: {members.length} / {subscription.max_team_members}
+          </span>
+          {members.length >= (subscription.max_team_members || 0) && (
+            <Link
+              to="/settings/billing"
+              className="text-sm text-cyan-400 hover:text-cyan-300"
+            >
+              Upgrade for more →
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Error message */}
       {error && (
