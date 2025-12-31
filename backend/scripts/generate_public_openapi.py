@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Generate sanitised OpenAPI spec for public API documentation.
 
-This script extracts the OpenAPI schema from the FastAPI app and filters out
-internal/admin endpoints to produce a spec suitable for public documentation.
+This script extracts the OpenAPI schema from the FastAPI app and produces
+a spec containing ONLY the Public API endpoints (/api/v1/public/*).
 
-SECURITY: This script is a critical security control. Any changes must be
-reviewed carefully to ensure no internal endpoints are exposed.
+These are the external-facing endpoints designed for third-party integrations
+and automation, authenticated via API keys (X-API-Key header).
+
+SECURITY: This script is a critical security control. Only Public API
+endpoints should be exposed. All internal, admin, and user-facing
+endpoints are excluded.
 
 Usage:
     python scripts/generate_public_openapi.py
@@ -38,193 +42,242 @@ def get_openapi_schema() -> dict:
 
 
 # =============================================================================
-# SECURITY: Path and Tag Exclusion Rules
+# SECURITY: Strict Public API Whitelist
 # =============================================================================
+# ONLY the Public API endpoints are included. Everything else is excluded.
+# The Public API is designed for external integrations and uses API key auth.
 
-# Paths that MUST be excluded (admin, internal OAuth, health probes)
-EXCLUDED_PATH_PREFIXES = [
-    "/api/v1/admin",  # Admin portal - NEVER expose
-    "/api/v1/auth/cognito",  # Internal OAuth flow
-    "/api/v1/auth/github",  # Internal OAuth callbacks
-    "/health/ready",  # Internal Kubernetes probe
-    "/health/live",  # Internal Kubernetes probe
-]
-
-# Exact paths to exclude
-EXCLUDED_PATHS_EXACT = [
-    "/",  # Root redirect
-    "/health",  # Internal health check (keep /api/v1/health if exists)
-]
-
-# Tags that indicate internal/admin endpoints
-EXCLUDED_TAGS = [
-    "Admin",
-    "Admin Auth",
-    "Admin Users",
-    "Admin Organizations",
-    "Admin Billing",
-    "Admin Audit",
-    "Admin Settings",
-    "Admin Metrics",
-    "Admin Fingerprints",
-    "Admin MITRE",
-    "Admin Fraud",
-    "Cognito SSO",  # Internal OAuth
-    "GitHub OAuth",  # Internal OAuth
-    "WebAuthn",  # Browser-only, not API
-]
-
-# Paths to INCLUDE (whitelist approach for safety)
-# Only these prefixes will be included in the public docs
+# Paths to INCLUDE - ONLY the Public API
+# These are the ONLY endpoints that will appear in the public documentation
 INCLUDED_PATH_PREFIXES = [
-    "/api/v1/accounts",
-    "/api/v1/scans",
-    "/api/v1/detections",
-    "/api/v1/coverage",
-    "/api/v1/mappings",
-    "/api/v1/schedules",
-    "/api/v1/alerts",
-    "/api/v1/reports",
-    "/api/v1/api-keys",
-    "/api/v1/gaps",
-    "/api/v1/techniques",
-    "/api/v1/compliance",
-    "/api/v1/custom-detections",
-    "/api/v1/recommendations",
-    "/api/v1/analytics",
-    "/api/v1/evaluation-history",
-    "/api/v1/cloud-organizations",
-    "/api/v1/public",  # Public API routes
-    "/api/v1/teams",  # Team management
-    "/api/v1/credentials",  # Cloud credentials (API key users need this)
-    "/api/v1/billing",  # Billing info (read operations)
-    "/api/v1/org",  # Organisation settings
-    "/api/v1/audit-logs",  # Audit logs
-    "/api/v1/code-analysis",  # IaC analysis
+    "/api/v1/public/",  # Public API routes ONLY
 ]
 
 
-def should_exclude_path(path: str) -> bool:
-    """Check if a path should be excluded from public docs."""
-    # Check exact exclusions first
-    if path in EXCLUDED_PATHS_EXACT:
-        return True
+def should_include_path(path: str) -> bool:
+    """Check if a path should be included in public docs.
 
-    # Check prefix exclusions (admin, internal OAuth)
-    for prefix in EXCLUDED_PATH_PREFIXES:
-        if path.startswith(prefix):
-            return True
-
-    # Whitelist approach: only include known-safe prefixes
+    Uses strict whitelist - only /api/v1/public/* paths are included.
+    """
     for prefix in INCLUDED_PATH_PREFIXES:
         if path.startswith(prefix):
-            return False
-
-    # Default: exclude anything not explicitly whitelisted
-    return True
-
-
-def should_exclude_by_tags(operation: dict) -> bool:
-    """Check if an operation should be excluded based on its tags."""
-    operation_tags = operation.get("tags", [])
-    for tag in operation_tags:
-        if tag in EXCLUDED_TAGS:
             return True
     return False
 
 
 def sanitise_schema(schema: dict) -> dict:
-    """Remove internal endpoints and sensitive information from OpenAPI schema."""
+    """Filter schema to include ONLY Public API endpoints."""
     sanitised = deepcopy(schema)
 
-    # Update metadata for public docs
-    sanitised["info"]["title"] = "A13E Detection Coverage Validator API"
-    sanitised["info"]["description"] = (
-        "API for programmatic access to A13E Detection Coverage Validator.\n\n"
-        "## Authentication\n\n"
-        "All API requests require authentication using an API key.\n"
-        "Include your API key in the Authorization header:\n\n"
-        "```\n"
-        "Authorization: Bearer dcv_live_xxxxxxxxxx\n"
-        "```\n\n"
-        "API keys can be created in the A13E dashboard under Settings → API Keys.\n\n"
-        "## Rate Limiting\n\n"
-        "API requests are rate-limited based on your subscription tier:\n\n"
-        "| Tier | Requests/Hour |\n"
-        "|------|---------------|\n"
-        "| Free | 100 |\n"
-        "| Individual (£29/mo) | 1,000 |\n"
-        "| Pro (£250/mo) | 10,000 |\n"
-        "| Enterprise | 100,000 |\n\n"
-        "Rate limit headers are included in all responses:\n"
-        "- `X-RateLimit-Limit`: Maximum requests per hour\n"
-        "- `X-RateLimit-Remaining`: Requests remaining\n"
-        "- `X-RateLimit-Reset`: Unix timestamp when limit resets\n"
-    )
+    # Update metadata for public API docs
+    sanitised["info"]["title"] = "A13E Public API"
+    sanitised["info"]["version"] = "1.0.0"
+    sanitised["info"][
+        "description"
+    ] = """
+# A13E Detection Coverage Validator - Public API
 
-    # Filter paths
-    paths_to_remove = []
+Programmatic access to your cloud security detection coverage data.
+
+## Overview
+
+The A13E Public API enables you to integrate detection coverage data into your security workflows, dashboards, and automation pipelines. Use it to:
+
+- **Monitor coverage** - Track your MITRE ATT&CK coverage across cloud accounts
+- **Trigger scans** - Initiate detection discovery scans programmatically
+- **Query detections** - List and inspect discovered security detections
+- **Identify gaps** - Find uncovered techniques prioritised by risk
+
+## Authentication
+
+All requests require an API key passed in the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: dcv_live_xxxxxxxxxx" \\
+  https://api.a13e.com/api/v1/public/accounts/{id}/coverage
+```
+
+### Getting an API Key
+
+1. Sign in to the [A13E Dashboard](https://app.a13e.com)
+2. Navigate to **Settings** → **API Keys**
+3. Click **Create API Key**
+4. Copy the key immediately (it won't be shown again)
+
+API keys begin with `dcv_live_`.
+
+## Rate Limiting
+
+Requests are rate-limited based on your subscription tier:
+
+| Tier | Requests/Hour | Price |
+|------|---------------|-------|
+| Free | 100 | £0/mo |
+| Individual | 1,000 | £29/mo |
+| Pro | 10,000 | £250/mo |
+| Enterprise | 100,000 | Custom |
+
+Rate limit headers are included in all responses:
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Maximum requests per hour |
+| `X-RateLimit-Remaining` | Requests remaining in current window |
+| `X-RateLimit-Reset` | Unix timestamp when limit resets |
+
+When rate limited, you'll receive a `429 Too Many Requests` response.
+
+## Error Handling
+
+The API uses standard HTTP status codes:
+
+| Code | Meaning |
+|------|---------|
+| `200` | Success |
+| `400` | Bad request (invalid parameters) |
+| `401` | Unauthorised (invalid or missing API key) |
+| `403` | Forbidden (insufficient permissions) |
+| `404` | Resource not found |
+| `409` | Conflict (e.g., scan already running) |
+| `429` | Rate limit exceeded |
+| `500` | Internal server error |
+
+Error responses include a JSON body with details:
+
+```json
+{
+  "detail": "Cloud account not found"
+}
+```
+
+## Code Examples
+
+### Python
+
+```python
+import requests
+
+API_KEY = "dcv_live_xxxxxxxxxx"
+BASE_URL = "https://api.a13e.com/api/v1/public"
+
+headers = {"X-API-Key": API_KEY}
+
+# Get coverage for an account
+response = requests.get(
+    f"{BASE_URL}/accounts/{account_id}/coverage",
+    headers=headers
+)
+coverage = response.json()
+print(f"Coverage: {coverage['coverage_percent']:.1f}%")
+```
+
+### JavaScript
+
+```javascript
+const API_KEY = 'dcv_live_xxxxxxxxxx';
+const BASE_URL = 'https://api.a13e.com/api/v1/public';
+
+const response = await fetch(
+  `${BASE_URL}/accounts/${accountId}/coverage`,
+  { headers: { 'X-API-Key': API_KEY } }
+);
+const coverage = await response.json();
+console.log(`Coverage: ${coverage.coverage_percent.toFixed(1)}%`);
+```
+
+### cURL
+
+```bash
+# Get coverage summary
+curl -H "X-API-Key: dcv_live_xxx" \\
+  "https://api.a13e.com/api/v1/public/accounts/{account_id}/coverage"
+
+# Trigger a scan
+curl -X POST -H "X-API-Key: dcv_live_xxx" \\
+  -H "Content-Type: application/json" \\
+  -d '{"regions": ["eu-west-2"]}' \\
+  "https://api.a13e.com/api/v1/public/accounts/{account_id}/scans"
+```
+"""
+
+    # Filter to include ONLY Public API paths
+    public_paths = {}
     for path, path_item in sanitised.get("paths", {}).items():
-        if should_exclude_path(path):
-            paths_to_remove.append(path)
-            continue
+        if should_include_path(path):
+            public_paths[path] = path_item
 
-        # Check each HTTP method
-        methods_to_remove = []
-        for method in ["get", "post", "put", "patch", "delete", "options", "head"]:
+    sanitised["paths"] = public_paths
+
+    # Define tags for Public API sections with descriptions
+    sanitised["tags"] = [
+        {
+            "name": "Coverage",
+            "description": "Coverage metrics and gap analysis for cloud accounts. "
+            "Get overall coverage percentages, per-technique breakdown, and "
+            "prioritised gaps with remediation guidance.",
+        },
+        {
+            "name": "Detections",
+            "description": "Discovered security detections in your cloud accounts. "
+            "List detections by account with filtering, and get detailed "
+            "information including MITRE ATT&CK technique mappings.",
+        },
+        {
+            "name": "Scans",
+            "description": "Detection discovery scans. Trigger new scans to discover "
+            "security detections, monitor scan progress, and retrieve scan results.",
+        },
+    ]
+
+    # Rename tags in operations for cleaner grouping
+    tag_mapping = {
+        "Public API - Coverage": "Coverage",
+        "Public API - Detections": "Detections",
+        "Public API - Scans": "Scans",
+        "Public API": "Coverage",  # Fallback
+    }
+
+    for path_item in sanitised["paths"].values():
+        for method in ["get", "post", "put", "patch", "delete"]:
             if method in path_item:
                 operation = path_item[method]
-                if should_exclude_by_tags(operation):
-                    methods_to_remove.append(method)
+                if "tags" in operation:
+                    # Map tags and deduplicate
+                    mapped_tags = [
+                        tag_mapping.get(tag, tag) for tag in operation["tags"]
+                    ]
+                    operation["tags"] = list(dict.fromkeys(mapped_tags))
 
-        # Remove excluded methods
-        for method in methods_to_remove:
-            del path_item[method]
+                # Update security to use our ApiKeyAuth scheme
+                if "security" in operation:
+                    operation["security"] = [{"ApiKeyAuth": []}]
 
-        # If all methods removed, mark path for removal
-        if not any(m in path_item for m in ["get", "post", "put", "patch", "delete"]):
-            paths_to_remove.append(path)
-
-    # Remove excluded paths
-    for path in paths_to_remove:
-        if path in sanitised["paths"]:
-            del sanitised["paths"][path]
-
-    # Filter tags list
-    if "tags" in sanitised:
-        sanitised["tags"] = [
-            tag for tag in sanitised["tags"] if tag.get("name") not in EXCLUDED_TAGS
-        ]
-
-    # Update security schemes - only document Bearer token
-    if "components" in sanitised and "securitySchemes" in sanitised["components"]:
-        sanitised["components"]["securitySchemes"] = {
-            "BearerAuth": {
-                "type": "http",
-                "scheme": "bearer",
-                "bearerFormat": "API Key",
-                "description": (
-                    "API key authentication. Get your API key from the A13E dashboard.\n"
-                    "Format: `dcv_live_xxxxxxxxxx`"
-                ),
-            }
+    # Update security scheme to use X-API-Key header
+    sanitised["components"] = sanitised.get("components", {})
+    sanitised["components"]["securitySchemes"] = {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-API-Key",
+            "description": (
+                "API key for authentication. Create keys in the A13E Dashboard "
+                "under Settings → API Keys.\n\n"
+                "Format: `dcv_live_xxxxxxxxxx`"
+            ),
         }
+    }
 
     # Set global security requirement
-    sanitised["security"] = [{"BearerAuth": []}]
+    sanitised["security"] = [{"ApiKeyAuth": []}]
 
     # Clean up unused schema definitions
     sanitised = remove_unused_schemas(sanitised)
 
-    # Add servers
+    # Add servers - production only (no staging exposed)
     sanitised["servers"] = [
         {
             "url": "https://api.a13e.com",
             "description": "Production API",
-        },
-        {
-            "url": "https://api.staging.a13e.com",
-            "description": "Staging API (for testing)",
         },
     ]
 
@@ -241,7 +294,7 @@ def sanitise_schema(schema: dict) -> dict:
 
     # Add external docs link
     sanitised["externalDocs"] = {
-        "description": "Full documentation",
+        "description": "A13E Documentation",
         "url": "https://docs.a13e.com",
     }
 
@@ -289,22 +342,30 @@ def remove_unused_schemas(schema: dict) -> dict:
 
 
 def main():
-    """Generate and save the sanitised OpenAPI spec."""
-    print("Generating public OpenAPI specification...")
+    """Generate and save the Public API OpenAPI spec."""
+    print("=" * 60)
+    print("Generating A13E Public API OpenAPI Specification")
+    print("=" * 60)
 
     # Get the raw schema
     raw_schema = get_openapi_schema()
-    print(f"  Raw schema: {len(raw_schema.get('paths', {}))} paths")
+    total_paths = len(raw_schema.get("paths", {}))
+    print(f"\nTotal API paths in application: {total_paths}")
 
     # Sanitise for public docs
     public_schema = sanitise_schema(raw_schema)
-    print(f"  Public schema: {len(public_schema.get('paths', {}))} paths")
+    public_paths = len(public_schema.get("paths", {}))
+    print(f"Public API paths included: {public_paths}")
 
-    # Calculate what was removed
-    removed_count = len(raw_schema.get("paths", {})) - len(
-        public_schema.get("paths", {})
-    )
-    print(f"  Removed: {removed_count} internal/admin paths")
+    # Show included paths
+    print("\nIncluded endpoints:")
+    for path in sorted(public_schema.get("paths", {}).keys()):
+        methods = [
+            m.upper()
+            for m in ["get", "post", "put", "patch", "delete"]
+            if m in public_schema["paths"][path]
+        ]
+        print(f"  {', '.join(methods):12} {path}")
 
     # Ensure output directory exists
     output_dir = backend_dir.parent / "docs" / "api"
@@ -315,12 +376,18 @@ def main():
     with open(output_path, "w") as f:
         json.dump(public_schema, f, indent=2)
 
-    print(f"  Output: {output_path}")
-    print("Done!")
+    print(f"\nOutput: {output_path}")
 
-    # Print summary of included tags
+    # Print summary
+    print("\n" + "=" * 60)
+    print("Summary")
+    print("=" * 60)
     included_tags = [tag["name"] for tag in public_schema.get("tags", [])]
-    print(f"\nIncluded API sections: {', '.join(included_tags)}")
+    print(f"API sections: {', '.join(included_tags)}")
+    print(f"Total endpoints: {public_paths}")
+    excluded_count = total_paths - public_paths
+    print(f"Internal endpoints excluded: {excluded_count}")
+    print("\nDone!")
 
 
 if __name__ == "__main__":

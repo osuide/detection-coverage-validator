@@ -1,4 +1,4 @@
-# Redocly Configuration
+# Redocly Configuration for A13E Public API Documentation
 # See: https://redocly.com/docs/cli/configuration/
 
 # OpenAPI spec location
@@ -6,9 +6,35 @@ apis:
   main:
     root: ./api/openapi.json
 
+# Theme configuration
+theme:
+  openapi:
+    # Hide internal info
+    hideHostname: false
+    hideDownloadButton: false
+    # Navigation
+    showExtensions: false
+    # Code samples
+    generateCodeSamples:
+      languages:
+        - lang: curl
+        - lang: Python
+          label: Python
+        - lang: JavaScript
+          label: JavaScript
+    # Layout
+    sortTagsAlphabetically: false
+    sortOperationsAlphabetically: false
+    # Branding
+    logo:
+      link: https://a13e.com
+
 # Linting rules
 rules:
   operation-operationId: warn
   operation-summary: warn
   no-unresolved-refs: error
   no-unused-components: warn
+  operation-description: warn
+  tag-description: warn
+  security-defined: error
