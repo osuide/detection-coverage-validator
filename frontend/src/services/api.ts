@@ -332,6 +332,7 @@ export const coverageApi = {
 // Credential types
 export interface SetupInstructions {
   provider: string
+  a13e_aws_account_id: string
   external_id: string | null
   iam_policy: object | null
   custom_role: object | null
