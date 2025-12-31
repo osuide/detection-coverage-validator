@@ -198,35 +198,30 @@ export function ComplianceCoverageContent({ accountId, initialModalState }: Comp
                 key={data.standardId}
                 className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 bg-gray-900/50 rounded-lg"
               >
-                {/* Left: Detection Coverage */}
-                <div className="bg-gray-700/30 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-blue-400" />
-                    Detection Coverage
-                  </h4>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-400">Controls Enabled</span>
-                        <span className="text-white font-medium">
-                          {data.enabledControls} / {data.totalControls}
-                        </span>
-                      </div>
-                      <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-500"
-                          style={{
-                            width: `${data.totalControls > 0 ? (data.enabledControls / data.totalControls) * 100 : 0}%`
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      {data.totalControls > 0
-                        ? `${Math.round((data.enabledControls / data.totalControls) * 100)}% of controls are actively monitoring your resources`
-                        : 'No controls configured'}
-                    </p>
+                {/* Left: Detection Coverage - Compact */}
+                <div className="bg-gray-700/30 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-medium text-gray-400 flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-blue-400" />
+                      Detection Coverage
+                    </h4>
+                    <span className="text-sm font-semibold text-white">
+                      {data.enabledControls}/{data.totalControls}
+                    </span>
                   </div>
+                  <div className="h-1.5 bg-gray-600 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500"
+                      style={{
+                        width: `${data.totalControls > 0 ? (data.enabledControls / data.totalControls) * 100 : 0}%`
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1.5">
+                    {data.totalControls > 0
+                      ? `${Math.round((data.enabledControls / data.totalControls) * 100)}% enabled`
+                      : 'No controls'}
+                  </p>
                 </div>
 
                 {/* Right: Detection Effectiveness (what we found) */}
@@ -235,6 +230,8 @@ export function ComplianceCoverageContent({ accountId, initialModalState }: Comp
                   standardName={data.standardName}
                   effectiveness={data.effectiveness}
                   region={data.region}
+                  showFailingControls={true}
+                  pageSize={5}
                 />
               </div>
             ))}

@@ -26,7 +26,7 @@ export default function ComplianceHistory() {
   const startDate = new Date(Date.now() - trendDays * 24 * 60 * 60 * 1000).toISOString()
 
   // Fetch account summary
-  const { data: summaryData, isLoading: summaryLoading } = useQuery({
+  const { data: summaryData, isLoading: summaryLoading, error: summaryError } = useQuery({
     queryKey: ['evaluation-summary', selectedAccount?.id, startDate, endDate],
     queryFn: () =>
       evaluationHistoryApi.getAccountSummary(selectedAccount!.id, {
@@ -34,10 +34,11 @@ export default function ComplianceHistory() {
         end_date: endDate,
       }),
     enabled: !!selectedAccount,
+    retry: 1,
   })
 
   // Fetch trends data
-  const { data: trendsData, isLoading: trendsLoading } = useQuery({
+  const { data: trendsData, isLoading: trendsLoading, error: trendsError } = useQuery({
     queryKey: ['evaluation-trends', selectedAccount?.id, startDate, endDate],
     queryFn: () =>
       evaluationHistoryApi.getAccountTrends(selectedAccount!.id, {
@@ -45,17 +46,22 @@ export default function ComplianceHistory() {
         end_date: endDate,
       }),
     enabled: !!selectedAccount,
+    retry: 1,
   })
 
   // Fetch alerts
-  const { data: alertsData, isLoading: alertsLoading } = useQuery({
+  const { data: alertsData, isLoading: alertsLoading, error: alertsError } = useQuery({
     queryKey: ['evaluation-alerts', selectedAccount?.id],
     queryFn: () =>
       evaluationHistoryApi.getAccountAlerts(selectedAccount!.id, {
         limit: 50,
       }),
     enabled: !!selectedAccount,
+    retry: 1,
   })
+
+  // Check if all queries have errors
+  const hasErrors = summaryError || trendsError || alertsError
 
   // No accounts state
   if (!accountsLoading && !hasAccounts) {
@@ -79,6 +85,27 @@ export default function ComplianceHistory() {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
+  // Error state
+  if (hasErrors && !summaryLoading && !trendsLoading && !alertsLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh]">
+        <History className="h-16 w-16 text-gray-600 mb-4" />
+        <h2 className="text-xl font-semibold text-white mb-2">No History Data Available</h2>
+        <p className="text-gray-400 mb-4 text-center max-w-md">
+          Compliance history data is generated after scans are completed.
+          Run a scan to start tracking your detection health over time.
+        </p>
+        <Link
+          to="/compliance"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Compliance
+        </Link>
       </div>
     )
   }
