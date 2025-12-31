@@ -149,7 +149,7 @@ function ExpandableTechniqueRow({
             {/* Confidence badge */}
             {technique.max_confidence > 0 && (
               <span
-                className={`px-2 py-0.5 text-xs font-medium rounded border ${getConfidenceBadgeStyle(technique.max_confidence)}`}
+                className={`px-2 py-0.5 text-xs font-medium rounded-sm border ${getConfidenceBadgeStyle(technique.max_confidence)}`}
               >
                 {Math.round(technique.max_confidence * 100)}%
               </span>
@@ -171,7 +171,7 @@ function ExpandableTechniqueRow({
               <Link
                 to={`/techniques/${technique.technique_id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-900/50 text-green-300 border border-green-700 rounded hover:bg-green-800/50 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-900/50 text-green-300 border border-green-700 rounded-sm hover:bg-green-800/50 transition-colors"
               >
                 <FileCode className="w-3 h-3" />
                 View Template
@@ -182,7 +182,7 @@ function ExpandableTechniqueRow({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-gray-700 text-gray-400 border border-gray-600 rounded hover:bg-gray-600 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-gray-700 text-gray-400 border border-gray-600 rounded-sm hover:bg-gray-600 transition-colors"
               >
                 <ExternalLink className="w-3 h-3" />
                 MITRE ATT&CK
@@ -257,7 +257,7 @@ export function TechniqueDetailModal({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs"
         onClick={onClose}
       />
 

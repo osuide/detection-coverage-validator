@@ -195,7 +195,7 @@ export default function Billing() {
       )}
 
       {/* Current Plan */}
-      <div className="bg-gray-800 shadow-sm rounded-lg border border-gray-700 p-6">
+      <div className="bg-gray-800 shadow-xs rounded-lg border border-gray-700 p-6">
         <h2 className="text-lg font-medium text-white mb-4">Current Plan</h2>
 
         <div className="flex items-center justify-between mb-6">
@@ -277,7 +277,7 @@ export default function Billing() {
         const retentionDays = individualTier?.history_retention_days ?? 90
         const priceMonthly = individualTier?.price_monthly_pounds ?? 29
         return (
-        <div className="bg-gradient-to-r from-blue-600 to-cyan-600 shadow rounded-lg p-6 text-white">
+        <div className="bg-linear-to-r from-blue-600 to-cyan-600 shadow-sm rounded-lg p-6 text-white">
           <h2 className="text-lg font-medium mb-2">Upgrade to Individual</h2>
           <p className="text-blue-100 mb-6">
             Get up to {accountLimit} accounts, {formatRetention(retentionDays)} data retention, scheduled scans, alerts, and API access.
@@ -355,7 +355,7 @@ export default function Billing() {
 
       {/* Invoice History */}
       {invoices.length > 0 && (
-        <div className="bg-gray-800 shadow-sm rounded-lg border border-gray-700 p-6">
+        <div className="bg-gray-800 shadow-xs rounded-lg border border-gray-700 p-6">
           <h2 className="text-lg font-medium text-white mb-4">Invoice History</h2>
 
           <div className="overflow-x-auto">
@@ -428,7 +428,7 @@ export default function Billing() {
 
       {/* Feature Comparison (for free tier) */}
       {isFreeTier && (
-        <div className="bg-gray-800 shadow-sm rounded-lg border border-gray-700 p-6">
+        <div className="bg-gray-800 shadow-xs rounded-lg border border-gray-700 p-6">
           <h2 className="text-lg font-medium text-white mb-4">Feature Comparison</h2>
 
           <div className="overflow-x-auto">

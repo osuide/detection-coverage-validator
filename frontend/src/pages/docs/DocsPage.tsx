@@ -49,7 +49,7 @@ function TableOfContents({ headings, activeId }: { headings: Heading[]; activeId
   if (headings.length < 3) return null;
 
   return (
-    <nav className="hidden xl:block w-56 flex-shrink-0 pl-8">
+    <nav className="hidden xl:block w-56 shrink-0 pl-8">
       <div className="sticky top-24">
         <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3">
           <List className="h-3.5 w-3.5" />
@@ -82,22 +82,22 @@ function Callout({ children, type = 'info' }: { children: React.ReactNode; type?
     info: {
       bg: 'bg-blue-500/10',
       border: 'border-blue-500/30',
-      icon: <Info className="h-4 w-4 text-blue-400 flex-shrink-0 mt-0.5" />,
+      icon: <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />,
     },
     warning: {
       bg: 'bg-amber-500/10',
       border: 'border-amber-500/30',
-      icon: <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />,
+      icon: <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />,
     },
     tip: {
       bg: 'bg-emerald-500/10',
       border: 'border-emerald-500/30',
-      icon: <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />,
+      icon: <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />,
     },
     note: {
       bg: 'bg-slate-500/10',
       border: 'border-slate-500/30',
-      icon: <AlertCircle className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />,
+      icon: <AlertCircle className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />,
     },
   };
 
@@ -232,27 +232,27 @@ export function DocsPage() {
             <article className="prose prose-sm max-w-none
               prose-headings:scroll-mt-20
               prose-headings:font-semibold
-              prose-h1:text-2xl prose-h1:mb-6 prose-h1:!text-white
-              prose-h2:text-xl prose-h2:mt-10 prose-h2:mb-4 prose-h2:!text-white prose-h2:pt-2 prose-h2:border-t prose-h2:border-slate-800/50
-              prose-h3:text-lg prose-h3:mt-8 prose-h3:mb-3 prose-h3:!text-white
-              prose-h4:text-base prose-h4:mt-6 prose-h4:mb-2 prose-h4:!text-slate-200
-              prose-p:!text-slate-400 prose-p:leading-relaxed prose-p:text-[15px] prose-p:mb-4
-              prose-a:!text-cyan-400 prose-a:no-underline prose-a:font-medium hover:prose-a:!text-cyan-300 hover:prose-a:underline
-              prose-strong:!text-slate-200 prose-strong:font-semibold
-              prose-code:!text-amber-400 prose-code:bg-slate-800/80 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:font-mono prose-code:text-[13px] prose-code:border prose-code:border-slate-700/50
+              prose-h1:text-2xl prose-h1:mb-6 prose-h1:text-white!
+              prose-h2:text-xl prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-white! prose-h2:pt-2 prose-h2:border-t prose-h2:border-slate-800/50
+              prose-h3:text-lg prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-white!
+              prose-h4:text-base prose-h4:mt-6 prose-h4:mb-2 prose-h4:text-slate-200!
+              prose-p:text-slate-400! prose-p:leading-relaxed prose-p:text-[15px] prose-p:mb-4
+              prose-a:text-cyan-400! prose-a:no-underline prose-a:font-medium prose-a:hover:text-cyan-300! prose-a:hover:underline
+              prose-strong:text-slate-200! prose-strong:font-semibold
+              prose-code:text-amber-400! prose-code:bg-slate-800/80 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-sm prose-code:font-mono prose-code:text-[13px] prose-code:border prose-code:border-slate-700/50
               prose-code:before:content-none prose-code:after:content-none
               prose-pre:bg-transparent prose-pre:p-0 prose-pre:m-0
-              prose-ul:!text-slate-400 prose-ol:!text-slate-400 prose-ul:my-4 prose-ol:my-4 prose-ul:space-y-1 prose-ol:space-y-1
-              prose-li:marker:!text-cyan-500 prose-li:!text-slate-400 prose-li:mb-1 prose-li:leading-relaxed
-              prose-blockquote:border-0 prose-blockquote:p-0 prose-blockquote:m-0 prose-blockquote:!text-slate-400 prose-blockquote:not-italic
+              prose-ul:text-slate-400! prose-ol:text-slate-400! prose-ul:my-4 prose-ol:my-4 prose-ul:space-y-1 prose-ol:space-y-1
+              prose-li:marker:text-cyan-500! prose-li:text-slate-400! prose-li:mb-1 prose-li:leading-relaxed
+              prose-blockquote:border-0 prose-blockquote:p-0 prose-blockquote:m-0 prose-blockquote:text-slate-400! prose-blockquote:not-italic
               prose-hr:border-slate-800 prose-hr:my-8
               prose-img:rounded-lg prose-img:border prose-img:border-slate-700
               prose-table:text-sm prose-table:w-full prose-table:my-4
-              prose-thead:bg-slate-800/50 prose-thead:!text-slate-300
-              prose-th:px-4 prose-th:py-2.5 prose-th:text-left prose-th:font-medium prose-th:!text-slate-300 prose-th:text-[13px]
+              prose-thead:bg-slate-800/50 prose-thead:text-slate-300!
+              prose-th:px-4 prose-th:py-2.5 prose-th:text-left prose-th:font-medium prose-th:text-slate-300! prose-th:text-[13px]
               prose-tbody:!text-slate-400
               prose-tr:border-b prose-tr:border-slate-800
-              prose-td:px-4 prose-td:py-2.5 prose-td:text-[14px] prose-td:!text-slate-400
+              prose-td:px-4 prose-td:py-2.5 prose-td:text-[14px] prose-td:text-slate-400!
             ">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkBreaks]}

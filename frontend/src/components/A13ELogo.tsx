@@ -24,7 +24,7 @@ function LogoIcon({ size = 40 }: { size?: number }) {
       viewBox="0 0 48 48"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="flex-shrink-0"
+      className="shrink-0"
     >
       <defs>
         <linearGradient id="a13e-grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -112,7 +112,7 @@ export default function A13ELogo({
         <div className="flex flex-col">
           <div className="flex items-baseline gap-1">
             <span
-              className={`font-black tracking-tight bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent ${sizeConfig.text}`}
+              className={`font-black tracking-tight bg-linear-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent ${sizeConfig.text}`}
             >
               A13E
             </span>
@@ -136,7 +136,7 @@ export default function A13ELogo({
     return (
       <Link
         to={linkTo}
-        className="hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 rounded-lg"
+        className="hover:opacity-90 transition-opacity focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 rounded-lg"
       >
         {content}
       </Link>
@@ -151,7 +151,7 @@ export function A13ELogoCompact({ className = '' }: { className?: string }) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <LogoIcon size={28} />
-      <span className="font-bold text-sm bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+      <span className="font-bold text-sm bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
         A13E
       </span>
     </div>

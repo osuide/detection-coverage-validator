@@ -179,7 +179,7 @@ export default function OrganizationDashboard() {
                   onClick={() => setCoverageView('union')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     coverageView === 'union'
-                      ? 'bg-gray-700 shadow text-white'
+                      ? 'bg-gray-700 shadow-sm text-white'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
@@ -189,7 +189,7 @@ export default function OrganizationDashboard() {
                   onClick={() => setCoverageView('minimum')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     coverageView === 'minimum'
-                      ? 'bg-gray-700 shadow text-white'
+                      ? 'bg-gray-700 shadow-sm text-white'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >

@@ -125,8 +125,8 @@ export function AccountComplianceSummary({ data, isLoading }: AccountComplianceS
       <div className="card p-6">
         <div className="animate-pulse">
           <div className="flex items-center gap-2 mb-6">
-            <div className="h-6 w-6 bg-gray-700 rounded" />
-            <div className="h-6 bg-gray-700 rounded w-48" />
+            <div className="h-6 w-6 bg-gray-700 rounded-sm" />
+            <div className="h-6 bg-gray-700 rounded-sm w-48" />
           </div>
           <div className="flex items-center gap-8">
             <div className="w-32 h-32 bg-gray-700 rounded-full" />

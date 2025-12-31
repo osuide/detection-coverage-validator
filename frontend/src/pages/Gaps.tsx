@@ -238,7 +238,7 @@ export default function Gaps() {
                 type="checkbox"
                 checked={showLowPriority}
                 onChange={(e) => setShowLowPriority(e.target.checked)}
-                className="rounded border-gray-600 text-blue-600 focus:ring-blue-500"
+                className="rounded-sm border-gray-600 text-blue-600 focus:ring-blue-500"
               />
               <span className="text-sm text-gray-400">
                 Show low priority ({lowGaps.length})
@@ -253,7 +253,7 @@ export default function Gaps() {
                 type="checkbox"
                 checked={showAcknowledged}
                 onChange={(e) => setShowAcknowledged(e.target.checked)}
-                className="rounded border-gray-600 text-purple-600 focus:ring-purple-500"
+                className="rounded-sm border-gray-600 text-purple-600 focus:ring-purple-500"
               />
               <span className="text-sm text-gray-400">
                 Show acknowledged ({acknowledgedCount})
@@ -398,11 +398,11 @@ function GapCard({
         <div className="flex-1">
           <div className="flex items-center gap-3">
             {isExpanded ? (
-              <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
             ) : (
-              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
             )}
-            <span className={`px-2 py-0.5 text-xs font-medium rounded ${priorityStyles[gap.priority]}`}>
+            <span className={`px-2 py-0.5 text-xs font-medium rounded-sm ${priorityStyles[gap.priority]}`}>
               {gap.priority}
             </span>
             <span className="text-sm font-mono text-blue-400">{gap.technique_id}</span>
@@ -661,7 +661,7 @@ function AcknowledgedGapCard({
 
           {/* Show reason if available */}
           {(gap.risk_acceptance_reason || gap.remediation_notes) && (
-            <div className="mt-2 text-sm text-gray-400 bg-gray-700 rounded p-2 border border-gray-700">
+            <div className="mt-2 text-sm text-gray-400 bg-gray-700 rounded-sm p-2 border border-gray-700">
               <span className="font-medium">Note: </span>
               {gap.risk_acceptance_reason || gap.remediation_notes}
             </div>
@@ -740,7 +740,7 @@ function StrategyCard({
             <p className="text-sm text-gray-400 mt-1">
               {strategy.detection_type} via {strategy.cloud_provider === 'gcp' ? strategy.gcp_service : strategy.aws_service}
               {strategy.cloud_provider && (
-                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${strategy.cloud_provider === 'gcp' ? 'bg-blue-900/30 text-blue-400' : 'bg-orange-900/30 text-orange-400'}`}>
+                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-sm ${strategy.cloud_provider === 'gcp' ? 'bg-blue-900/30 text-blue-400' : 'bg-orange-900/30 text-orange-400'}`}>
                   {strategy.cloud_provider.toUpperCase()}
                 </span>
               )}
@@ -749,7 +749,7 @@ function StrategyCard({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
-          <span className={`px-2 py-1 rounded ${effortColors[strategy.implementation_effort] || 'bg-gray-700/30 text-gray-400'}`}>
+          <span className={`px-2 py-1 rounded-sm ${effortColors[strategy.implementation_effort] || 'bg-gray-700/30 text-gray-400'}`}>
             {strategy.implementation_effort} effort
           </span>
           <span className="text-gray-400 flex items-center">
@@ -766,7 +766,7 @@ function StrategyCard({
           {strategy.has_query && (
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded hover:bg-blue-900/50 transition-colors cursor-pointer"
+              className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded-sm hover:bg-blue-900/50 transition-colors cursor-pointer"
             >
               Query Available
             </button>
@@ -774,7 +774,7 @@ function StrategyCard({
           {strategy.has_cloudformation && (
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs bg-purple-900/30 text-purple-400 px-2 py-1 rounded hover:bg-purple-900/50 transition-colors cursor-pointer"
+              className="text-xs bg-purple-900/30 text-purple-400 px-2 py-1 rounded-sm hover:bg-purple-900/50 transition-colors cursor-pointer"
             >
               CloudFormation
             </button>
@@ -782,7 +782,7 @@ function StrategyCard({
           {strategy.has_terraform && (
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs bg-indigo-900/30 text-indigo-400 px-2 py-1 rounded hover:bg-indigo-900/50 transition-colors cursor-pointer"
+              className="text-xs bg-indigo-900/30 text-indigo-400 px-2 py-1 rounded-sm hover:bg-indigo-900/50 transition-colors cursor-pointer"
             >
               AWS Terraform
             </button>
@@ -790,7 +790,7 @@ function StrategyCard({
           {strategy.has_gcp_query && (
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded hover:bg-blue-900/50 transition-colors cursor-pointer"
+              className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded-sm hover:bg-blue-900/50 transition-colors cursor-pointer"
             >
               GCP Query
             </button>
@@ -798,7 +798,7 @@ function StrategyCard({
           {strategy.has_gcp_terraform && (
             <button
               onClick={() => setShowModal(true)}
-              className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded hover:bg-blue-900/50 transition-colors cursor-pointer"
+              className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded-sm hover:bg-blue-900/50 transition-colors cursor-pointer"
             >
               GCP Terraform
             </button>

@@ -207,7 +207,7 @@ export default function TeamManagement() {
           canInviteMembers ? (
             <button
               onClick={() => setShowInviteModal(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-xs text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
             >
               <UserPlus className="h-4 w-4 mr-2" />
               Invite Member
@@ -227,7 +227,7 @@ export default function TeamManagement() {
 
       {/* Upgrade banner for FREE tier users */}
       {canManageTeam && !canInviteMembers && (
-        <div className="bg-gradient-to-r from-cyan-900/30 to-blue-900/30 border border-cyan-700/50 rounded-xl p-6">
+        <div className="bg-linear-to-r from-cyan-900/30 to-blue-900/30 border border-cyan-700/50 rounded-xl p-6">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-cyan-500/20 rounded-lg">
               <Users className="h-6 w-6 text-cyan-400" />
@@ -277,7 +277,7 @@ export default function TeamManagement() {
       )}
 
       {/* Members list */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-700">
           <div className="flex items-center">
             <Users className="h-5 w-5 text-gray-400 mr-2" />
@@ -393,7 +393,7 @@ export default function TeamManagement() {
 
       {/* Pending Invites */}
       {canManageTeam && invites.length > 0 && (
-        <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+        <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-700">
             <div className="flex items-center">
               <Mail className="h-5 w-5 text-gray-400 mr-2" />
@@ -446,7 +446,7 @@ export default function TeamManagement() {
       )}
 
       {/* Role Reference */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-700">
           <h2 className="text-lg font-medium text-white">Role Permissions</h2>
         </div>
@@ -491,7 +491,7 @@ export default function TeamManagement() {
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-xs focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
                   placeholder="colleague@company.com"
                 />
               </div>
@@ -504,7 +504,7 @@ export default function TeamManagement() {
                   id="role"
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as UserRole)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-xs focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
                 >
                   <option value="viewer">Viewer - Read-only access</option>
                   <option value="member">Member - Can view and edit</option>
@@ -521,7 +521,7 @@ export default function TeamManagement() {
                   rows={3}
                   value={inviteMessage}
                   onChange={(e) => setInviteMessage(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-xs focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
                   placeholder="Add a personal note to your invitation..."
                 />
               </div>

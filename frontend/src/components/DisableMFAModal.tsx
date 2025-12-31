@@ -48,7 +48,7 @@ export default function DisableMFAModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-white rounded"
+            className="p-1 text-gray-400 hover:text-white rounded-sm"
           >
             <X className="w-5 h-5" />
           </button>
@@ -58,7 +58,7 @@ export default function DisableMFAModal({
         {orgRequiresMFA ? (
           <div className="bg-red-900/50 border border-red-700 rounded-lg p-4 mb-6">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
               <div>
                 <h4 className="font-medium text-red-400">Cannot Disable MFA</h4>
                 <p className="text-sm text-red-200/80 mt-1">
@@ -73,7 +73,7 @@ export default function DisableMFAModal({
             {/* Warning */}
             <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 mb-6">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-medium text-yellow-400">Security Warning</h4>
                   <p className="text-sm text-yellow-200/80 mt-1">

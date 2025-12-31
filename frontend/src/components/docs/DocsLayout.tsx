@@ -66,7 +66,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
   }, [sidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-lg border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -109,7 +109,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
               </Link>
               <Link
                 to="/signup"
-                className="text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 px-4 py-2 rounded-lg shadow-lg shadow-blue-500/25 transition-all"
+                className="text-sm font-medium text-white bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 px-4 py-2 rounded-lg shadow-lg shadow-blue-500/25 transition-all"
               >
                 Get Started
               </Link>
@@ -162,7 +162,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
                             }
                           `}
                         >
-                          <Icon className="h-4 w-4 flex-shrink-0 opacity-70" />
+                          <Icon className="h-4 w-4 shrink-0 opacity-70" />
                           <span>{doc.title}</span>
                         </Link>
                       </li>
@@ -206,7 +206,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
         {/* Mobile overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-xs lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}

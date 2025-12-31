@@ -221,13 +221,13 @@ export default function ConnectOrganization() {
                 Required Permissions
               </h3>
               <div className="text-sm text-gray-400 space-y-1">
-                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
+                <code className="block bg-gray-700 px-2 py-1 rounded-sm text-xs">
                   organizations:Describe*
                 </code>
-                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
+                <code className="block bg-gray-700 px-2 py-1 rounded-sm text-xs">
                   organizations:List*
                 </code>
-                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
+                <code className="block bg-gray-700 px-2 py-1 rounded-sm text-xs">
                   sts:AssumeRole (for member accounts)
                 </code>
               </div>
@@ -302,13 +302,13 @@ export default function ConnectOrganization() {
                 Required Permissions
               </h3>
               <div className="text-sm text-gray-400 space-y-1">
-                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
+                <code className="block bg-gray-700 px-2 py-1 rounded-sm text-xs">
                   resourcemanager.organizations.get
                 </code>
-                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
+                <code className="block bg-gray-700 px-2 py-1 rounded-sm text-xs">
                   resourcemanager.folders.list
                 </code>
-                <code className="block bg-gray-700 px-2 py-1 rounded text-xs">
+                <code className="block bg-gray-700 px-2 py-1 rounded-sm text-xs">
                   resourcemanager.projects.list
                 </code>
               </div>

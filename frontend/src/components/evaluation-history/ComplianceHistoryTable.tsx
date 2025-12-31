@@ -81,15 +81,15 @@ export function ComplianceHistoryTable({
     return (
       <div className="card">
         <div className="p-4 border-b border-gray-700">
-          <div className="h-6 bg-gray-700 rounded w-48 animate-pulse" />
+          <div className="h-6 bg-gray-700 rounded-sm w-48 animate-pulse" />
         </div>
         <div className="divide-y divide-gray-700">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="p-4 animate-pulse">
               <div className="flex items-center gap-4">
-                <div className="h-4 bg-gray-700 rounded w-32" />
-                <div className="h-4 bg-gray-700 rounded w-24" />
-                <div className="h-4 bg-gray-700 rounded w-16 ml-auto" />
+                <div className="h-4 bg-gray-700 rounded-sm w-32" />
+                <div className="h-4 bg-gray-700 rounded-sm w-24" />
+                <div className="h-4 bg-gray-700 rounded-sm w-16 ml-auto" />
               </div>
             </div>
           ))}
@@ -156,7 +156,7 @@ export function ComplianceHistoryTable({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     {/* Timestamp */}
-                    <div className="w-40 flex-shrink-0">
+                    <div className="w-40 shrink-0">
                       <p className="text-sm text-white">
                         {new Date(item.timestamp).toLocaleDateString('en-GB', {
                           day: 'numeric',

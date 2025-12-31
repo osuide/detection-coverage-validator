@@ -70,7 +70,7 @@ export function SecurityFunctionBreakdown({ breakdown, compact = false }: Props)
         {FUNCTION_CONFIG.filter(f => breakdown[f.key] > 0).map(({ key, label, colour, bgColour, Icon }) => (
           <div
             key={key}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded ${bgColour}`}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-sm ${bgColour}`}
           >
             <Icon className={`h-3.5 w-3.5 ${colour}`} />
             <span className={`font-medium ${colour}`}>{breakdown[key]}</span>
@@ -92,7 +92,7 @@ export function SecurityFunctionBreakdown({ breakdown, compact = false }: Props)
           <div key={key} className="space-y-1">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <div className={`p-1 rounded ${bgColour}`}>
+                <div className={`p-1 rounded-sm ${bgColour}`}>
                   <Icon className={`h-4 w-4 ${colour}`} />
                 </div>
                 <span className="text-gray-300">{label}</span>

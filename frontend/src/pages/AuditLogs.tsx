@@ -161,7 +161,7 @@ export default function AuditLogs() {
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-4">
+          <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-4">
             <div className="flex items-center">
               <div className="p-2 bg-blue-900/30 rounded-lg">
                 <Activity className="h-5 w-5 text-blue-400" />
@@ -172,7 +172,7 @@ export default function AuditLogs() {
               </div>
             </div>
           </div>
-          <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-4">
+          <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-4">
             <div className="flex items-center">
               <div className="p-2 bg-green-900/30 rounded-lg">
                 <Clock className="h-5 w-5 text-green-400" />
@@ -183,7 +183,7 @@ export default function AuditLogs() {
               </div>
             </div>
           </div>
-          <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-4">
+          <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-4">
             <div className="flex items-center">
               <div className="p-2 bg-purple-900/30 rounded-lg">
                 <FileText className="h-5 w-5 text-purple-400" />
@@ -198,7 +198,7 @@ export default function AuditLogs() {
       )}
 
       {/* Filters */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
           <div className="flex items-center">
             <FileText className="h-5 w-5 text-gray-400 mr-2" />

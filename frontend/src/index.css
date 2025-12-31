@@ -1,53 +1,84 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color: #e2e8f0;
-  background-color: #111827;
+@plugin '@tailwindcss/typography';
+
+@theme {
+  --color-mitre-covered: #22c55e;
+  --color-mitre-partial: #eab308;
+  --color-mitre-uncovered: #6b7280;
+  --color-mitre-critical: #ef4444;
+  --color-mitre-high: #f97316;
+  --color-mitre-medium: #eab308;
+  --color-mitre-low: #3b82f6;
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+}
+
+@utility btn-secondary {
+  @apply bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors;
+}
+
+@utility btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+}
+
+@utility card {
+  @apply bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-6;
+}
+
+@utility stat-card {
+  @apply bg-gray-800 rounded-lg shadow-xs border border-gray-700 p-4;
+}
+
+@utility text-heading {
+  /* Dark theme text utilities */
+  @apply text-white;
+}
+
+@utility text-body {
+  @apply text-gray-300;
+}
+
+@utility text-muted {
+  @apply text-gray-400;
+}
+
+@layer utilities {
+  :root {
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    color: #e2e8f0;
+    background-color: #111827;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+  }
 }
 
 @layer components {
-  .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
-  }
-
-  .btn-secondary {
-    @apply bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors;
-  }
-
-  .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
-  }
-
-  .card {
-    @apply bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6;
-  }
-
-  .stat-card {
-    @apply bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-4;
-  }
-
-  /* Dark theme text utilities */
-  .text-heading {
-    @apply text-white;
-  }
-
-  .text-body {
-    @apply text-gray-300;
-  }
-
-  .text-muted {
-    @apply text-gray-400;
-  }
 
   /* Form inputs for dark theme */
   input[type="text"],

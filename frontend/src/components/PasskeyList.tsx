@@ -117,7 +117,7 @@ export default function PasskeyList({
     return (
       <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
           <div>
             <h4 className="font-medium text-yellow-400">
               WebAuthn Not Supported
@@ -152,7 +152,7 @@ export default function PasskeyList({
       {/* Error */}
       {error && (
         <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg flex items-center gap-2 text-red-200">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <span className="text-sm">{error}</span>
         </div>
       )}

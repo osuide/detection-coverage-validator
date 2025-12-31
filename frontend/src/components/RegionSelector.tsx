@@ -305,14 +305,14 @@ export default function RegionSelector({
                   return (
                     <label
                       key={region}
-                      className="flex items-center p-2 rounded hover:bg-gray-50 cursor-pointer"
+                      className="flex items-center p-2 rounded-sm hover:bg-gray-50 cursor-pointer"
                     >
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleRegionToggle(region)}
                         disabled={disabled}
-                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        className="h-4 w-4 text-blue-600 rounded-sm border-gray-300 focus:ring-blue-500"
                       />
                       <span className="ml-3 text-sm text-gray-700">{region}</span>
                     </label>
@@ -372,14 +372,14 @@ export default function RegionSelector({
                           return (
                             <label
                               key={region}
-                              className="flex items-center p-2 rounded hover:bg-gray-50 cursor-pointer"
+                              className="flex items-center p-2 rounded-sm hover:bg-gray-50 cursor-pointer"
                             >
                               <input
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => handleRegionToggle(region)}
                                 disabled={disabled}
-                                className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                className="h-4 w-4 text-blue-600 rounded-sm border-gray-300 focus:ring-blue-500"
                               />
                               <span className="ml-3 text-sm text-gray-700">{region}</span>
                             </label>

@@ -221,7 +221,7 @@ export default function AdminProfile() {
               {/* Warning for admins without MFA */}
               <div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="font-medium text-red-400">MFA Required</h4>
                     <p className="text-sm text-red-200/80 mt-1">
@@ -284,7 +284,7 @@ export default function AdminProfile() {
         {admin.requires_password_change && (
           <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
               <div>
                 <h4 className="font-medium text-yellow-400">Password Change Required</h4>
                 <p className="text-sm text-yellow-200/80 mt-1">

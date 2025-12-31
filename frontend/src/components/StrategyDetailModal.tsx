@@ -173,7 +173,7 @@ function OverviewTab({ details }: { details: StrategyDetail }) {
           <h3 className="text-sm font-medium text-gray-700 mb-2">GuardDuty Finding Types</h3>
           <div className="flex flex-wrap gap-2">
             {details.guardduty_finding_types.map((finding) => (
-              <code key={finding} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+              <code key={finding} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-sm">
                 {finding}
               </code>
             ))}
@@ -188,7 +188,7 @@ function OverviewTab({ details }: { details: StrategyDetail }) {
           <p><span className="font-medium">Severity:</span> {details.alert_severity}</p>
           <p><span className="font-medium">Title:</span> {details.alert_title}</p>
           <p><span className="font-medium">Description Template:</span></p>
-          <p className="text-amber-900 bg-amber-100 p-2 rounded text-xs font-mono">
+          <p className="text-amber-900 bg-amber-100 p-2 rounded-sm text-xs font-mono">
             {details.alert_description_template}
           </p>
         </div>
@@ -226,7 +226,7 @@ function CodeTab({
     <div className="space-y-4">
       {/* Review Warning */}
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-amber-700 flex-shrink-0 mt-0.5" />
+        <AlertTriangle className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
         <div className="text-sm">
           <p className="font-medium text-amber-900">Review Before Use</p>
           <p className="text-amber-900 mt-1">
@@ -260,7 +260,7 @@ function CodeTab({
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono">
           <code>{code}</code>
         </pre>
-        <span className="absolute top-2 right-2 text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">
+        <span className="absolute top-2 right-2 text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-sm">
           {language}
         </span>
       </div>
@@ -277,7 +277,7 @@ function ResponseTab({ details }: { details: StrategyDetail }) {
         <ol className="space-y-2">
           {details.investigation_steps.map((step, idx) => (
             <li key={idx} className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-900 rounded-full flex items-center justify-center text-xs font-medium">
+              <span className="shrink-0 w-6 h-6 bg-blue-100 text-blue-900 rounded-full flex items-center justify-center text-xs font-medium">
                 {idx + 1}
               </span>
               <span className="text-gray-600">{step}</span>
@@ -292,7 +292,7 @@ function ResponseTab({ details }: { details: StrategyDetail }) {
         <ol className="space-y-2">
           {details.containment_actions.map((action, idx) => (
             <li key={idx} className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-red-200 text-red-900 rounded-full flex items-center justify-center text-xs font-medium">
+              <span className="shrink-0 w-6 h-6 bg-red-200 text-red-900 rounded-full flex items-center justify-center text-xs font-medium">
                 {idx + 1}
               </span>
               <span className="text-red-900">{action}</span>

@@ -203,7 +203,7 @@ export default function ScheduleModal({ cloudAccountId, accountName, onClose }: 
     deactivateMutation.isPending || runNowMutation.isPending
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
       <div
         className="bg-gray-800 rounded-xl border border-gray-700 shadow-2xl w-full max-w-lg overflow-hidden"
         style={{

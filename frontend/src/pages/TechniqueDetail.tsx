@@ -125,7 +125,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
       <div className="absolute right-2 top-2">
         <button
           onClick={handleCopy}
-          className="p-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+          className="p-1.5 rounded-sm bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
           title="Copy to clipboard"
         >
           {copied ? (
@@ -192,10 +192,10 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`px-2 py-0.5 text-xs font-medium rounded border ${getEffortBadge(strategy.implementation_effort)}`}>
+          <span className={`px-2 py-0.5 text-xs font-medium rounded-sm border ${getEffortBadge(strategy.implementation_effort)}`}>
             {strategy.implementation_effort} effort
           </span>
-          <span className={`px-2 py-0.5 text-xs font-medium rounded border ${getFPRBadge(strategy.estimated_false_positive_rate)}`}>
+          <span className={`px-2 py-0.5 text-xs font-medium rounded-sm border ${getFPRBadge(strategy.estimated_false_positive_rate)}`}>
             {strategy.estimated_false_positive_rate} FP rate
           </span>
           {isOpen ? (
@@ -530,7 +530,7 @@ export default function TechniqueDetail() {
               {technique.tactic_names.map((tactic, i) => (
                 <span
                   key={technique.tactic_ids[i]}
-                  className="px-2 py-1 text-xs font-medium bg-purple-900/50 text-purple-300 border border-purple-700 rounded"
+                  className="px-2 py-1 text-xs font-medium bg-purple-900/50 text-purple-300 border border-purple-700 rounded-sm"
                 >
                   {tactic}
                 </span>
@@ -638,7 +638,7 @@ export default function TechniqueDetail() {
               {technique.threat_context.known_threat_actors.map((actor) => (
                 <span
                   key={actor}
-                  className="px-2 py-1 text-xs font-medium bg-red-900/30 text-red-300 border border-red-800 rounded"
+                  className="px-2 py-1 text-xs font-medium bg-red-900/30 text-red-300 border border-red-800 rounded-sm"
                 >
                   {actor}
                 </span>

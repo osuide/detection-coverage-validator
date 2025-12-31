@@ -151,7 +151,7 @@ export default function Profile() {
       )}
 
       {/* Account Overview */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-6 mb-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <User className="h-5 w-5 mr-2 text-gray-400" />
           Account Overview
@@ -195,7 +195,7 @@ export default function Profile() {
       </div>
 
       {/* Two-Factor Authentication */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-6 mb-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <Shield className="h-5 w-5 mr-2 text-gray-400" />
           Two-Factor Authentication
@@ -247,7 +247,7 @@ export default function Profile() {
       </div>
 
       {/* Security Keys & Passkeys */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-6 mb-6">
         <PasskeyList
           credentials={webauthnCredentials}
           hasTotp={user?.mfa_enabled}
@@ -271,7 +271,7 @@ export default function Profile() {
       </div>
 
       {/* Update Profile */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-6 mb-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <User className="h-5 w-5 mr-2 text-gray-400" />
           Update Profile
@@ -302,7 +302,7 @@ export default function Profile() {
       </div>
 
       {/* Change Password */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <Key className="h-5 w-5 mr-2 text-gray-400" />
           Change Password

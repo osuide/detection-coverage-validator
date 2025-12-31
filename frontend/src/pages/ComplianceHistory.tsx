@@ -182,7 +182,7 @@ function OrgOverview() {
     return (
       <div className="card p-6">
         <div className="animate-pulse">
-          <div className="h-6 bg-gray-700 rounded w-48 mb-4" />
+          <div className="h-6 bg-gray-700 rounded-sm w-48 mb-4" />
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-16 bg-gray-700/50 rounded-lg" />

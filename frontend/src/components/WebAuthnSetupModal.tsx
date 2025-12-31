@@ -146,7 +146,7 @@ export default function WebAuthnSetupModal({
             </div>
             <button
               onClick={handleClose}
-              className="p-1 text-gray-400 hover:text-white rounded"
+              className="p-1 text-gray-400 hover:text-white rounded-sm"
             >
               <X className="w-5 h-5" />
             </button>
@@ -182,7 +182,7 @@ export default function WebAuthnSetupModal({
           {step !== 'success' && (
             <button
               onClick={handleClose}
-              className="p-1 text-gray-400 hover:text-white rounded"
+              className="p-1 text-gray-400 hover:text-white rounded-sm"
             >
               <X className="w-5 h-5" />
             </button>
@@ -192,7 +192,7 @@ export default function WebAuthnSetupModal({
         {/* Error Message */}
         {error && (
           <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg flex items-center gap-2 text-red-200">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 shrink-0" />
             <span className="text-sm">{error}</span>
           </div>
         )}
@@ -297,7 +297,7 @@ export default function WebAuthnSetupModal({
                   setError('')
                 }}
                 placeholder="e.g., YubiKey, MacBook Pro, Work Laptop"
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 disabled={isRegistering}
               />
               <p className="mt-1 text-xs text-gray-500">

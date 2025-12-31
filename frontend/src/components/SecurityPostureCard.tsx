@@ -122,7 +122,7 @@ export function SecurityPostureCard({
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-400 flex-shrink-0" />
+              <Shield className="h-5 w-5 text-blue-400 shrink-0" />
               <h3 className="text-sm font-semibold text-white truncate" title={displayName}>
                 {displayName}
               </h3>
@@ -138,7 +138,7 @@ export function SecurityPostureCard({
             href={securityHubUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-400 hover:text-blue-400 transition-colors flex-shrink-0"
+            className="text-gray-400 hover:text-blue-400 transition-colors shrink-0"
             title="View in Security Hub"
           >
             <ExternalLink className="h-4 w-4" />
@@ -286,14 +286,14 @@ export function SecurityPostureCard({
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600"
+                      className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600"
                     >
                       Previous
                     </button>
                     <button
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600"
+                      className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600"
                     >
                       Next
                     </button>

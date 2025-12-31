@@ -294,7 +294,7 @@ export default function AdminMitreData() {
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Header */}
-      <header className="bg-gray-800 shadow-sm border-b border-gray-700">
+      <header className="bg-gray-800 shadow-xs border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -344,7 +344,7 @@ export default function AdminMitreData() {
         )}
 
         {/* Status Card */}
-        <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-6 mb-6">
+        <div className="bg-gray-800 rounded-lg shadow-xs border border-gray-700 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white">Sync Status</h2>
             {status?.is_synced ? (
@@ -399,7 +399,7 @@ export default function AdminMitreData() {
         </div>
 
         {/* Schedule Configuration Card */}
-        <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-6 mb-6">
+        <div className="bg-gray-800 rounded-lg shadow-xs border border-gray-700 p-6 mb-6">
           <h2 className="text-lg font-semibold text-white mb-4">Automatic Sync Schedule</h2>
 
           <div className="space-y-4">
@@ -412,7 +412,7 @@ export default function AdminMitreData() {
               <button
                 type="button"
                 onClick={() => setScheduleEnabled(!scheduleEnabled)}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
                   scheduleEnabled ? 'bg-indigo-600' : 'bg-gray-600'
                 }`}
               >
@@ -534,7 +534,7 @@ export default function AdminMitreData() {
 
         {/* Statistics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xs border border-gray-700 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Threat Groups</p>
@@ -545,7 +545,7 @@ export default function AdminMitreData() {
               <Users className="h-8 w-8 text-indigo-400" />
             </div>
           </div>
-          <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xs border border-gray-700 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Campaigns</p>
@@ -556,7 +556,7 @@ export default function AdminMitreData() {
               <Target className="h-8 w-8 text-orange-400" />
             </div>
           </div>
-          <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xs border border-gray-700 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Software</p>
@@ -567,7 +567,7 @@ export default function AdminMitreData() {
               <Package className="h-8 w-8 text-green-400" />
             </div>
           </div>
-          <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xs border border-gray-700 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Relationships</p>
@@ -581,7 +581,7 @@ export default function AdminMitreData() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700">
+        <div className="bg-gray-800 rounded-lg shadow-xs border border-gray-700">
           <div className="border-b border-gray-700">
             <nav className="flex -mb-px">
               {(['overview', 'groups', 'campaigns', 'history'] as TabType[]).map((tab) => (

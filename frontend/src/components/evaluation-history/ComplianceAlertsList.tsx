@@ -124,7 +124,7 @@ function AlertCard({
           <button
             onClick={onAcknowledge}
             disabled={isAcknowledging}
-            className="flex-shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isAcknowledging ? 'Acknowledging...' : 'Acknowledge'}
           </button>
@@ -174,7 +174,7 @@ export function ComplianceAlertsList({
     return (
       <div className="card p-6">
         <div className="animate-pulse">
-          <div className="h-6 bg-gray-700 rounded w-48 mb-4" />
+          <div className="h-6 bg-gray-700 rounded-sm w-48 mb-4" />
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-24 bg-gray-700/50 rounded-lg" />

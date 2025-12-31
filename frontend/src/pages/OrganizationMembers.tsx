@@ -292,7 +292,7 @@ function MemberRow({
       {/* Account Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center space-x-2">
-          <Cloud className="h-4 w-4 text-gray-400 flex-shrink-0" />
+          <Cloud className="h-4 w-4 text-gray-400 shrink-0" />
           <span className="font-medium text-white truncate">
             {member.member_name}
           </span>

@@ -36,7 +36,7 @@ export default function Landing() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Navigation */}
       <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrollY > 50 ? 'bg-slate-950/95 backdrop-blur-lg border-b border-slate-800' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -49,7 +49,7 @@ export default function Landing() {
               <a href="#demo" className="text-gray-300 hover:text-white transition-colors">Demo</a>
               <Link to="/docs" className="text-gray-300 hover:text-white transition-colors">Docs</Link>
               {isAuthenticated ? (
-                <Link to="/dashboard" className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-5 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg shadow-blue-500/25">
+                <Link to="/dashboard" className="bg-linear-to-r from-blue-600 to-cyan-600 text-white px-5 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg shadow-blue-500/25">
                   Go to Dashboard
                 </Link>
               ) : (
@@ -57,7 +57,7 @@ export default function Landing() {
                   <Link to="/login" className="text-gray-300 hover:text-white transition-colors">Sign In</Link>
                   <Link
                     to="/signup"
-                    className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-5 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg shadow-blue-500/25"
+                    className="bg-linear-to-r from-blue-600 to-cyan-600 text-white px-5 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg shadow-blue-500/25"
                   >
                     Start Free Scan
                   </Link>
@@ -112,7 +112,7 @@ export default function Landing() {
                     <Link
                       to="/dashboard"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block w-full text-center bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-5 py-3 rounded-lg font-medium"
+                      className="block w-full text-center bg-linear-to-r from-blue-600 to-cyan-600 text-white px-5 py-3 rounded-lg font-medium"
                     >
                       Go to Dashboard
                     </Link>
@@ -128,7 +128,7 @@ export default function Landing() {
                       <Link
                         to="/signup"
                         onClick={() => setMobileMenuOpen(false)}
-                        className="block w-full text-center bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-5 py-3 rounded-lg font-medium"
+                        className="block w-full text-center bg-linear-to-r from-blue-600 to-cyan-600 text-white px-5 py-3 rounded-lg font-medium"
                       >
                         Start Free Scan
                       </Link>
@@ -153,7 +153,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-4xl mx-auto">
             {/* Badge */}
-            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-600/10 to-cyan-600/10 border border-blue-500/20 rounded-full px-4 py-2 mb-8 backdrop-blur-sm">
+            <div className="inline-flex items-center space-x-2 bg-linear-to-r from-blue-600/10 to-cyan-600/10 border border-blue-500/20 rounded-full px-4 py-2 mb-8 backdrop-blur-xs">
               <Sparkles className="h-4 w-4 text-blue-400" />
               <span className="text-sm text-blue-300 font-medium">AWS + GCP Security Coverage Analysis</span>
             </div>
@@ -161,7 +161,7 @@ export default function Landing() {
             {/* Headline */}
             <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 leading-tight">
               Don't Let Security
-              <span className="block bg-gradient-to-r from-blue-500 via-cyan-500 to-purple-500 text-transparent bg-clip-text animate-gradient">
+              <span className="block bg-linear-to-r from-blue-500 via-cyan-500 to-purple-500 text-transparent bg-clip-text animate-gradient">
                 Blind Spots
               </span>
               Expose Your Cloud
@@ -176,14 +176,14 @@ export default function Landing() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
               <Link
                 to="/signup"
-                className="group bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-2xl shadow-blue-500/50 hover:shadow-blue-500/75 hover:scale-105 flex items-center space-x-2"
+                className="group bg-linear-to-r from-blue-600 to-cyan-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-2xl shadow-blue-500/50 hover:shadow-blue-500/75 hover:scale-105 flex items-center space-x-2"
               >
                 <span>Start Free Scan</span>
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <a
                 href="#demo"
-                className="group border border-gray-700 text-white px-8 py-4 rounded-xl font-semibold hover:bg-slate-800/50 transition-all backdrop-blur-sm flex items-center space-x-2"
+                className="group border border-gray-700 text-white px-8 py-4 rounded-xl font-semibold hover:bg-slate-800/50 transition-all backdrop-blur-xs flex items-center space-x-2"
               >
                 <span>View Demo</span>
                 <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -209,7 +209,7 @@ export default function Landing() {
 
           {/* Hero Visual - Animated MITRE Matrix Preview */}
           <div className="mt-20 max-w-5xl mx-auto">
-            <div className="relative rounded-2xl overflow-hidden border border-slate-800 shadow-2xl shadow-blue-500/20 bg-gradient-to-br from-slate-900/90 to-slate-950/90 backdrop-blur-xl">
+            <div className="relative rounded-2xl overflow-hidden border border-slate-800 shadow-2xl shadow-blue-500/20 bg-linear-to-br from-slate-900/90 to-slate-950/90 backdrop-blur-xl">
               {/* Simulated Dashboard Preview */}
               <div className="p-8">
                 <div className="flex items-center justify-between mb-6">
@@ -235,7 +235,7 @@ export default function Landing() {
                     return (
                       <div
                         key={i}
-                        className={`h-8 rounded ${bgColor} transition-all hover:scale-110 cursor-pointer`}
+                        className={`h-8 rounded-sm ${bgColor} transition-all hover:scale-110 cursor-pointer`}
                         style={{
                           animationDelay: `${i * 10}ms`,
                           opacity: 0.3 + coverage * 0.7
@@ -248,19 +248,19 @@ export default function Landing() {
                 {/* Legend */}
                 <div className="flex items-center justify-center space-x-6 mt-6 text-xs text-gray-400">
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-green-600 rounded" />
+                    <div className="w-4 h-4 bg-green-600 rounded-sm" />
                     <span>Covered</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-yellow-600 rounded" />
+                    <div className="w-4 h-4 bg-yellow-600 rounded-sm" />
                     <span>Partial</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-orange-600 rounded" />
+                    <div className="w-4 h-4 bg-orange-600 rounded-sm" />
                     <span>Minimal</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-red-600/20 rounded" />
+                    <div className="w-4 h-4 bg-red-600/20 rounded-sm" />
                     <span>No Coverage</span>
                   </div>
                 </div>
@@ -271,30 +271,30 @@ export default function Landing() {
       </section>
 
       {/* Problem/Solution Section */}
-      <section className="py-20 bg-gradient-to-b from-slate-950 to-slate-900">
+      <section className="py-20 bg-linear-to-b from-slate-950 to-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* Problem */}
             <div className="relative">
               <div className="absolute -top-4 -left-4 w-24 h-24 bg-red-600/10 rounded-full blur-2xl" />
-              <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-red-900/50 rounded-2xl p-8">
+              <div className="relative bg-linear-to-br from-slate-900 to-slate-950 border border-red-900/50 rounded-2xl p-8">
                 <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
                 <h3 className="text-2xl font-bold text-white mb-4">The Problem</h3>
                 <ul className="space-y-3 text-gray-400">
                   <li className="flex items-start space-x-3">
-                    <X className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                    <X className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
                     <span>Security teams don't know what they're missing</span>
                   </li>
                   <li className="flex items-start space-x-3">
-                    <X className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                    <X className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
                     <span>Critical gaps in detection coverage go unnoticed</span>
                   </li>
                   <li className="flex items-start space-x-3">
-                    <X className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                    <X className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
                     <span>Manual MITRE mapping takes weeks of effort</span>
                   </li>
                   <li className="flex items-start space-x-3">
-                    <X className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                    <X className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
                     <span>No visibility into coverage changes over time</span>
                   </li>
                 </ul>
@@ -304,24 +304,24 @@ export default function Landing() {
             {/* Solution */}
             <div className="relative">
               <div className="absolute -top-4 -right-4 w-24 h-24 bg-green-600/10 rounded-full blur-2xl" />
-              <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-green-900/50 rounded-2xl p-8">
+              <div className="relative bg-linear-to-br from-slate-900 to-slate-950 border border-green-900/50 rounded-2xl p-8">
                 <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
                 <h3 className="text-2xl font-bold text-white mb-4">The Solution</h3>
                 <ul className="space-y-3 text-gray-400">
                   <li className="flex items-start space-x-3">
-                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                     <span>Instant visualization of your detection coverage</span>
                   </li>
                   <li className="flex items-start space-x-3">
-                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                     <span>Automated gap analysis with prioritized recommendations</span>
                   </li>
                   <li className="flex items-start space-x-3">
-                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                     <span>AWS & GCP integration via CloudWatch, EventBridge, Cloud Logging & SCC</span>
                   </li>
                   <li className="flex items-start space-x-3">
-                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                     <span>Track improvements and prove ROI over time</span>
                   </li>
                 </ul>
@@ -337,7 +337,7 @@ export default function Landing() {
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Everything You Need to
-              <span className="block bg-gradient-to-r from-blue-500 to-cyan-500 text-transparent bg-clip-text">
+              <span className="block bg-linear-to-r from-blue-500 to-cyan-500 text-transparent bg-clip-text">
                 Secure Your Cloud
               </span>
             </h2>
@@ -406,9 +406,9 @@ export default function Landing() {
             ].map((feature, index) => (
               <div
                 key={index}
-                className="group relative bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition-all hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1"
+                className="group relative bg-linear-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition-all hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1"
               >
-                <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${feature.gradient} mb-4`}>
+                <div className={`inline-flex p-3 rounded-xl bg-linear-to-br ${feature.gradient} mb-4`}>
                   <feature.icon className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
@@ -420,7 +420,7 @@ export default function Landing() {
       </section>
 
       {/* Interactive Demo Section */}
-      <section id="demo" className="py-20 bg-gradient-to-b from-slate-900 to-slate-950">
+      <section id="demo" className="py-20 bg-linear-to-b from-slate-900 to-slate-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
@@ -433,7 +433,7 @@ export default function Landing() {
 
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Demo Card 1 */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-8">
+            <div className="bg-linear-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-8">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="p-2 bg-blue-600/20 rounded-lg">
                   <Eye className="h-6 w-6 text-blue-400" />
@@ -471,7 +471,7 @@ export default function Landing() {
             </div>
 
             {/* Demo Card 2 */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-8">
+            <div className="bg-linear-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-8">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="p-2 bg-orange-600/20 rounded-lg">
                   <AlertTriangle className="h-6 w-6 text-orange-400" />
@@ -520,7 +520,7 @@ export default function Landing() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
             {/* Free Tier */}
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6 flex flex-col">
+            <div className="relative bg-linear-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6 flex flex-col">
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-white mb-2">Free</h3>
                 <div className="flex items-baseline">
@@ -531,31 +531,31 @@ export default function Landing() {
 
               <ul className="space-y-3 mb-8 text-sm flex-1">
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                   <span className="text-gray-300">1 cloud account (AWS or GCP)</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                   <span className="text-gray-300">1 scan per week</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                   <span className="text-gray-300">30-day data retention</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Coverage heatmap</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Gap analysis list</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                   <span className="text-gray-300">PDF export (watermarked)</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Remediation templates</span>
                 </li>
               </ul>
@@ -569,8 +569,8 @@ export default function Landing() {
             </div>
 
             {/* Individual Tier */}
-            <div className="relative bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl p-6 shadow-2xl shadow-blue-500/30 flex flex-col">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
+            <div className="relative bg-linear-to-br from-blue-600 to-cyan-600 rounded-2xl p-6 shadow-2xl shadow-blue-500/30 flex flex-col">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-linear-to-r from-yellow-500 to-orange-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
                 Most Popular
               </div>
 
@@ -584,31 +584,31 @@ export default function Landing() {
 
               <ul className="space-y-3 mb-8 text-sm flex-1">
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 shrink-0" />
                   <span className="text-white">Up to 6 accounts (AWS + GCP)</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 shrink-0" />
                   <span className="text-white">90-day data retention</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 shrink-0" />
                   <span className="text-white">Unlimited scans</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 shrink-0" />
                   <span className="text-white">Scheduled scans & alerts</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 shrink-0" />
                   <span className="text-white">Historical trends & analytics</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 shrink-0" />
                   <span className="text-white">API access</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-white mt-0.5 shrink-0" />
                   <span className="text-white">Code analysis</span>
                 </li>
               </ul>
@@ -622,8 +622,8 @@ export default function Landing() {
             </div>
 
             {/* Pro Tier */}
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-cyan-500/50 rounded-2xl p-6 flex flex-col">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
+            <div className="relative bg-linear-to-br from-slate-900 to-slate-950 border border-cyan-500/50 rounded-2xl p-6 flex flex-col">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-linear-to-r from-cyan-500 to-blue-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
                 For Organisations
               </div>
 
@@ -637,31 +637,31 @@ export default function Landing() {
 
               <ul className="space-y-3 mb-8 text-sm flex-1">
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Up to 500 accounts</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">1-year data retention</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">All Individual features</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">AWS/GCP Organisation connection</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Auto-discovery of accounts</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Unified coverage dashboard</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Delegated scanning</span>
                 </li>
               </ul>
@@ -675,8 +675,8 @@ export default function Landing() {
             </div>
 
             {/* Enterprise Tier */}
-            <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-purple-500/50 rounded-2xl p-6 flex flex-col">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
+            <div className="relative bg-linear-to-br from-slate-900 to-slate-950 border border-purple-500/50 rounded-2xl p-6 flex flex-col">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-linear-to-r from-purple-500 to-pink-500 text-white px-3 py-0.5 rounded-full text-xs font-semibold">
                 Unlimited
               </div>
 
@@ -690,31 +690,31 @@ export default function Landing() {
 
               <ul className="space-y-3 mb-8 text-sm flex-1">
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Unlimited accounts</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Unlimited data retention</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">All Pro features</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">SSO / SAML integration</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Dedicated support & SLA</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Custom integrations</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Unlimited team members</span>
                 </li>
               </ul>
@@ -731,7 +731,7 @@ export default function Landing() {
       </section>
 
       {/* Social Proof Section */}
-      <section className="py-20 bg-gradient-to-b from-slate-900 to-slate-950">
+      <section className="py-20 bg-linear-to-b from-slate-900 to-slate-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Stats */}
           <div className="grid md:grid-cols-3 gap-8 mb-16">
@@ -741,7 +741,7 @@ export default function Landing() {
               { value: '32%', label: 'Average Coverage Improvement' }
             ].map((stat, index) => (
               <div key={index} className="text-center">
-                <div className="text-5xl font-bold bg-gradient-to-r from-blue-500 to-cyan-500 text-transparent bg-clip-text mb-2">
+                <div className="text-5xl font-bold bg-linear-to-r from-blue-500 to-cyan-500 text-transparent bg-clip-text mb-2">
                   {stat.value}
                 </div>
                 <div className="text-gray-400">{stat.label}</div>
@@ -754,7 +754,7 @@ export default function Landing() {
             <h3 className="text-3xl font-bold text-white mb-8">Trusted by Security Teams</h3>
             <div className="grid md:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6">
+                <div key={i} className="bg-linear-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6">
                   <div className="flex items-center space-x-1 mb-4">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <span key={star} className="text-yellow-500">★</span>
@@ -764,7 +764,7 @@ export default function Landing() {
                     "A13E's DCV helped us identify and close critical gaps in our detection coverage within days. Game changer for our security team."
                   </p>
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full" />
+                    <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-cyan-500 rounded-full" />
                     <div>
                       <div className="text-white font-semibold">Security Leader</div>
                       <div className="text-gray-500 text-sm">Fortune 500 Company</div>
@@ -782,7 +782,7 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to Eliminate Your
-            <span className="block bg-gradient-to-r from-blue-500 to-cyan-500 text-transparent bg-clip-text">
+            <span className="block bg-linear-to-r from-blue-500 to-cyan-500 text-transparent bg-clip-text">
               Security Blind Spots?
             </span>
           </h2>
@@ -791,7 +791,7 @@ export default function Landing() {
           </p>
           <Link
             to="/signup"
-            className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-10 py-5 rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-2xl shadow-blue-500/50 hover:shadow-blue-500/75 hover:scale-105 text-lg"
+            className="inline-flex items-center space-x-2 bg-linear-to-r from-blue-600 to-cyan-600 text-white px-10 py-5 rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-2xl shadow-blue-500/50 hover:shadow-blue-500/75 hover:scale-105 text-lg"
           >
             <span>Start Your Free Scan Now</span>
             <ArrowRight className="h-6 w-6" />

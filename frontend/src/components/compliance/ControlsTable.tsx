@@ -48,7 +48,7 @@ const applicabilityConfig: Record<
 // Component for displaying a single technique with template link
 function TechniqueItem({ technique }: { technique: MissingTechniqueDetail }) {
   return (
-    <div className="flex items-center justify-between py-1.5 px-2 bg-gray-700/30 rounded hover:bg-gray-700/50">
+    <div className="flex items-center justify-between py-1.5 px-2 bg-gray-700/30 rounded-sm hover:bg-gray-700/50">
       <div className="flex items-center gap-2">
         <span className="text-xs font-mono text-blue-400">{technique.technique_id}</span>
         <span className="text-sm text-gray-300">{technique.technique_name}</span>
@@ -56,7 +56,7 @@ function TechniqueItem({ technique }: { technique: MissingTechniqueDetail }) {
       {technique.has_template ? (
         <Link
           to={`/techniques/${technique.technique_id}`}
-          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-900/50 text-green-300 border border-green-700 rounded hover:bg-green-800/50 transition-colors"
+          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-900/50 text-green-300 border border-green-700 rounded-sm hover:bg-green-800/50 transition-colors"
         >
           <FileCode className="w-3 h-3" />
           View Template
@@ -66,7 +66,7 @@ function TechniqueItem({ technique }: { technique: MissingTechniqueDetail }) {
           href={`https://attack.mitre.org/techniques/${technique.technique_id.replace('.', '/')}/`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-gray-700 text-gray-400 border border-gray-600 rounded hover:bg-gray-600 transition-colors"
+          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-gray-700 text-gray-400 border border-gray-600 rounded-sm hover:bg-gray-600 transition-colors"
         >
           <ExternalLink className="w-3 h-3" />
           MITRE ATT&CK
@@ -116,7 +116,7 @@ export function ControlsTable({ controls }: ControlsTableProps) {
     const config = applicabilityConfig[applicability]
     return (
       <span
-        className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded border ${config.colour}`}
+        className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-sm border ${config.colour}`}
         title={config.description}
       >
         {config.icon}
@@ -160,12 +160,12 @@ export function ControlsTable({ controls }: ControlsTableProps) {
                     <div className="flex items-center gap-2">
                       {hasTechniques ? (
                         isExpanded ? (
-                          <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
                         ) : (
-                          <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                         )
                       ) : (
-                        <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                        <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
                       )}
                       <div>
                         <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ export function ControlsTable({ controls }: ControlsTableProps) {
                       <span className="text-sm text-gray-300">{control.control_family}</span>
                       {control.related_gaps_count && control.related_gaps_count > 0 && (
                         <span
-                          className="px-1.5 py-0.5 text-xs bg-gray-700 text-gray-400 rounded"
+                          className="px-1.5 py-0.5 text-xs bg-gray-700 text-gray-400 rounded-sm"
                           title={`${control.related_gaps_count} more gap${control.related_gaps_count !== 1 ? 's' : ''} in this family`}
                         >
                           +{control.related_gaps_count} more
@@ -226,7 +226,7 @@ export function ControlsTable({ controls }: ControlsTableProps) {
                       {control.cloud_context?.aws_services?.slice(0, 2).map((svc) => (
                         <span
                           key={svc}
-                          className="px-2 py-0.5 text-xs bg-orange-900/50 text-orange-300 border border-orange-700 rounded"
+                          className="px-2 py-0.5 text-xs bg-orange-900/50 text-orange-300 border border-orange-700 rounded-sm"
                           title={`AWS: ${svc}`}
                         >
                           AWS {svc}
@@ -235,7 +235,7 @@ export function ControlsTable({ controls }: ControlsTableProps) {
                       {control.cloud_context?.gcp_services?.slice(0, 2).map((svc) => (
                         <span
                           key={svc}
-                          className="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-300 border border-blue-700 rounded"
+                          className="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-300 border border-blue-700 rounded-sm"
                           title={`GCP: ${svc}`}
                         >
                           GCP {svc}

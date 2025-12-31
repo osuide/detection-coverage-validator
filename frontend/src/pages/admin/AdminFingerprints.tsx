@@ -273,7 +273,7 @@ export default function AdminFingerprints() {
                   setFlaggedOnly(e.target.checked);
                   setPage(1);
                 }}
-                className="h-4 w-4 text-orange-600 bg-gray-700 border-gray-600 rounded focus:ring-orange-500"
+                className="h-4 w-4 text-orange-600 bg-gray-700 border-gray-600 rounded-sm focus:ring-orange-500"
               />
               <label htmlFor="flaggedOnly" className="ml-2 text-sm text-gray-300">
                 Flagged Only
@@ -285,7 +285,7 @@ export default function AdminFingerprints() {
         {/* Error */}
         {error && (
           <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-lg flex items-center gap-2 text-red-200">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 shrink-0" />
             <span>{error}</span>
             <button onClick={() => setError('')} className="ml-auto text-red-400 hover:text-red-300">
               <X className="w-4 h-4" />
@@ -376,7 +376,7 @@ export default function AdminFingerprints() {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => fetchFingerprintDetail(fp.id)}
-                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-sm transition-colors"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
@@ -384,7 +384,7 @@ export default function AdminFingerprints() {
                         {fp.is_flagged ? (
                           <button
                             onClick={() => setFlagModal({ id: fp.id, action: 'unflag' })}
-                            className="p-1.5 text-green-400 hover:text-green-300 hover:bg-green-900/30 rounded transition-colors"
+                            className="p-1.5 text-green-400 hover:text-green-300 hover:bg-green-900/30 rounded-sm transition-colors"
                             title="Unflag"
                           >
                             <Check className="w-4 h-4" />
@@ -392,7 +392,7 @@ export default function AdminFingerprints() {
                         ) : (
                           <button
                             onClick={() => setFlagModal({ id: fp.id, action: 'flag' })}
-                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
+                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded-sm transition-colors"
                             title="Flag as Abusive"
                           >
                             <Flag className="w-4 h-4" />

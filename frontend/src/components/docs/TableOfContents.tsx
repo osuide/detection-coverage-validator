@@ -57,7 +57,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
   if (headings.length < 3) return null;
 
   return (
-    <div className="hidden xl:block w-64 flex-shrink-0">
+    <div className="hidden xl:block w-64 shrink-0">
       <nav className="sticky top-28">
         <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
           <List className="h-4 w-4" />

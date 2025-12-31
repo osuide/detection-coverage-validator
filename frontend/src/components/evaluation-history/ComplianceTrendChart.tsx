@@ -130,10 +130,10 @@ export function ComplianceTrendChart({
       <div className="card p-6">
         <div className="animate-pulse">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-6 bg-gray-700 rounded w-48" />
-            <div className="h-8 bg-gray-700 rounded w-32" />
+            <div className="h-6 bg-gray-700 rounded-sm w-48" />
+            <div className="h-8 bg-gray-700 rounded-sm w-32" />
           </div>
-          <div className="h-64 bg-gray-700/50 rounded" />
+          <div className="h-64 bg-gray-700/50 rounded-sm" />
         </div>
       </div>
     )

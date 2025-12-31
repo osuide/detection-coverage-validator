@@ -737,7 +737,7 @@ function AccountCard({
             <span className="text-xs">Last scan: {new Date(account.last_scan_at).toLocaleString()}</span>
           )}
           {credential?.credential_type && (
-            <span className="text-xs bg-gray-700/30 px-2 py-0.5 rounded">
+            <span className="text-xs bg-gray-700/30 px-2 py-0.5 rounded-sm">
               {credential.credential_type === 'aws_iam_role' ? 'IAM Role' :
                credential.credential_type === 'gcp_workload_identity' ? 'Workload Identity' :
                'Service Account Key'}

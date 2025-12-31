@@ -71,7 +71,7 @@ function SeverityBadge({ severity }: { severity: string }) {
   const config = severityConfig[severity] || severityConfig.INFORMATIONAL
   return (
     <span
-      className={`px-2 py-0.5 text-xs font-medium rounded ${config.bgColour} ${config.colour}`}
+      className={`px-2 py-0.5 text-xs font-medium rounded-sm ${config.bgColour} ${config.colour}`}
     >
       {severity}
     </span>
@@ -102,7 +102,7 @@ function TechniqueBadge({ techniqueId }: { techniqueId: string }) {
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
-      className="inline-flex items-center px-2 py-0.5 text-xs font-mono bg-blue-900/30 text-blue-400 border border-blue-700/50 rounded hover:bg-blue-800/50 transition-colors"
+      className="inline-flex items-center px-2 py-0.5 text-xs font-mono bg-blue-900/30 text-blue-400 border border-blue-700/50 rounded-sm hover:bg-blue-800/50 transition-colors"
     >
       {techniqueId}
       <ExternalLink className="h-2.5 w-2.5 ml-1" />
@@ -142,7 +142,7 @@ function ControlRow({
           </div>
           <p className="text-sm text-gray-400 mt-1 truncate">{control.title}</p>
         </div>
-        <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+        <div className="flex items-center gap-2 ml-4 shrink-0">
           {techniques.length > 0 && (
             <div className="flex flex-wrap gap-1 max-w-xs">
               {techniques.slice(0, 3).map((techniqueId) => (
@@ -176,7 +176,7 @@ function ControlRow({
             {Object.entries(statusByRegion).map(([region, status]) => (
               <div
                 key={region}
-                className="flex items-center justify-between px-2 py-1 bg-gray-700/30 rounded"
+                className="flex items-center justify-between px-2 py-1 bg-gray-700/30 rounded-sm"
               >
                 <span className="text-xs text-gray-400">{region}</span>
                 <span
@@ -305,7 +305,7 @@ export function SecurityHubAggregatedCard({
         <div className="flex items-center justify-between gap-4">
           {/* Left: Icon + Title */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex-shrink-0 p-1.5 bg-blue-900/30 rounded-lg">
+            <div className="shrink-0 p-1.5 bg-blue-900/30 rounded-lg">
               <Lock className="h-5 w-5 text-blue-400" />
             </div>
             <div className="min-w-0">
@@ -351,14 +351,14 @@ export function SecurityHubAggregatedCard({
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             {onViewDetails && (
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   onViewDetails()
                 }}
-                className="p-1.5 text-gray-400 hover:text-blue-400 rounded hover:bg-gray-700"
+                className="p-1.5 text-gray-400 hover:text-blue-400 rounded-sm hover:bg-gray-700"
                 title="View details"
               >
                 <Eye className="h-4 w-4" />
@@ -427,7 +427,7 @@ export function SecurityHubAggregatedCard({
                 value={severityFilter}
                 onChange={(e) => setSeverityFilter(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
-                className="border border-gray-600 bg-gray-700 text-gray-100 rounded px-2 py-1 text-xs focus:ring-2 focus:ring-blue-500"
+                className="border border-gray-600 bg-gray-700 text-gray-100 rounded-sm px-2 py-1 text-xs focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Severities</option>
                 {controlStats.severities.map((sev) => (

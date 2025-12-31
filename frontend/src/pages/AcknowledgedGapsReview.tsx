@@ -266,7 +266,7 @@ function AcknowledgedGapRow({ gap }: { gap: OrgAcknowledgedGap }) {
             )}
 
             {/* Priority badge */}
-            <span className={`px-2 py-0.5 text-xs font-medium rounded ${priorityStyles[gap.priority] || 'bg-gray-700 text-gray-400'}`}>
+            <span className={`px-2 py-0.5 text-xs font-medium rounded-sm ${priorityStyles[gap.priority] || 'bg-gray-700 text-gray-400'}`}>
               {gap.priority}
             </span>
 
@@ -307,7 +307,7 @@ function AcknowledgedGapRow({ gap }: { gap: OrgAcknowledgedGap }) {
 
           {/* Risk acceptance reason */}
           {gap.risk_acceptance_reason && (
-            <div className="mt-2 text-sm text-gray-400 bg-gray-700/50 rounded p-2 border border-gray-600">
+            <div className="mt-2 text-sm text-gray-400 bg-gray-700/50 rounded-sm p-2 border border-gray-600">
               <span className="font-medium text-gray-300">Reason: </span>
               {gap.risk_acceptance_reason}
             </div>
@@ -315,7 +315,7 @@ function AcknowledgedGapRow({ gap }: { gap: OrgAcknowledgedGap }) {
 
           {/* Remediation notes */}
           {gap.remediation_notes && !gap.risk_acceptance_reason && (
-            <div className="mt-2 text-sm text-gray-400 bg-gray-700/50 rounded p-2 border border-gray-600">
+            <div className="mt-2 text-sm text-gray-400 bg-gray-700/50 rounded-sm p-2 border border-gray-600">
               <span className="font-medium text-gray-300">Notes: </span>
               {gap.remediation_notes}
             </div>
@@ -323,7 +323,7 @@ function AcknowledgedGapRow({ gap }: { gap: OrgAcknowledgedGap }) {
         </div>
 
         {/* Right side - Actions */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <a
             href={mitreUrl}
             target="_blank"

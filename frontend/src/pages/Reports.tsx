@@ -170,7 +170,7 @@ export default function Reports() {
 
       {/* Free tier upgrade prompt */}
       {isFreeUser && (
-        <div className="mb-6 p-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl text-white">
+        <div className="mb-6 p-6 bg-linear-to-r from-blue-600 to-indigo-600 rounded-xl text-white">
           <div className="flex items-start justify-between">
             <div className="flex items-start">
               <div className="p-2 bg-white/20 rounded-lg mr-4">

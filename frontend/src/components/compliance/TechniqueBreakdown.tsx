@@ -142,7 +142,7 @@ function ServiceCoverageIndicator({
         {covered_services.map((service) => (
           <span
             key={service}
-            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-green-900/50 text-green-300 border border-green-700/50 rounded"
+            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-green-900/50 text-green-300 border border-green-700/50 rounded-sm"
           >
             <CheckCircle className="w-3 h-3" />
             {service}
@@ -151,7 +151,7 @@ function ServiceCoverageIndicator({
         {uncovered_services.map((service) => (
           <span
             key={service}
-            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-red-900/50 text-red-300 border border-red-700/50 rounded"
+            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-red-900/50 text-red-300 border border-red-700/50 rounded-sm"
           >
             <XCircle className="w-3 h-3" />
             {service}
@@ -191,7 +191,7 @@ function TechniqueRow({ technique }: { technique: TechniqueCoverageDetail }) {
               {technique.has_template ? (
                 <Link
                   to={`/techniques/${technique.technique_id}`}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-900/50 text-green-300 border border-green-700 rounded hover:bg-green-800/50 transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-900/50 text-green-300 border border-green-700 rounded-sm hover:bg-green-800/50 transition-colors"
                 >
                   <FileCode className="w-3 h-3" />
                   View Template
@@ -201,7 +201,7 @@ function TechniqueRow({ technique }: { technique: TechniqueCoverageDetail }) {
                   href={`https://attack.mitre.org/techniques/${technique.technique_id.replace('.', '/')}/`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-gray-700 text-gray-400 border border-gray-600 rounded hover:bg-gray-600 transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-gray-700 text-gray-400 border border-gray-600 rounded-sm hover:bg-gray-600 transition-colors"
                 >
                   <ExternalLink className="w-3 h-3" />
                   MITRE ATT&CK

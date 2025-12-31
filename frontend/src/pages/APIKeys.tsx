@@ -153,7 +153,7 @@ export default function APIKeys() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-xs text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
         >
           <Plus className="h-4 w-4 mr-2" />
           Create API Key
@@ -171,7 +171,7 @@ export default function APIKeys() {
       {createdKey && (
         <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4">
           <div className="flex items-start">
-            <AlertTriangle className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
+            <AlertTriangle className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 shrink-0" />
             <div className="flex-1">
               <h3 className="text-sm font-medium text-yellow-400">
                 Save your API key - you won't be able to see it again!
@@ -180,7 +180,7 @@ export default function APIKeys() {
                 Make sure to copy your API key now. For security reasons, it won't be shown again.
               </p>
               <div className="mt-3 flex items-center space-x-2">
-                <code className="flex-1 px-3 py-2 bg-gray-900 border border-yellow-700 rounded font-mono text-sm break-all">
+                <code className="flex-1 px-3 py-2 bg-gray-900 border border-yellow-700 rounded-sm font-mono text-sm break-all">
                   {createdKey.key}
                 </code>
                 <button
@@ -206,7 +206,7 @@ export default function APIKeys() {
       )}
 
       {/* API Keys list */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-700">
           <div className="flex items-center">
             <Key className="h-5 w-5 text-gray-400 mr-2" />
@@ -310,13 +310,13 @@ export default function APIKeys() {
                   {key.scopes.length > 0 && key.scopes.map((scope) => (
                     <span
                       key={scope}
-                      className="px-2 py-0.5 text-xs font-medium bg-gray-700/30 text-gray-400 border border-gray-600 rounded"
+                      className="px-2 py-0.5 text-xs font-medium bg-gray-700/30 text-gray-400 border border-gray-600 rounded-sm"
                     >
                       {scope}
                     </span>
                   ))}
                   {key.ip_allowlist && key.ip_allowlist.length > 0 && (
-                    <span className="px-2 py-0.5 text-xs font-medium bg-blue-900/30 text-blue-400 rounded inline-flex items-center">
+                    <span className="px-2 py-0.5 text-xs font-medium bg-blue-900/30 text-blue-400 rounded-sm inline-flex items-center">
                       <Shield className="h-3 w-3 mr-1" />
                       {key.ip_allowlist.length} IP{key.ip_allowlist.length > 1 ? 's' : ''} allowed
                     </span>
@@ -353,7 +353,7 @@ export default function APIKeys() {
                   required
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-xs focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
                   placeholder="e.g., CI/CD Pipeline, Monitoring Service"
                 />
               </div>
@@ -366,13 +366,13 @@ export default function APIKeys() {
                   {scopesInfo.scopes.map((scope) => (
                     <label
                       key={scope}
-                      className="flex items-start cursor-pointer hover:bg-gray-700 p-1 rounded"
+                      className="flex items-start cursor-pointer hover:bg-gray-700 p-1 rounded-sm"
                     >
                       <input
                         type="checkbox"
                         checked={newKeyScopes.includes(scope)}
                         onChange={() => toggleScope(scope)}
-                        className="h-4 w-4 mt-0.5 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
+                        className="h-4 w-4 mt-0.5 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded-sm"
                       />
                       <div className="ml-2">
                         <span className="text-sm font-medium text-white">{scope}</span>
@@ -396,7 +396,7 @@ export default function APIKeys() {
                   id="expires"
                   value={newKeyExpires}
                   onChange={(e) => setNewKeyExpires(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-xs focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm"
                 >
                   <option value="">Never expires</option>
                   <option value="30">30 days</option>
@@ -414,7 +414,7 @@ export default function APIKeys() {
                     type="checkbox"
                     checked={ipAllowlistEnabled}
                     onChange={(e) => setIpAllowlistEnabled(e.target.checked)}
-                    className="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded-sm"
                   />
                   <div className="ml-3 flex items-center">
                     <Shield className="h-4 w-4 text-gray-400 mr-2" />
@@ -425,7 +425,7 @@ export default function APIKeys() {
                 {ipAllowlistEnabled && (
                   <div className="mt-3">
                     <div className="flex items-start space-x-2 mb-2">
-                      <Info className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <Info className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
                       <p className="text-xs text-gray-400">
                         Enter IP addresses or CIDR ranges, one per line or comma-separated.
                         The API key will only work from these addresses.
@@ -436,7 +436,7 @@ export default function APIKeys() {
                       onChange={(e) => setNewKeyIpAllowlist(e.target.value)}
                       placeholder="e.g., 192.168.1.100&#10;10.0.0.0/24&#10;203.0.113.50"
                       rows={3}
-                      className="block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-sm focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm font-mono"
+                      className="block w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg shadow-xs focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm font-mono"
                     />
                   </div>
                 )}

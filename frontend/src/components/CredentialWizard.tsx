@@ -205,7 +205,7 @@ export default function CredentialWizard({
       <div className="space-y-6">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">
-            <Shield className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+            <Shield className="w-5 h-5 text-blue-600 mt-0.5 mr-3 shrink-0" />
             <div>
               <h4 className="font-medium text-blue-900">Least Privilege Access</h4>
               <p className="text-sm text-blue-700 mt-1">
@@ -328,8 +328,8 @@ export default function CredentialWizard({
             </summary>
             <div className="px-4 pb-3">
               <ul className="text-sm text-amber-900 space-y-1">
-                <li>• <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">iam:CreateRole</code>, <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">iam:CreatePolicy</code>, <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">iam:AttachRolePolicy</code></li>
-                <li>• Or <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">cloudformation:CreateStack</code> for template deployment</li>
+                <li>• <code className="bg-amber-100 text-amber-900 px-1 rounded-sm text-xs">iam:CreateRole</code>, <code className="bg-amber-100 text-amber-900 px-1 rounded-sm text-xs">iam:CreatePolicy</code>, <code className="bg-amber-100 text-amber-900 px-1 rounded-sm text-xs">iam:AttachRolePolicy</code></li>
+                <li>• Or <code className="bg-amber-100 text-amber-900 px-1 rounded-sm text-xs">cloudformation:CreateStack</code> for template deployment</li>
               </ul>
             </div>
           </details>
@@ -407,7 +407,7 @@ export default function CredentialWizard({
                       <li>Name the policy <strong>"A13E-DetectionScanner"</strong> and create it</li>
                       <li>Go to <strong>IAM → Roles → Create role</strong></li>
                       <li>Select <strong>"AWS account"</strong> as trusted entity type</li>
-                      <li>Choose <strong>"Another AWS account"</strong> and enter: <code className="bg-gray-200 px-1 rounded">{instructions?.a13e_aws_account_id || 'Loading...'}</code></li>
+                      <li>Choose <strong>"Another AWS account"</strong> and enter: <code className="bg-gray-200 px-1 rounded-sm">{instructions?.a13e_aws_account_id || 'Loading...'}</code></li>
                       <li>Check <strong>"Require external ID"</strong> and enter the External ID shown above</li>
                       <li>Click <strong>Next</strong>, search for and attach <strong>"A13E-DetectionScanner"</strong> policy</li>
                       <li>Name the role <strong>"A13E-ReadOnly"</strong> and create it</li>
@@ -503,8 +503,8 @@ export default function CredentialWizard({
           <div className="px-4 pb-3">
             <ul className="text-sm text-amber-900 space-y-1">
               <li>• <strong>Project Owner</strong> or <strong>IAM Admin</strong> role</li>
-              <li>• <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">iam.roles.create</code>, <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">iam.serviceAccounts.create</code></li>
-              <li>• <code className="bg-amber-100 text-amber-900 px-1 rounded text-xs">gcloud</code> CLI installed (for script method)</li>
+              <li>• <code className="bg-amber-100 text-amber-900 px-1 rounded-sm text-xs">iam.roles.create</code>, <code className="bg-amber-100 text-amber-900 px-1 rounded-sm text-xs">iam.serviceAccounts.create</code></li>
+              <li>• <code className="bg-amber-100 text-amber-900 px-1 rounded-sm text-xs">gcloud</code> CLI installed (for script method)</li>
             </ul>
           </div>
         </details>
@@ -512,7 +512,7 @@ export default function CredentialWizard({
         {/* Recommendation note */}
         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
           <div className="flex items-start">
-            <Info className="w-4 h-4 text-green-700 mt-0.5 mr-2 flex-shrink-0" />
+            <Info className="w-4 h-4 text-green-700 mt-0.5 mr-2 shrink-0" />
             <p className="text-sm text-green-900">
               <strong>Workload Identity Federation</strong> is recommended for production (no keys to manage).
             </p>
@@ -744,7 +744,7 @@ export default function CredentialWizard({
         {/* Security notice */}
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-start">
-            <Shield className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
+            <Shield className="w-5 h-5 text-green-600 mt-0.5 mr-3 shrink-0" />
             <div>
               <h5 className="font-medium text-green-900">Workload Identity Federation</h5>
               <p className="text-sm text-green-700 mt-1">
@@ -869,12 +869,12 @@ export default function CredentialWizard({
               </span>
             </div>
             <div className="text-sm text-gray-600 space-y-1">
-              <div>Type: <code className="bg-gray-100 px-1 rounded">{credential.credential_type}</code></div>
+              <div>Type: <code className="bg-gray-100 px-1 rounded-sm">{credential.credential_type}</code></div>
               {credential.aws_role_arn && (
-                <div>Role: <code className="bg-gray-100 px-1 rounded text-xs">{credential.aws_role_arn}</code></div>
+                <div>Role: <code className="bg-gray-100 px-1 rounded-sm text-xs">{credential.aws_role_arn}</code></div>
               )}
               {credential.gcp_service_account_email && (
-                <div>Service Account: <code className="bg-gray-100 px-1 rounded text-xs">{credential.gcp_service_account_email}</code></div>
+                <div>Service Account: <code className="bg-gray-100 px-1 rounded-sm text-xs">{credential.gcp_service_account_email}</code></div>
               )}
             </div>
           </div>
@@ -904,7 +904,7 @@ export default function CredentialWizard({
                 <div className="text-sm font-medium text-gray-700 mb-1">Granted Permissions ({validation.granted_permissions.length})</div>
                 <div className="flex flex-wrap gap-1">
                   {validation.granted_permissions.slice(0, 10).map((perm, i) => (
-                    <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-green-100 text-green-900">
+                    <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-mono bg-green-100 text-green-900">
                       <Check className="w-3 h-3 mr-1" />
                       {perm}
                     </span>
@@ -921,7 +921,7 @@ export default function CredentialWizard({
                 <div className="text-sm font-medium text-red-700 mb-1">Missing Permissions ({validation.missing_permissions.length})</div>
                 <div className="flex flex-wrap gap-1">
                   {validation.missing_permissions.map((perm, i) => (
-                    <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-red-100 text-red-800">
+                    <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-mono bg-red-100 text-red-800">
                       <X className="w-3 h-3 mr-1" />
                       {perm}
                     </span>

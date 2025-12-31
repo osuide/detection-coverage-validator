@@ -160,7 +160,7 @@ export default function AdminAuditLogs() {
                 setActionFilter(e.target.value);
                 setPage(1);
               }}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-hidden focus:ring-2 focus:ring-red-500"
             >
               <option value="">All Actions</option>
               <option value="admin:login">Login</option>
@@ -180,7 +180,7 @@ export default function AdminAuditLogs() {
               onChange={(e) => setAdminFilter(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && fetchLogs()}
               placeholder="Filter by admin email..."
-              className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-red-500"
             />
           </div>
         </div>
@@ -256,7 +256,7 @@ export default function AdminAuditLogs() {
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getActionColor(log.action)}`}
+                          className={`inline-flex items-center px-2 py-1 rounded-sm text-xs font-medium ${getActionColor(log.action)}`}
                         >
                           {formatAction(log.action)}
                         </span>

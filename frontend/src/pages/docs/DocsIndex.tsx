@@ -50,8 +50,8 @@ export function DocsIndex() {
       </div>
 
       {/* Quick Start */}
-      <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl p-8 mb-12 relative overflow-hidden shadow-2xl shadow-blue-500/25">
-        <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/20" />
+      <div className="bg-linear-to-r from-blue-600 to-cyan-600 rounded-2xl p-8 mb-12 relative overflow-hidden shadow-2xl shadow-blue-500/25">
+        <div className="absolute inset-0 bg-linear-to-br from-transparent to-black/20" />
         <div className="relative z-10">
           <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-3">
             <Zap className="h-6 w-6" />
@@ -59,7 +59,7 @@ export function DocsIndex() {
           </h2>
           <ol className="space-y-4 text-blue-100 mb-8">
             <li className="flex items-start gap-4">
-              <span className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold">
+              <span className="shrink-0 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold">
                 1
               </span>
               <div>
@@ -68,7 +68,7 @@ export function DocsIndex() {
               </div>
             </li>
             <li className="flex items-start gap-4">
-              <span className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold">
+              <span className="shrink-0 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold">
                 2
               </span>
               <div>
@@ -77,7 +77,7 @@ export function DocsIndex() {
               </div>
             </li>
             <li className="flex items-start gap-4">
-              <span className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold">
+              <span className="shrink-0 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold">
                 3
               </span>
               <div>
@@ -107,7 +107,7 @@ export function DocsIndex() {
               className="group p-6 bg-slate-900/50 border border-slate-800 rounded-xl hover:border-blue-500/50 hover:bg-slate-800/50 hover:shadow-xl hover:shadow-blue-500/10 transition-all"
             >
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/25">
+                <div className="p-3 bg-linear-to-br from-blue-600 to-cyan-600 rounded-xl group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/25">
                   <Icon className="h-6 w-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -120,7 +120,7 @@ export function DocsIndex() {
                     {doc.readTime} read
                   </span>
                 </div>
-                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-blue-400 group-hover:translate-x-1 transition-all flex-shrink-0 mt-1" />
+                <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-blue-400 group-hover:translate-x-1 transition-all shrink-0 mt-1" />
               </div>
             </Link>
           );

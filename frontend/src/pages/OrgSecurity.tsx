@@ -198,7 +198,7 @@ export default function OrgSecurity() {
       )}
 
       {/* MFA Settings */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-6 mb-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <Shield className="h-5 w-5 mr-2 text-gray-400" />
           Multi-Factor Authentication
@@ -218,7 +218,7 @@ export default function OrgSecurity() {
                 disabled={!isOwner}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <div className="w-11 h-6 bg-gray-600 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
 
@@ -242,7 +242,7 @@ export default function OrgSecurity() {
       </div>
 
       {/* Session Settings */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-6 mb-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <Clock className="h-5 w-5 mr-2 text-gray-400" />
           Session Settings
@@ -289,7 +289,7 @@ export default function OrgSecurity() {
       </div>
 
       {/* Password Policy */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6 mb-6">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-6 mb-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
           <Key className="h-5 w-5 mr-2 text-gray-400" />
           Password Policy
@@ -358,7 +358,7 @@ export default function OrgSecurity() {
       )}
 
       {/* Verified Domains */}
-      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-6">
+      <div className="bg-gray-800 rounded-xl shadow-xs border border-gray-700 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white flex items-center">
             <Globe className="h-5 w-5 mr-2 text-gray-400" />
@@ -492,7 +492,7 @@ export default function OrgSecurity() {
                     <div>
                       <span className="text-xs font-medium text-gray-400">Name/Host</span>
                       <div className="flex items-center gap-2">
-                        <code className="flex-1 text-sm bg-gray-900 px-2 py-1 rounded border border-gray-700">
+                        <code className="flex-1 text-sm bg-gray-900 px-2 py-1 rounded-sm border border-gray-700">
                           {verificationInfo.record_name}
                         </code>
                         <button
@@ -506,7 +506,7 @@ export default function OrgSecurity() {
                     <div>
                       <span className="text-xs font-medium text-gray-400">Value</span>
                       <div className="flex items-center gap-2">
-                        <code className="flex-1 text-sm bg-gray-900 px-2 py-1 rounded border border-gray-700 break-all">
+                        <code className="flex-1 text-sm bg-gray-900 px-2 py-1 rounded-sm border border-gray-700 break-all">
                           {verificationInfo.record_value}
                         </code>
                         <button

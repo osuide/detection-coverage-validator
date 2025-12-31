@@ -66,7 +66,7 @@ export default function Coverage() {
               onClick={() => setViewMode('heatmap')}
               className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'heatmap'
-                  ? 'bg-gray-600 text-white shadow-sm'
+                  ? 'bg-gray-600 text-white shadow-xs'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
@@ -77,7 +77,7 @@ export default function Coverage() {
               onClick={() => setViewMode('tactics')}
               className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'tactics'
-                  ? 'bg-gray-600 text-white shadow-sm'
+                  ? 'bg-gray-600 text-white shadow-xs'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
@@ -203,15 +203,15 @@ export default function Coverage() {
         <h4 className="text-sm font-medium text-white mb-3">Coverage Legend</h4>
         <div className="flex flex-wrap gap-6">
           <div className="flex items-center">
-            <div className="w-4 h-4 bg-green-500 rounded mr-2"></div>
+            <div className="w-4 h-4 bg-green-500 rounded-sm mr-2"></div>
             <span className="text-sm text-gray-400">Covered (&ge;60% confidence)</span>
           </div>
           <div className="flex items-center">
-            <div className="w-4 h-4 bg-yellow-500 rounded mr-2"></div>
+            <div className="w-4 h-4 bg-yellow-500 rounded-sm mr-2"></div>
             <span className="text-sm text-gray-400">Partial (40-60% confidence)</span>
           </div>
           <div className="flex items-center">
-            <div className="w-4 h-4 bg-gray-300 rounded mr-2"></div>
+            <div className="w-4 h-4 bg-gray-300 rounded-sm mr-2"></div>
             <span className="text-sm text-gray-400">Uncovered (&lt;40% confidence)</span>
           </div>
         </div>

@@ -247,7 +247,7 @@ export default function DetectionDetailModal({ detection, onClose }: DetectionDe
             {detectionDetail?.source_arn && (
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Source ARN</h3>
-                <code className="text-xs text-gray-600 bg-gray-100 rounded p-2 block overflow-x-auto">
+                <code className="text-xs text-gray-600 bg-gray-100 rounded-sm p-2 block overflow-x-auto">
                   {detectionDetail.source_arn}
                 </code>
               </div>
@@ -257,7 +257,7 @@ export default function DetectionDetailModal({ detection, onClose }: DetectionDe
             {detectionDetail?.event_pattern && (
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Event Pattern</h3>
-                <pre className="text-xs text-gray-600 bg-gray-100 rounded p-3 overflow-x-auto">
+                <pre className="text-xs text-gray-600 bg-gray-100 rounded-sm p-3 overflow-x-auto">
                   {JSON.stringify(detectionDetail.event_pattern, null, 2)}
                 </pre>
               </div>
@@ -267,7 +267,7 @@ export default function DetectionDetailModal({ detection, onClose }: DetectionDe
             {detectionDetail?.query_pattern && (
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Query Pattern</h3>
-                <pre className="text-xs text-gray-600 bg-gray-100 rounded p-3 overflow-x-auto whitespace-pre-wrap">
+                <pre className="text-xs text-gray-600 bg-gray-100 rounded-sm p-3 overflow-x-auto whitespace-pre-wrap">
                   {detectionDetail.query_pattern}
                 </pre>
               </div>
@@ -305,7 +305,7 @@ export default function DetectionDetailModal({ detection, onClose }: DetectionDe
                               {mapping.matched_indicators.map((indicator, idx) => (
                                 <span
                                   key={idx}
-                                  className="px-2 py-0.5 text-xs bg-blue-100 text-blue-900 rounded"
+                                  className="px-2 py-0.5 text-xs bg-blue-100 text-blue-900 rounded-sm"
                                 >
                                   {indicator}
                                 </span>

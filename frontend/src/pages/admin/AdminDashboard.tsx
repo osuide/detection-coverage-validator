@@ -291,7 +291,7 @@ export default function AdminDashboard() {
                 <p className="text-sm text-gray-400 mb-2">Subscription Tiers</p>
                 <div className="flex gap-2">
                   {Object.entries(businessMetrics.tier_breakdown).map(([tier, count]) => (
-                    <span key={tier} className="px-2 py-1 bg-gray-700 rounded text-xs text-gray-300">
+                    <span key={tier} className="px-2 py-1 bg-gray-700 rounded-sm text-xs text-gray-300">
                       {tier}: {count}
                     </span>
                   ))}

@@ -417,7 +417,7 @@ export default function AdminAdmins() {
                   type="email"
                   value={newAdmin.email}
                   onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-red-500"
                   placeholder="admin@example.com"
                 />
               </div>
@@ -430,7 +430,7 @@ export default function AdminAdmins() {
                   type="text"
                   value={newAdmin.full_name}
                   onChange={(e) => setNewAdmin({ ...newAdmin, full_name: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-red-500"
                   placeholder="John Doe"
                 />
               </div>
@@ -443,7 +443,7 @@ export default function AdminAdmins() {
                   type="password"
                   value={newAdmin.password}
                   onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-red-500"
                   placeholder="Enter secure password"
                 />
               </div>
@@ -455,7 +455,7 @@ export default function AdminAdmins() {
                 <select
                   value={newAdmin.role}
                   onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-red-500"
                 >
                   <option value="readonly_admin">Read Only</option>
                   <option value="support_admin">Support Admin</option>
@@ -504,7 +504,7 @@ export default function AdminAdmins() {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-red-500"
                   placeholder="Enter new password"
                 />
                 <p className="text-xs text-gray-500 mt-1">

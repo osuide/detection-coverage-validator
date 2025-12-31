@@ -83,7 +83,7 @@ function getPriorityBadge(priority: string | null) {
   }
 
   return (
-    <span className={`px-1.5 py-0.5 text-xs font-medium rounded border ${styles[priority] || 'bg-gray-700 text-gray-300'}`}>
+    <span className={`px-1.5 py-0.5 text-xs font-medium rounded-sm border ${styles[priority] || 'bg-gray-700 text-gray-300'}`}>
       {priority}
     </span>
   )
@@ -232,7 +232,7 @@ function ExpandableControlRow({
                 {control.uncovered_services.map((service) => (
                   <span
                     key={service}
-                    className="px-1.5 py-0.5 text-xs bg-red-900/50 text-red-300 border border-red-700/50 rounded"
+                    className="px-1.5 py-0.5 text-xs bg-red-900/50 text-red-300 border border-red-700/50 rounded-sm"
                   >
                     {service}
                   </span>
@@ -326,7 +326,7 @@ export function CoverageDetailModal({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs"
         onClick={onClose}
       />
 

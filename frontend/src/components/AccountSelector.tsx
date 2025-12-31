@@ -82,7 +82,7 @@ export function AccountSelector() {
       >
         <div
           className={clsx(
-            'flex items-center justify-center w-6 h-6 rounded mr-2',
+            'flex items-center justify-center w-6 h-6 rounded-sm mr-2',
             providerStyle.bgColour
           )}
         >
@@ -125,7 +125,7 @@ export function AccountSelector() {
                 >
                   <div
                     className={clsx(
-                      'flex items-center justify-center w-6 h-6 rounded mr-3',
+                      'flex items-center justify-center w-6 h-6 rounded-sm mr-3',
                       style.bgColour
                     )}
                   >
@@ -140,7 +140,7 @@ export function AccountSelector() {
                     </p>
                   </div>
                   {isSelected && (
-                    <Check className="h-4 w-4 text-blue-400 ml-2 flex-shrink-0" />
+                    <Check className="h-4 w-4 text-blue-400 ml-2 shrink-0" />
                   )}
                 </button>
               )

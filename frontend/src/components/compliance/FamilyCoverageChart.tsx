@@ -94,7 +94,7 @@ export function FamilyCoverageChart({ coverage }: FamilyCoverageChartProps) {
                 )}
                 {family.cloud_applicability === 'mixed' && (
                   <span
-                    className="inline-flex items-center text-xs text-gray-400 bg-gray-700 px-1.5 py-0.5 rounded"
+                    className="inline-flex items-center text-xs text-gray-400 bg-gray-700 px-1.5 py-0.5 rounded-sm"
                     title={buildApplicabilityTooltip(family)}
                   >
                     Mixed
@@ -167,20 +167,20 @@ export function FamilyCoverageChart({ coverage }: FamilyCoverageChartProps) {
       {/* Coverage Legend */}
       <div className="flex flex-wrap items-center justify-center gap-4 pt-4 border-t border-gray-700 mt-4">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-500 rounded" />
+          <div className="w-3 h-3 bg-green-500 rounded-sm" />
           <span className="text-xs text-gray-400">Covered (80%+)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-yellow-500 rounded" />
+          <div className="w-3 h-3 bg-yellow-500 rounded-sm" />
           <span className="text-xs text-gray-400">Partial (40-80%)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-red-500/50 rounded" />
+          <div className="w-3 h-3 bg-red-500/50 rounded-sm" />
           <span className="text-xs text-gray-400">Uncovered (&lt;40%)</span>
         </div>
         <div className="flex items-center gap-2">
           <div
-            className="w-3 h-3 bg-gray-600 rounded"
+            className="w-3 h-3 bg-gray-600 rounded-sm"
             style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 1px, rgba(0,0,0,0.4) 1px, rgba(0,0,0,0.4) 2px)' }}
           />
           <span className="text-xs text-gray-400">Not Assessable</span>
@@ -191,23 +191,23 @@ export function FamilyCoverageChart({ coverage }: FamilyCoverageChartProps) {
       <div className="flex flex-wrap items-center justify-center gap-4 pt-3 border-t border-gray-700/50 mt-3">
         <span className="text-xs text-gray-500 font-medium">Cloud Relevance:</span>
         <div className="flex items-center gap-1">
-          <div className="w-1 h-3 bg-green-500 rounded" />
+          <div className="w-1 h-3 bg-green-500 rounded-sm" />
           <span className="text-xs text-gray-400">Highly Relevant</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-1 h-3 bg-yellow-500 rounded" />
+          <div className="w-1 h-3 bg-yellow-500 rounded-sm" />
           <span className="text-xs text-gray-400">Moderate</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-1 h-3 bg-blue-500 rounded" />
+          <div className="w-1 h-3 bg-blue-500 rounded-sm" />
           <span className="text-xs text-gray-400">Informational</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-1 h-3 bg-purple-500 rounded" />
+          <div className="w-1 h-3 bg-purple-500 rounded-sm" />
           <span className="text-xs text-gray-400">Provider Managed</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-1 h-3 bg-white rounded" />
+          <div className="w-1 h-3 bg-white rounded-sm" />
           <span className="text-xs text-gray-400">Mixed</span>
         </div>
       </div>

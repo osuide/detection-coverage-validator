@@ -136,7 +136,7 @@ export default function MFASetupModal({
           {step !== 'success' && (
             <button
               onClick={handleClose}
-              className="p-1 text-gray-400 hover:text-white rounded"
+              className="p-1 text-gray-400 hover:text-white rounded-sm"
             >
               <X className="w-5 h-5" />
             </button>
@@ -146,7 +146,7 @@ export default function MFASetupModal({
         {/* Error Message */}
         {error && (
           <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg flex items-center gap-2 text-red-200">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 shrink-0" />
             <span className="text-sm">{error}</span>
           </div>
         )}
@@ -180,12 +180,12 @@ export default function MFASetupModal({
                 Can't scan? Enter this code manually:
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 bg-gray-900 px-3 py-2 rounded text-sm font-mono text-white break-all">
+                <code className="flex-1 bg-gray-900 px-3 py-2 rounded-sm text-sm font-mono text-white break-all">
                   {secret}
                 </code>
                 <button
                   onClick={copySecret}
-                  className="p-2 text-gray-400 hover:text-white rounded hover:bg-gray-700"
+                  className="p-2 text-gray-400 hover:text-white rounded-sm hover:bg-gray-700"
                   title="Copy to clipboard"
                 >
                   {copied ? (
@@ -239,7 +239,7 @@ export default function MFASetupModal({
                   }
                 }}
                 placeholder="000000"
-                className="w-full px-4 py-3 text-center text-2xl font-mono tracking-widest bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 text-center text-2xl font-mono tracking-widest bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 autoFocus
               />
             </div>
@@ -289,7 +289,7 @@ export default function MFASetupModal({
             {backupCodes.length > 0 && (
               <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4">
                 <div className="flex items-start gap-3 mb-3">
-                  <Key className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <Key className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="font-medium text-yellow-400">
                       Save Your Backup Codes
@@ -301,7 +301,7 @@ export default function MFASetupModal({
                   </div>
                 </div>
 
-                <div className="bg-gray-900 rounded p-3 mb-3">
+                <div className="bg-gray-900 rounded-sm p-3 mb-3">
                   <div className="grid grid-cols-2 gap-2 font-mono text-sm">
                     {backupCodes.map((code, index) => (
                       <div key={index} className="text-gray-300">
@@ -313,7 +313,7 @@ export default function MFASetupModal({
 
                 <button
                   onClick={copyBackupCodes}
-                  className="w-full py-2 text-sm bg-gray-700 text-gray-300 rounded hover:bg-gray-600 flex items-center justify-center gap-2"
+                  className="w-full py-2 text-sm bg-gray-700 text-gray-300 rounded-sm hover:bg-gray-600 flex items-center justify-center gap-2"
                 >
                   {backupCodesCopied ? (
                     <>

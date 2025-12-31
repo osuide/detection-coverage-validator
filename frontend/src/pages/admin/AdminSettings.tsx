@@ -307,7 +307,7 @@ export default function AdminSettings() {
                   value={stripeForm.publishable_key}
                   onChange={(e) => setStripeForm({ ...stripeForm, publishable_key: e.target.value })}
                   placeholder="pk_live_... or pk_test_..."
-                  className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-red-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">This key is public and used in the frontend</p>
               </div>
@@ -323,7 +323,7 @@ export default function AdminSettings() {
                     value={stripeForm.secret_key}
                     onChange={(e) => setStripeForm({ ...stripeForm, secret_key: e.target.value })}
                     placeholder={stripeConfig?.secret_key_configured ? 'Leave blank to keep current' : 'sk_live_... or sk_test_...'}
-                    className="w-full px-4 py-2.5 pr-10 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full px-4 py-2.5 pr-10 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-red-500"
                   />
                   <button
                     type="button"
@@ -350,7 +350,7 @@ export default function AdminSettings() {
                     value={stripeForm.webhook_secret}
                     onChange={(e) => setStripeForm({ ...stripeForm, webhook_secret: e.target.value })}
                     placeholder={stripeConfig?.webhook_secret_configured ? 'Leave blank to keep current' : 'whsec_...'}
-                    className="w-full px-4 py-2.5 pr-10 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full px-4 py-2.5 pr-10 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-red-500"
                   />
                   <button
                     type="button"
