@@ -82,18 +82,9 @@ plans/
 design/
 /docs/
 backend/docs/
-!frontend/public/docs/
-CLAUDE.md
-CODE-QUALITY-ANALYSIS.md
-DELIVERY-SUMMARY.md
-DEPLOYMENT.md
-detection-coverage-validator-model.md
-MVP-COMPLETION-ROADMAP.md
-MVP-STATUS.md
-QUICK-START.md
-ROADMAP.md
 add_template_registration.py
-backend/T1036_TEMPLATE_SUMMARY.md
-backend/TYPE_HINTS_PLAN.md
 
-# Keep README.md (explicitly not ignored)
+# Ignore all markdown files except README.md and website docs
+*.md
+!README.md
+!frontend/public/docs/*.md
