@@ -53,6 +53,43 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+# =============================================================================
+# OAuth Configuration Checks
+# These ensure SSO credentials are set before applying to staging/prod
+# =============================================================================
+
+check "google_oauth_configured" {
+  assert {
+    condition     = var.google_client_id != "" && var.google_client_secret != ""
+    error_message = <<-EOT
+      ⚠️  WARNING: Google OAuth credentials not set!
+
+      Google SSO will be DISABLED. To fix:
+        export TF_VAR_google_client_id="your-client-id"
+        export TF_VAR_google_client_secret="your-client-secret"
+
+      Or source the .env.terraform file if available.
+    EOT
+  }
+}
+
+check "github_oauth_configured" {
+  assert {
+    condition     = var.github_client_id != "" && var.github_client_secret != ""
+    error_message = <<-EOT
+      ⚠️  WARNING: GitHub OAuth credentials not set!
+
+      GitHub SSO will be DISABLED. To fix:
+        export TF_VAR_github_client_id="your-client-id"
+        export TF_VAR_github_client_secret="your-client-secret"
+
+      Or source the .env.terraform file if available.
+    EOT
+  }
+}
+
+# =============================================================================
+
 # Random JWT secret key if not provided
 resource "random_password" "jwt_secret" {
   count   = var.jwt_secret_key == "" ? 1 : 0

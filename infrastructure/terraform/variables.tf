@@ -99,30 +99,33 @@ variable "enable_cognito" {
 }
 
 # Google OAuth
+# IMPORTANT: Set via TF_VAR_google_client_id and TF_VAR_google_client_secret
+# Source .env.terraform before running: source .env.terraform && terraform apply
 variable "google_client_id" {
-  description = "Google OAuth Client ID"
+  description = "Google OAuth Client ID - REQUIRED for SSO"
   type        = string
   sensitive   = true
   default     = ""
 }
 
 variable "google_client_secret" {
-  description = "Google OAuth Client Secret"
+  description = "Google OAuth Client Secret - REQUIRED for SSO"
   type        = string
   sensitive   = true
   default     = ""
 }
 
 # GitHub OAuth (handled by backend directly, not Cognito)
+# IMPORTANT: Set via TF_VAR_github_client_id and TF_VAR_github_client_secret
 variable "github_client_id" {
-  description = "GitHub OAuth App Client ID"
+  description = "GitHub OAuth App Client ID - REQUIRED for GitHub SSO"
   type        = string
   sensitive   = true
   default     = ""
 }
 
 variable "github_client_secret" {
-  description = "GitHub OAuth App Client Secret"
+  description = "GitHub OAuth App Client Secret - REQUIRED for GitHub SSO"
   type        = string
   sensitive   = true
   default     = ""
