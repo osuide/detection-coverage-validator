@@ -58,7 +58,7 @@ jobs:
         env:
           PYTHONPATH: .
           ENVIRONMENT: production
-          SECRET_KEY: docs-generation-only
+          SECRET_KEY: docs-generation-only-not-for-production-use
           DATABASE_URL: postgresql+asyncpg://x:x@localhost/x
         run: |
           python scripts/generate_public_openapi.py
