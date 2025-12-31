@@ -119,6 +119,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       localStorage.removeItem('dcv_access_token')
       localStorage.removeItem('dcv_refresh_token')
+      // Clear selected account to prevent stale account ID errors for next user
+      localStorage.removeItem('dcv-selected-account')
     } catch {
       // Ignore localStorage errors (e.g., in SSR or privacy mode)
     }

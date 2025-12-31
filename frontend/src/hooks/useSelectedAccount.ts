@@ -44,7 +44,16 @@ export function useSelectedAccount(): UseSelectedAccountReturn {
 
   // Sync selected account with available accounts
   useEffect(() => {
-    if (isLoading || accounts.length === 0) {
+    if (isLoading) {
+      return
+    }
+
+    // If no accounts exist, clear any stale selection from localStorage
+    if (accounts.length === 0) {
+      if (selectedAccountId) {
+        setSelectedAccountId(null)
+        setSelectedAccount(null)
+      }
       return
     }
 
@@ -68,7 +77,7 @@ export function useSelectedAccount(): UseSelectedAccountReturn {
         account_id: targetAccount.account_id,
       })
     }
-  }, [accounts, selectedAccountId, isLoading, setSelectedAccount])
+  }, [accounts, selectedAccountId, isLoading, setSelectedAccount, setSelectedAccountId])
 
   // Switch account with cache invalidation
   const switchAccount = useCallback(
