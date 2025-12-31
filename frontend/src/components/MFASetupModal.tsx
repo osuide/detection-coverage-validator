@@ -51,7 +51,7 @@ export default function MFASetupModal({
           setProvisioningUri(data.provisioning_uri)
           setSecret(data.secret)
           setStep('qr')
-        } catch (err) {
+        } catch (_err) {
           setError('Failed to initialise MFA setup. Please try again.')
           setStep('qr') // Show error state
         }

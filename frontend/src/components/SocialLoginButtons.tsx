@@ -37,7 +37,7 @@ export default function SocialLoginButtons({ onError, mode = 'login' }: SocialLo
 
       // Redirect to provider
       window.location.href = response.authorization_url
-    } catch (err) {
+    } catch (_err) {
       onError?.('Failed to initiate Google SSO. Please try again.')
       setLoading(null)
     }
@@ -57,7 +57,7 @@ export default function SocialLoginButtons({ onError, mode = 'login' }: SocialLo
 
       // Redirect to GitHub
       window.location.href = response.authorization_url
-    } catch (err) {
+    } catch (_err) {
       onError?.('Failed to initiate GitHub login. Please try again.')
       setLoading(null)
     }

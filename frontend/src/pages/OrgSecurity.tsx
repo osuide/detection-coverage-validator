@@ -52,8 +52,8 @@ export default function OrgSecurity() {
       setSettings(settingsData)
       setFormData(settingsData)
       setDomains(domainsData)
-    } catch (error) {
-      console.error('Failed to load security settings:', error)
+    } catch (_error) {
+      console.error('Failed to load security settings:', _error)
       setMessage({ type: 'error', text: 'Failed to load security settings' })
     } finally {
       setLoading(false)
@@ -89,7 +89,7 @@ export default function OrgSecurity() {
       setSettings(updated)
       setFormData(updated)
       setMessage({ type: 'success', text: 'Security settings updated successfully' })
-    } catch (error) {
+    } catch (_error) {
       setMessage({ type: 'error', text: 'Failed to update security settings' })
     } finally {
       setSaving(false)
@@ -125,7 +125,7 @@ export default function OrgSecurity() {
       const info = await securityApi.getDomainVerificationInfo(token, domain.id)
       setVerifyingDomain(domain)
       setVerificationInfo(info)
-    } catch (error) {
+    } catch (_error) {
       setMessage({ type: 'error', text: 'Failed to get verification info' })
     }
   }
@@ -141,7 +141,7 @@ export default function OrgSecurity() {
       } else {
         setVerificationInfo(result)
       }
-    } catch (error) {
+    } catch (_error) {
       setMessage({ type: 'error', text: 'Verification failed. Please check your DNS records.' })
     }
   }
@@ -153,7 +153,7 @@ export default function OrgSecurity() {
       await securityApi.removeDomain(token, domain.id)
       setDomains(domains.filter(d => d.id !== domain.id))
       setMessage({ type: 'success', text: 'Domain removed' })
-    } catch (error) {
+    } catch (_error) {
       setMessage({ type: 'error', text: 'Failed to remove domain' })
     }
   }
