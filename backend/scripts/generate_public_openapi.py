@@ -110,22 +110,23 @@ API keys begin with `dcv_live_`.
 
 Requests are rate-limited based on your subscription tier:
 
-| Tier | Requests/Hour | Price |
-|------|---------------|-------|
-| Free | 100 | £0/mo |
-| Individual | 1,000 | £29/mo |
-| Pro | 10,000 | £250/mo |
-| Enterprise | 100,000 | Custom |
+| Tier | Rate Limit | Price |
+|------|------------|-------|
+| Individual | 100 requests/minute | £29/mo |
+| Pro | 500 requests/minute | £250/mo |
+| Enterprise | Custom limits | Custom |
+
+> **Note:** API access requires a paid subscription. The Free tier does not include API access.
 
 Rate limit headers are included in all responses:
 
 | Header | Description |
 |--------|-------------|
-| `X-RateLimit-Limit` | Maximum requests per hour |
+| `X-RateLimit-Limit` | Maximum requests allowed |
 | `X-RateLimit-Remaining` | Requests remaining in current window |
 | `X-RateLimit-Reset` | Unix timestamp when limit resets |
 
-When rate limited, you'll receive a `429 Too Many Requests` response.
+When rate limited, you'll receive a `429 Too Many Requests` response. Use exponential backoff when retrying.
 
 ## Error Handling
 
