@@ -208,9 +208,13 @@ class SecurityHubScanner(BaseScanner):
                         first_cspm_region = region
                         for control_id, control_data in region_status.items():
                             # Use .get() for defensive access - cached data might
-                            # have different structure
-                            control_status = control_data.get(
-                                "status", control_data.get("SecurityControlStatus")
+                            # have different structure. Default to ENABLED if status
+                            # is missing since controls are enabled by default.
+                            control_status = (
+                                control_data.get(
+                                    "status", control_data.get("SecurityControlStatus")
+                                )
+                                or "ENABLED"
                             )
                             cspm_control_data[control_id] = {
                                 **control_data,
@@ -227,9 +231,14 @@ class SecurityHubScanner(BaseScanner):
                         # Subsequent regions - just add status
                         for control_id, control_data in region_status.items():
                             if control_id in cspm_control_data:
-                                # Use .get() for defensive access
-                                control_status = control_data.get(
-                                    "status", control_data.get("SecurityControlStatus")
+                                # Use .get() for defensive access. Default to ENABLED
+                                # if status is missing.
+                                control_status = (
+                                    control_data.get(
+                                        "status",
+                                        control_data.get("SecurityControlStatus"),
+                                    )
+                                    or "ENABLED"
                                 )
                                 cspm_control_data[control_id]["status_by_region"][
                                     region
@@ -590,13 +599,35 @@ class SecurityHubScanner(BaseScanner):
             # Calculate metrics - use status_by_region for accurate counts
             enabled_count = 0
             disabled_count = 0
+            # Debug: log sample control status for troubleshooting
+            sample_statuses = []
             for control in controls.values():
                 status_by_region = control.get("status_by_region", {})
                 # A control is "enabled" if enabled in ANY region
-                if any(s == "ENABLED" for s in status_by_region.values()):
+                # Handle both uppercase and any potential casing issues
+                is_enabled = any(
+                    str(s).upper() == "ENABLED" for s in status_by_region.values()
+                )
+                if is_enabled:
                     enabled_count += 1
                 else:
                     disabled_count += 1
+                # Collect first 3 samples for debugging
+                if len(sample_statuses) < 3:
+                    sample_statuses.append(
+                        {
+                            "control_id": control.get("control_id"),
+                            "status_by_region": status_by_region,
+                            "status": control.get("status"),
+                        }
+                    )
+
+            if sample_statuses:
+                self.logger.debug(
+                    "securityhub_control_status_samples",
+                    standard_id=standard_id,
+                    samples=sample_statuses,
+                )
 
             # Count unique MITRE techniques covered by this standard's controls
             techniques_covered = self._count_techniques_covered(controls)
@@ -617,9 +648,12 @@ class SecurityHubScanner(BaseScanner):
             for control_id, control_data in controls.items():
                 # Determine overall status for this control
                 status_by_region = control_data.get("status_by_region", {})
+                # Handle case-insensitive comparison and None values
                 overall_status = (
                     "ENABLED"
-                    if any(s == "ENABLED" for s in status_by_region.values())
+                    if any(
+                        str(s).upper() == "ENABLED" for s in status_by_region.values()
+                    )
                     else "DISABLED"
                 )
 
@@ -719,7 +753,8 @@ class SecurityHubScanner(BaseScanner):
         for control_id, control_data in controls.items():
             # Only count techniques from enabled controls
             status_by_region = control_data.get("status_by_region", {})
-            if any(s == "ENABLED" for s in status_by_region.values()):
+            # Handle case-insensitive comparison and None values
+            if any(str(s).upper() == "ENABLED" for s in status_by_region.values()):
                 mappings = get_techniques_for_cspm_control(control_id)
                 for tech_id, _ in mappings:
                     techniques.add(tech_id)
@@ -750,8 +785,11 @@ class SecurityHubScanner(BaseScanner):
         techniques: set[str] = set()
 
         # Build a map of control_id -> enabled status from the controls list
+        # Handle case-insensitive comparison
         enabled_controls = {
-            c.get("control_id") for c in controls_list if c.get("status") == "ENABLED"
+            c.get("control_id")
+            for c in controls_list
+            if str(c.get("status", "")).upper() == "ENABLED"
         }
 
         for control_id in control_ids:
@@ -958,7 +996,8 @@ class SecurityHubScanner(BaseScanner):
             if standard_controls:
                 # Use the per-standard controls from DescribeStandardsControls
                 for control in standard_controls:
-                    if control.get("status") == "ENABLED":
+                    # Handle case-insensitive comparison
+                    if str(control.get("status", "")).upper() == "ENABLED":
                         enabled_count += 1
                     else:
                         disabled_count += 1
@@ -1009,7 +1048,10 @@ class SecurityHubScanner(BaseScanner):
                 # Fallback: no per-standard data, use all CSPM controls
                 for control in cspm_control_data.values():
                     status_by_region = control.get("status_by_region", {})
-                    if any(s == "ENABLED" for s in status_by_region.values()):
+                    # Handle case-insensitive comparison and None values
+                    if any(
+                        str(s).upper() == "ENABLED" for s in status_by_region.values()
+                    ):
                         enabled_count += 1
                     else:
                         disabled_count += 1
@@ -1692,14 +1734,15 @@ class SecurityHubScanner(BaseScanner):
                                     [
                                         c
                                         for c in controls
-                                        if c.get("status") == "ENABLED"
+                                        if str(c.get("status", "")).upper() == "ENABLED"
                                     ]
                                 ),
                                 "disabled_controls_count": len(
                                     [
                                         c
                                         for c in controls
-                                        if c.get("status") == "DISABLED"
+                                        if str(c.get("status", "")).upper()
+                                        == "DISABLED"
                                     ]
                                 ),
                                 "total_controls_count": len(controls),

@@ -367,8 +367,9 @@ class PatternMapper:
             status_by_region = control.get("status_by_region", {})
 
             # Check if control is ENABLED in any region
+            # Handle case-insensitive comparison and None values
             is_enabled = any(
-                status == "ENABLED" for status in status_by_region.values()
+                str(status).upper() == "ENABLED" for status in status_by_region.values()
             )
 
             if not is_enabled:
@@ -435,7 +436,10 @@ class PatternMapper:
             enabled_controls=sum(
                 1
                 for c in controls
-                if any(s == "ENABLED" for s in c.get("status_by_region", {}).values())
+                if any(
+                    str(s).upper() == "ENABLED"
+                    for s in c.get("status_by_region", {}).values()
+                )
             ),
             techniques_mapped=len(results),
         )
