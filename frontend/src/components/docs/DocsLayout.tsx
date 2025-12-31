@@ -102,12 +102,6 @@ export function DocsLayout({ children }: DocsLayoutProps) {
             {/* Right side */}
             <div className="flex items-center gap-4">
               <Link
-                to="/login"
-                className="hidden sm:inline-block text-sm font-medium text-gray-400 hover:text-white transition-colors"
-              >
-                Sign in
-              </Link>
-              <Link
                 to="/signup"
                 className="text-sm font-medium text-white bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 px-4 py-2 rounded-lg shadow-lg shadow-blue-500/25 transition-all"
               >
