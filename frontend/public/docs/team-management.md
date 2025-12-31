@@ -1,156 +1,362 @@
 # Team Management
 
-Learn how to manage your organization's team members, roles, and permissions in A13E.
+Manage your organisation's team members, roles, and permissions in A13E.
 
-## Table of Contents
+## TL;DR
 
-- [Overview](#overview)
-- [User Roles](#user-roles)
-- [Inviting Team Members](#inviting-team-members)
-- [Managing Members](#managing-members)
-- [Permissions Matrix](#permissions-matrix)
-- [Best Practices](#best-practices)
+- **Four roles**: Owner (full control), Admin (team management), Member (run scans), Viewer (read-only)
+- **Invite team members** via email with role assignment
+- **Role-based access control** protects sensitive operations
+- **Free plan**: 1 user. Individual: 3 users. Pro: 10 users. Enterprise: Unlimited
 
-## Overview
-
-A13E supports team collaboration with role-based access control (RBAC). Each organization has one Owner, with optional Admins, Members, and Viewers. Each user's role determines their permissions and capabilities.
+---
 
 ## User Roles
 
+A13E uses role-based access control (RBAC) with four roles. Each role has specific permissions.
+
 ### Owner
 
-Full administrative control including billing, organization deletion, and ownership transfer. Only one Owner per organization. Typical users: CISO, security team lead, organization founder.
+**Full administrative control** of the organisation.
+
+- Manage billing and subscription
+- Transfer ownership
+- Delete the organisation
+- All Admin, Member, and Viewer permissions
+
+Only one Owner per organisation. Typically: CISO, security team lead, or organisation founder.
 
 ### Admin
 
-Manages team members and organization settings. Can invite/remove users, manage cloud accounts, run and schedule scans, and access audit logs. Cannot manage billing or delete the organization. Typical users: security engineers, team managers.
+**Team and settings management** capabilities.
+
+- Invite and remove team members
+- Change member roles (except to Owner)
+- Manage organisation settings
+- View audit logs
+- All Member and Viewer permissions
+
+Cannot manage billing or delete the organisation. Typically: security engineers, team managers.
 
 ### Member
 
-Can view and edit resources but cannot manage team or settings. Can add cloud accounts, run scans, and export reports. Cannot configure scheduled scans or access audit logs. Typical users: security analysts, DevSecOps engineers, cloud administrators.
+**Operational access** to run scans and manage accounts.
+
+- Add and configure cloud accounts
+- Run manual scans
+- View all coverage data and reports
+- Export data (CSV, PDF)
+- All Viewer permissions
+
+Cannot invite users, configure scheduled scans, or access audit logs. Typically: security analysts, DevSecOps engineers.
 
 ### Viewer
 
-Read-only access to dashboards, reports, and scan results. Cannot run scans, view credentials, or modify settings. Typical users: executives, compliance auditors, stakeholders.
+**Read-only access** to dashboards and reports.
+
+- View Dashboard, Coverage, Detections, Gaps
+- View Compliance data
+- Browse scan results
+
+Cannot run scans, modify settings, or export data. Typically: executives, compliance auditors, stakeholders.
+
+---
 
 ## Inviting Team Members
 
-**Who can invite**: Owner and Admin roles only. Requires available seats on your subscription plan.
+> **Who can invite**: Owner and Admin roles only
 
-**How to invite**:
-1. Navigate to Settings → Team Management
+### Before You Start
+
+- Ensure you have available seats on your subscription plan
+- Know the email address and appropriate role for the new member
+
+### How to Invite
+
+1. Navigate to **Settings** → **Team Management**
 2. Click **Invite Member**
-3. Enter email address and select role (Viewer, Member, or Admin)
-4. Add optional personal message
-5. Click **Send Invite**
+3. Enter the invitee's **email address**
+4. Select their **role**:
+   - Viewer (read-only)
+   - Member (can run scans)
+   - Admin (can manage team)
+5. Optionally add a **personal message**
+6. Click **Send Invite**
 
-Invitations expire in 7 days. Invitees receive an email with an acceptance link. If they don't have an A13E account, they'll create one during acceptance. Track pending invitations in the Team Management page, where you can cancel them if needed.
+### What Happens Next
 
-## Managing Members
+1. The invitee receives an email with an invitation link
+2. If they don't have an A13E account, they'll create one during acceptance
+3. Once accepted, they appear in your team list
+4. Their permissions take effect immediately
 
-### Changing Member Roles
+### Invitation Expiration
 
-**Who can do this**: Owner and Admin (Admins cannot promote to Admin or change other Admin/Owner roles)
+- Invitations expire after **7 days**
+- You can cancel pending invitations from the Team Management page
+- Expired invitations require re-sending
+
+### Tracking Invitations
+
+View pending invitations on the Team Management page:
+
+- **Email**: Who was invited
+- **Role**: What role they'll receive
+- **Sent**: When the invitation was sent
+- **Actions**: Cancel the invitation
+
+---
+
+## Managing Team Members
+
+### Viewing Your Team
+
+Navigate to **Settings** → **Team Management** to see all team members:
+
+| Column | Description |
+|--------|-------------|
+| **Name** | Member's display name |
+| **Email** | Member's email address |
+| **Role** | Current role (Owner, Admin, Member, Viewer) |
+| **Joined** | When they joined the organisation |
+| **Last active** | When they last used A13E |
+
+### Changing Roles
+
+**Who can change roles**: Owner and Admin
+
+**Restrictions**:
+- Admins cannot promote members to Admin
+- Admins cannot change other Admins or the Owner
+- Only Owner can promote members to Admin
+
+**How to change a role**:
 
 1. Find the member in the team list
-2. Click the Actions menu (⋮)
-3. Select new role: Viewer, Member, or Admin (Owner only)
-4. User receives email notification of change
+2. Click the **Actions** menu (⋮)
+3. Select the new role
+4. The member receives an email notification
 
 ### Removing Team Members
 
-**Who can do this**: Owner and Admin (Admins cannot remove other Admins or Owner)
+**Who can remove members**: Owner and Admin
 
-1. Click the Actions menu (⋮) on the member's row
+**Restrictions**:
+- Admins cannot remove other Admins
+- Admins cannot remove the Owner
+- You cannot remove yourself (Owner must transfer ownership first)
+
+**How to remove a member**:
+
+1. Click the **Actions** menu (⋮) on the member's row
 2. Click **Remove from team**
 3. Confirm the action
 
-Removed users lose organization access immediately but can be re-invited later. Their data is retained in audit logs.
+**What happens**:
+- Member loses access immediately
+- Their actions remain in audit logs
+- They can be re-invited later if needed
 
 ### Transferring Ownership
 
-**Owner only**. New owner must already be an Admin. Go to Settings → Organization → Transfer Ownership, select the new owner, and confirm with your password. This action transfers billing ownership and cannot be undone.
+> **Owner only**
+
+If you're leaving the organisation or changing responsibilities:
+
+1. Navigate to **Settings** → **Organisation**
+2. Click **Transfer Ownership**
+3. Select the new Owner (must currently be an Admin)
+4. Confirm with your password
+5. Complete the transfer
+
+**Important**:
+- This action cannot be undone
+- Billing ownership also transfers
+- You'll become an Admin after transfer
+
+---
 
 ## Permissions Matrix
 
 | Capability | Owner | Admin | Member | Viewer |
-|------------|-------|-------|--------|--------|
+|------------|:-----:|:-----:|:------:|:------:|
+| **Viewing** |
+| View Dashboard | ✓ | ✓ | ✓ | ✓ |
+| View Coverage | ✓ | ✓ | ✓ | ✓ |
+| View Detections | ✓ | ✓ | ✓ | ✓ |
+| View Gaps | ✓ | ✓ | ✓ | ✓ |
+| View Compliance | ✓ | ✓ | ✓ | ✓ |
+| **Cloud Accounts** |
+| Add accounts | ✓ | ✓ | ✓ | ✗ |
+| Connect credentials | ✓ | ✓ | ✓ | ✗ |
+| Configure regions | ✓ | ✓ | ✓ | ✗ |
+| Delete accounts | ✓ | ✓ | ✗ | ✗ |
+| **Scanning** |
+| Run manual scans | ✓ | ✓ | ✓ | ✗ |
+| Configure schedules | ✓ | ✓ | ✗ | ✗ |
+| View scan history | ✓ | ✓ | ✓ | ✓ |
+| **Reporting** |
+| Export CSV | ✓ | ✓ | ✓ | ✗ |
+| Export PDF | ✓ | ✓ | ✓ | ✗ |
 | **Team Management** |
-| Invite/remove members | ✓ | ✓¹ | ✗ | ✗ |
-| Change roles | ✓ | ✓² | ✗ | ✗ |
-| **Cloud Accounts & Scanning** |
-| Add/remove accounts | ✓ | ✓ | ✓ | ✗ |
-| Run scans | ✓ | ✓ | ✓ | ✗ |
-| Schedule scans | ✓ | ✓ | ✗ | ✗ |
-| View results/reports | ✓ | ✓ | ✓ | ✓ |
-| **Organization** |
+| Invite members | ✓ | ✓* | ✗ | ✗ |
+| Remove members | ✓ | ✓* | ✗ | ✗ |
+| Change roles | ✓ | ✓** | ✗ | ✗ |
+| **Organisation** |
 | Edit settings | ✓ | ✓ | ✗ | ✗ |
 | View audit logs | ✓ | ✓ | ✗ | ✗ |
 | Manage billing | ✓ | ✗ | ✗ | ✗ |
-| Delete organization | ✓ | ✗ | ✗ | ✗ |
+| Delete organisation | ✓ | ✗ | ✗ | ✗ |
+| Transfer ownership | ✓ | ✗ | ✗ | ✗ |
 
-**Notes**:
-1. Admins can only remove Members and Viewers
-2. Admins cannot promote to Admin or change Admin/Owner roles
+*Admins can only remove Members and Viewers
+**Admins cannot promote to Admin or change Admin/Owner roles
 
+---
+
+## Team Limits by Plan
+
+| Plan | Team Members | Notes |
+|------|--------------|-------|
+| **Free** | 1 | Owner only |
+| **Individual** | 3 | Can invite 2 additional members |
+| **Pro** | 10 | Can invite 9 additional members |
+| **Enterprise** | Unlimited | No restrictions |
+
+To add more seats, upgrade your plan in **Settings** → **Billing**.
+
+---
+
+## Audit Logs
+
+> **Available to**: Owner and Admin roles
+
+Track all significant actions in your organisation.
+
+### Accessing Audit Logs
+
+1. Navigate to **Settings** → **Audit Logs**
+2. Filter by:
+   - **Date range**: Last 24 hours, 7 days, 30 days, custom
+   - **User**: Specific team member
+   - **Action type**: Sign-in, team changes, scans, etc.
+
+### What's Logged
+
+| Category | Actions Tracked |
+|----------|-----------------|
+| **Authentication** | Sign-in, sign-out, MFA verification |
+| **Team** | Invitations, role changes, member removal |
+| **Accounts** | Added, connected, deleted |
+| **Scans** | Manual scans, scheduled scans |
+| **Settings** | Organisation settings changes |
+
+### Exporting Logs
+
+Click **Export CSV** to download audit logs for compliance documentation.
+
+---
 
 ## Best Practices
 
 ### Role Assignment
 
-Follow the principle of least privilege: start users with Viewer role and promote as needed. Only grant Admin to users who need team management capabilities.
+Follow the principle of least privilege:
 
-**Role Selection Guide**:
+1. Start users with **Viewer** role
+2. Promote to **Member** when they need to run scans
+3. Grant **Admin** only to those managing the team
+4. Keep **Owner** role with a single accountable person
+
+### Role Selection Guide
 
 | User Type | Recommended Role |
 |-----------|------------------|
-| Executives, compliance auditors | Viewer |
-| Security analysts | Viewer or Member |
-| Security engineers, cloud architects | Member or Admin |
-| Team leads, CISO | Admin or Owner |
+| Executives viewing reports | Viewer |
+| Compliance auditors | Viewer |
+| Security analysts reviewing data | Viewer or Member |
+| Security engineers running scans | Member |
+| Team leads managing team | Admin |
+| CISO or security director | Owner or Admin |
 
-### Security Best Practices
+### Security Practices
 
 **Access Management**:
-- Review team members quarterly and remove inactive users
-- Verify roles are still appropriate for each user's responsibilities
+- Review team members quarterly
+- Remove inactive users promptly
+- Verify roles match current responsibilities
 - Check audit logs regularly for anomalies
 
-**MFA and Authentication**:
+**Authentication**:
 - Require MFA for Admin and Owner roles (configure in Settings → Security)
 - Encourage MFA for all users
-- Configure appropriate session duration based on security needs (1, 8, or 24 hours)
+- Use SSO for Enterprise plans (centralised access control)
 
 **Offboarding**:
-When team members leave, immediately:
-1. Remove user from the organization
-2. Rotate shared API keys they accessed
+When team members leave:
+1. Remove them from the organisation immediately
+2. Rotate any API keys they had access to
 3. Review audit logs for their recent activities
-4. Reassign any scan schedules or ownership
+4. Reassign any scheduled scans they owned
 
-### Subscription Management
+---
 
-**Plan limits**:
-- **Free Scan**: 1 user only
-- **Subscriber**: 5 users included, $10/month per additional user
-- **Enterprise**: Unlimited users
+## Enterprise Features
 
-Monitor seat usage in Settings → Billing and add seats proactively before hitting limits.
+### SSO Integration
 
-### Enterprise Features
+> **Enterprise plan only**
 
-**SSO Integration** (Enterprise plan only):
-- Supported providers: Google Workspace, Okta, SAML 2.0
-- Enables centralized user management and automatic provisioning
-- Contact support@a13e.com for SSO setup
+Centralise authentication with your identity provider:
 
-### Audit Logs
+- **Google Workspace**: OIDC integration
+- **Okta**: SAML 2.0 integration
+- **Azure AD**: SAML 2.0 integration
 
-Owner and Admin can access audit logs in Settings → Audit Logs. Logs track user sign-ins, team changes, role updates, account additions, scan executions, and settings changes. Export logs as CSV for compliance reporting.
+Benefits:
+- Automatic user provisioning
+- Centralised access revocation
+- Enforce company password policies
+- MFA through your IdP
 
-## Getting Help
+Contact support@a13e.com for SSO setup.
 
-For team management questions:
-- **In-App Help**: Click the ? icon in Team Management
-- **Support**: Email support@a13e.com for access issues
-- **Related Docs**: See [Billing & Subscription](./billing-subscription.md) and [Getting Started](./getting-started.md)
+### Multiple Organisations
+
+Enterprise customers can manage multiple organisations:
+
+- Separate organisations for different business units
+- Consolidated billing across organisations
+- Cross-organisation reporting
+
+---
+
+## Common Questions
+
+**Q: Can I have multiple Owners?**
+
+A: No, there can only be one Owner per organisation. This ensures clear accountability for billing and administration.
+
+**Q: What happens if the Owner leaves the company?**
+
+A: The Owner should transfer ownership before leaving. If they're unable to, contact support@a13e.com with proof of authority to request an ownership transfer.
+
+**Q: Can I downgrade someone from Admin to Member?**
+
+A: Yes, the Owner can change any role. Admins can downgrade Members to Viewers but cannot change other Admin roles.
+
+**Q: How many pending invitations can I have?**
+
+A: There's no limit on pending invitations, but they expire after 7 days. Invitations don't count against your team member limit until accepted.
+
+**Q: Can removed members see historical data?**
+
+A: No, once removed, they lose all access. Their past actions remain in audit logs for compliance purposes.
+
+---
+
+## Next Steps
+
+- [Billing & Subscription](./billing-subscription.md) - Upgrade for more team members
+- [Getting Started](./getting-started.md) - Onboard new team members
+- [Using the Dashboards](./using-dashboards.md) - What your team can see

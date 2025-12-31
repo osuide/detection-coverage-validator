@@ -80,8 +80,9 @@ docker-compose.override.yml
 agents/
 plans/
 design/
-docs/
+/docs/
 backend/docs/
+!frontend/public/docs/
 CLAUDE.md
 CODE-QUALITY-ANALYSIS.md
 DELIVERY-SUMMARY.md

@@ -1,392 +1,339 @@
 # Running Scans
 
-Learn how to scan your cloud accounts for security detections and analyse MITRE ATT&CK coverage.
+Learn how to scan your cloud accounts to discover security detections and calculate MITRE ATT&CK coverage.
 
-## Table of Contents
+## TL;DR
 
-- [What is a Scan?](#what-is-a-scan)
-- [Starting a Scan](#starting-a-scan)
-- [Monitoring Scan Progress](#monitoring-scan-progress)
-- [Understanding Scan Results](#understanding-scan-results)
-- [Detection Types](#detection-types)
-- [Scheduled Scans](#scheduled-scans)
-- [Scan History](#scan-history)
-- [Best Practices](#best-practices)
+- **Scans discover** security detections from GuardDuty, Security Hub, EventBridge, CloudWatch, and Config Rules
+- **Typical duration**: 5-15 minutes depending on account size and regions
+- **Schedule scans** for automatic weekly or daily coverage updates
+- **Free tier**: Limited scans per week. Paid plans: Unlimited scans
+
+---
 
 ## What is a Scan?
 
 A scan is the process where A13E:
 
-1. **Connects** to your cloud account using the configured IAM role
-2. **Discovers** security detections across various AWS services
-3. **Maps** those detections to MITRE ATT&CK techniques
-4. **Calculates** coverage metrics and identifies gaps
-5. **Generates** reports and recommendations
+1. **Connects** to your cloud account using the configured credentials
+2. **Discovers** security detections across multiple AWS services
+3. **Maps** each detection to MITRE ATT&CK techniques
+4. **Calculates** your coverage percentage and identifies gaps
+5. **Generates** prioritised recommendations
 
-### What Gets Scanned?
+### What Gets Scanned
 
-A13E scans the following AWS services for security detections:
+**AWS Services:**
 
-- **AWS GuardDuty**: Threat detection findings and configurations
-- **AWS Security Hub**: Security standards, controls, and findings
-- **Amazon EventBridge**: Custom rules monitoring CloudTrail events
-- **Amazon CloudWatch Logs**: Log Insights queries and metric filters with alarms
-- **AWS Config**: Compliance rules and evaluations
+| Service | What A13E Discovers |
+|---------|---------------------|
+| **GuardDuty** | Threat detection finding types and configurations |
+| **Security Hub** | Enabled security standards and control statuses |
+| **EventBridge** | Custom rules monitoring CloudTrail events |
+| **CloudWatch Logs** | Insights queries and metric filters with alarms |
+| **CloudWatch Alarms** | Metric alarms and their current state |
+| **Config Rules** | Managed and custom compliance rules |
+| **Inspector** | Vulnerability findings |
+| **Macie** | Sensitive data findings |
+
+**GCP Services:**
+
+| Service | What A13E Discovers |
+|---------|---------------------|
+| **Security Command Center** | Threat findings and notification configs |
+| **Cloud Logging** | Log sinks and log-based metrics |
+| **Eventarc** | Event triggers monitoring audit logs |
+| **Cloud Monitoring** | Alert policies and notification channels |
+| **Cloud Functions** | Functions triggered by security events |
+| **Chronicle** | SIEM detection rules (if enabled) |
 
 ### Scan Duration
 
-Typical scan times:
-- **Small accounts** (1-50 detections): 2-5 minutes
-- **Medium accounts** (50-200 detections): 5-10 minutes
-- **Large accounts** (200+ detections): 10-20 minutes
+Typical scan times based on account complexity:
+
+| Account Size | Detections | Duration |
+|--------------|------------|----------|
+| Small | 1-50 | 2-5 minutes |
+| Medium | 50-200 | 5-10 minutes |
+| Large | 200+ | 10-20 minutes |
 
 Factors affecting duration:
-- Number of enabled AWS regions
-- Volume of detection rules and configurations
-- API rate limits and throttling
+- Number of regions configured for scanning
+- Volume of EventBridge rules and Config rules
+- AWS API rate limits in your account
 
-## Starting a Scan
+---
 
-### Prerequisites
+## Running a Manual Scan
 
-Before running a scan, ensure:
+### Before You Start
 
-1. ✓ Cloud account is added to A13E
-2. ✓ Credentials are connected and validated
-3. ✓ Account status shows "Connected" (green badge)
+Ensure your account is ready:
 
-### Manual Scan
+- ✓ Cloud account added to A13E
+- ✓ Credentials connected and validated
+- ✓ Status shows "Connected" (green badge)
 
-#### From the Accounts Page
+### Starting a Scan
 
 1. Navigate to **Accounts** in the main menu
 2. Find the account you want to scan
-3. Click the **Play button** (▶) on the account card
-4. Scan starts immediately and status changes to "Running"
+3. Click the **Play** button (▶) on the account card
+4. Watch the progress bar as the scan runs
 
-#### From the Dashboard
+### Monitoring Progress
 
-1. If you have no recent scans, you'll see a prompt to run a scan
-2. Click **Run Scan** or **Add Cloud Account**
-3. Select the account to scan
+While scanning, you'll see:
 
-### Scan Configuration
+- **Progress bar**: Visual indicator of completion percentage
+- **Current step**: What A13E is currently scanning (e.g., "Scanning GuardDuty...")
+- **Status badge**: Changes from "Connected" to "Scanning..."
 
-When starting a scan, you can configure:
-
-#### Regions (Optional)
-
-By default, scans cover all regions configured for the account. To scan specific regions:
-
-```
-Note: Region selection is currently set during account creation.
-To change regions, edit the account settings.
-```
-
-Commonly scanned regions:
-- `us-east-1` (N. Virginia)
-- `us-west-2` (Oregon)
-- `eu-west-1` (Ireland)
-- `ap-southeast-1` (Singapore)
-
-#### Detection Types (Optional)
-
-Choose which detection sources to scan:
-
-- **GuardDuty Findings**: Threat detection rules
-- **Security Hub Controls**: Security standard controls
-- **EventBridge Rules**: Custom CloudTrail monitoring rules
-- **CloudWatch Logs Insights**: Log analysis queries
-- **Config Rules**: Compliance and configuration rules
-
-> **Tip**: Leave all detection types selected for comprehensive coverage analysis.
-
-## Monitoring Scan Progress
-
-### Real-Time Status
-
-While a scan is running, you'll see:
-
-#### Account Card Status
-
-- **Status Badge**: Changes from "Connected" to "Scanning..."
-- **Progress Indicator**: Spinning icon on the Play button
-- **Last Scan**: Shows "In progress"
-
-#### Scan Status Values
+### Scan Status Values
 
 | Status | Description |
 |--------|-------------|
 | **Pending** | Scan queued, waiting to start |
-| **Running** | Currently scanning cloud account |
+| **Running** | Currently scanning the cloud account |
 | **Completed** | Scan finished successfully |
 | **Failed** | Scan encountered an error |
-| **Cancelled** | Scan was manually stopped |
 
-### Cancelling a Scan
+---
 
-To cancel a running scan:
+## Detection Sources Explained
 
-1. Click the account card while scan is running
-2. Click **Cancel Scan** (if available)
-3. Scan will stop and status changes to "Cancelled"
+### GuardDuty Findings
 
-> **Note**: Partial results from cancelled scans are not saved.
-
-## Understanding Scan Results
-
-### Scan Summary
-
-After completion, the account card shows:
-
-- **Last Scan**: Timestamp of most recent scan
-- **Status**: "Connected" with green badge
-- **Detections Found**: Count of discovered detections
-
-### Viewing Results
-
-Click on the account name or navigate to:
-
-1. **Dashboard**: See high-level coverage metrics
-2. **Coverage**: Explore MITRE ATT&CK heatmap
-3. **Detections**: Browse all discovered detections
-4. **Gaps**: Review prioritized coverage gaps
-
-### Coverage Metrics
-
-After each scan, A13E calculates:
-
-- **Coverage Percentage**: Percentage of MITRE ATT&CK techniques covered
-- **Covered Techniques**: Techniques with strong detection (≥60% confidence)
-- **Partial Techniques**: Techniques with moderate coverage (40-60% confidence)
-- **Uncovered Techniques**: Techniques with little/no coverage (<40% confidence)
-- **Total Detections**: Number of security detections discovered
-- **Mapped Detections**: Detections successfully mapped to ATT&CK
-- **Average Confidence**: Mean confidence score across all techniques
-
-## Detection Types
-
-A13E discovers and analyses various types of security detections:
-
-### 1. GuardDuty Findings
-
-**What it scans**:
-- Active GuardDuty detectors
-- Finding types and severity levels
-- Detection coverage per finding type
+**What it scans**: Active GuardDuty detector configuration and finding types.
 
 **Example detections**:
 - `UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration`
 - `Backdoor:EC2/C2ActivityB.DNS`
 - `CryptoCurrency:EC2/BitcoinTool.B!DNS`
 
-**MITRE mapping**:
-- GuardDuty findings map to techniques like Credential Access, Command & Control, Impact
+**MITRE mappings**: Credential Access, Command and Control, Impact
 
-### 2. Security Hub Controls
+### Security Hub Controls
 
-**What it scans**:
-- Enabled security standards (AWS Foundational, CIS, PCI-DSS)
-- Active control checks
-- Compliance status
+**What it scans**: Enabled security standards (AWS Foundational, CIS, PCI-DSS) and control compliance status.
 
 **Example detections**:
 - `CloudTrail.1 - CloudTrail should be enabled`
-- `IAM.1 - IAM policies should not allow full "*:*" administrative privileges`
+- `IAM.1 - IAM policies should not allow full administrative privileges`
 - `S3.1 - S3 Block Public Access setting should be enabled`
 
-**MITRE mapping**:
-- Security Hub controls map to Defense Evasion, Persistence, Privilege Escalation techniques
+**MITRE mappings**: Defence Evasion, Persistence, Privilege Escalation
 
-### 3. EventBridge Rules
+### EventBridge Rules
 
-**What it scans**:
-- Custom EventBridge rules
-- CloudTrail event patterns
-- Rule targets and actions
+**What it scans**: Custom EventBridge rules that monitor CloudTrail events.
 
 **Example detections**:
 - Rules monitoring `CreateUser`, `DeleteUser` IAM events
 - Rules tracking EC2 instance state changes
 - Rules detecting S3 bucket policy modifications
 
-**MITRE mapping**:
-- EventBridge rules map based on monitored CloudTrail events (e.g., IAM changes → Persistence)
+**MITRE mappings**: Based on the CloudTrail events being monitored
 
-### 4. CloudWatch Logs Insights
+### CloudWatch Logs Insights
 
-**What it scans**:
-- CloudWatch Insights queries
-- Log groups and metric filters
-- Alarms connected to filters
+**What it scans**: Saved Insights queries and metric filters connected to alarms.
 
 **Example detections**:
 - Queries searching for failed authentication attempts
-- Filters detecting unauthorized API calls
+- Filters detecting unauthorised API calls
 - Queries identifying unusual network traffic patterns
 
-**MITRE mapping**:
-- Log queries map based on detection logic (e.g., failed auth → Credential Access)
+**MITRE mappings**: Based on what the query or filter is designed to detect
 
-### 5. AWS Config Rules
+### CloudWatch Alarms
 
-**What it scans**:
-- Custom and managed Config rules
-- Compliance evaluation status
-- Remediation configurations
+**What it scans**: Metric alarms and their current state (OK, ALARM, INSUFFICIENT_DATA).
+
+**Why it matters**: Alarms indicate active monitoring and alerting capability.
+
+### Config Rules
+
+**What it scans**: Managed and custom Config rules with compliance evaluation status.
 
 **Example detections**:
 - `encrypted-volumes` - Check if EBS volumes are encrypted
 - `root-account-mfa-enabled` - Verify MFA on root account
 - `s3-bucket-logging-enabled` - Ensure S3 logging is active
 
-**MITRE mapping**:
-- Config rules map to Defense Evasion and Collection techniques
+**MITRE mappings**: Defence Evasion, Collection
+
+---
 
 ## Scheduled Scans
 
-> **Available in**: Subscriber and Enterprise plans
+> **Available in**: Individual, Pro, and Enterprise plans
 
-Automate regular scans to track coverage over time.
+Automate your scans to track coverage over time without manual intervention.
 
 ### Creating a Schedule
 
-1. Navigate to **Settings** → **Scheduled Scans** (or similar location)
-2. Click **Create Schedule**
-3. Configure:
-   - **Frequency**: Daily, Weekly, Monthly
-   - **Time**: Preferred scan time (UTC)
-   - **Accounts**: Select which accounts to scan
-   - **Notifications**: Email alerts on completion or failures
+1. Navigate to **Accounts**
+2. Click the **Calendar** icon on the account you want to schedule
+3. Configure the schedule:
+   - **Frequency**: Daily, Weekly, or Monthly
+   - **Day/Time**: When to run (in your local timezone)
 4. Click **Save Schedule**
 
-### Schedule Options
+### Frequency Recommendations
 
 | Frequency | Best For |
 |-----------|----------|
-| **Daily** | Production environments, active detection development |
+| **Daily** | Active detection development, production environments |
 | **Weekly** | Standard monitoring, most organisations |
-| **Monthly** | Quarterly reviews, stable environments |
+| **Monthly** | Stable environments, quarterly reviews |
 
 ### Managing Schedules
 
-- **Edit**: Change frequency or accounts
+View scheduled scans via the calendar icon on each account card:
+
+- **Edit**: Change frequency or timing
 - **Pause**: Temporarily disable without deleting
-- **Delete**: Permanently remove the schedule
-- **Run Now**: Trigger an immediate scan regardless of schedule
+- **Delete**: Remove the schedule entirely
 
-## Scan History
+A scheduled account shows a badge indicating the next scan time.
 
-### Viewing Past Scans
+---
 
-1. Navigate to **Accounts**
-2. Click on an account name
-3. View the **Scan History** section
+## Scan Limits
 
-### History Details
+### Free Plan
 
-For each scan, you can see:
+The Free plan includes limited scans per week:
 
-- **Timestamp**: When the scan completed
-- **Status**: Success, failed, or cancelled
-- **Duration**: How long the scan took
-- **Detections Found**: Count of discoveries
-- **Changes**: New or removed detections since last scan
+- **Weekly limit**: Check the Dashboard for your current usage
+- **Resets**: Weekly on a rolling basis
+- **Upgrade**: Go to **Settings** → **Billing** for unlimited scans
 
-### Comparing Scans
+When you've reached your limit:
+- The Play button becomes disabled
+- A banner shows when your limit resets
+- Scheduled scans are paused until the limit resets
 
-Compare two scans to see:
-- Newly added detections
-- Removed or disabled detections
-- Coverage percentage changes
-- Gap improvements or regressions
+### Paid Plans
 
-> **Available in**: Subscriber and Enterprise plans
+Individual, Pro, and Enterprise plans include **unlimited scans**.
+
+---
+
+## After the Scan
+
+### Scan Completion
+
+When a scan completes successfully:
+
+1. A green notification appears: "Scan completed! Found X detections."
+2. The account card updates with:
+   - **Last scan**: Timestamp of the completed scan
+   - **Status**: Returns to "Connected"
+
+### Viewing Results
+
+Your scan results appear across multiple pages:
+
+| Page | What to Check |
+|------|---------------|
+| **Dashboard** | Quick overview of coverage percentage and top gaps |
+| **Coverage** | Full MITRE ATT&CK heatmap with technique details |
+| **Detections** | Browse all discovered detections |
+| **Gaps** | Prioritised list of coverage gaps with remediation |
+| **Compliance** | Framework coverage (CIS, NIST 800-53) |
+
+### Coverage Metrics
+
+After each scan, A13E calculates:
+
+| Metric | Description |
+|--------|-------------|
+| **Coverage %** | Percentage of techniques with strong detection (≥60% confidence) |
+| **Covered** | Techniques with ≥60% confidence |
+| **Partial** | Techniques with 40-60% confidence |
+| **Uncovered** | Techniques with <40% confidence |
+| **Total Detections** | Number of security detections discovered |
+| **Mapped Detections** | Detections successfully mapped to MITRE techniques |
+
+---
+
+## Troubleshooting
+
+### Scan Failed
+
+If a scan fails:
+
+1. **Check credentials**: Verify the connection is still valid
+   - Click the **Settings** icon on the account
+   - Click **Validate Connection**
+2. **Review permissions**: Ensure the IAM role has all required permissions
+3. **Check AWS status**: Verify no AWS service outages in your regions
+4. **Retry**: Click the **Play** button to start a new scan
+
+### Scan Takes Too Long
+
+Scans may take longer if:
+
+- You have many regions configured
+- Your account has thousands of EventBridge rules
+- AWS API rate limiting is occurring
+
+Consider:
+- Reducing the number of regions (scan only where you have resources)
+- Running scans during off-peak hours
+
+### No Detections Found
+
+If a scan finds no detections:
+
+1. Verify security services are enabled (GuardDuty, Security Hub, etc.)
+2. Check that the IAM role has read permissions for all services
+3. Confirm you're scanning the correct regions
+
+### Credentials Expired
+
+If you see "Connection Error" or "Expired":
+
+1. Click the **Connect** button on the account
+2. Create a new IAM role or update the existing one
+3. Enter the new Role ARN
+4. Validate the connection
+
+---
 
 ## Best Practices
 
 ### Scanning Frequency
 
-**Recommended**:
-- **Initial Setup**: Run 1-2 scans to verify connectivity and baseline coverage
-- **Active Development**: Weekly or bi-weekly scans when actively improving detections
-- **Steady State**: Monthly scans for monitoring and compliance
-
-**Avoid**:
-- Hourly or very frequent scans (adds load, results don't change that often)
-- Scanning during active configuration changes (wait for changes to complete)
+| Stage | Recommendation |
+|-------|----------------|
+| **Initial setup** | Run 2-3 scans to establish baseline |
+| **Active development** | Daily or weekly scans |
+| **Steady state** | Weekly scans |
+| **Compliance reporting** | Before each audit period |
 
 ### Regional Coverage
 
-**Best Practices**:
-- Scan all regions where you have resources
-- Include regions even with minimal resources (for complete coverage)
-- Exclude regions with no resources to reduce scan time
+- **Scan active regions**: Include all regions where you have resources
+- **Include sparse regions**: Even minimal resources can have security gaps
+- **Exclude unused regions**: Reduce scan time by excluding truly empty regions
 
-**Common Region Sets**:
-- **US Only**: `us-east-1`, `us-west-1`, `us-west-2`
-- **Global**: All commercial regions
-- **Compliance**: Regions required by regulatory standards (e.g., EU regions for GDPR)
-
-### Error Handling
-
-If a scan fails:
-
-1. **Check Credentials**: Verify connection is still valid (credentials may have expired)
-2. **Review Permissions**: Ensure IAM role still has required permissions
-3. **Check AWS Status**: Verify no AWS service outages in your regions
-4. **Retry**: Click **Run Scan** again after resolving issues
-5. **Contact Support**: If issues persist, email support@a13e.com with scan ID
-
-### Managing Results
+### After Scans
 
 After each scan:
 
-- ✓ Review coverage changes from previous scan
-- ✓ Prioritize new gaps based on severity
-- ✓ Investigate any removed detections (were they disabled?)
-- ✓ Export reports for compliance documentation
-- ✓ Share results with your security team
+1. ✓ Review coverage changes from the previous scan
+2. ✓ Check for new gaps (especially Critical and High priority)
+3. ✓ Investigate any removed detections (were they disabled?)
+4. ✓ Export reports for compliance documentation
 
-## Scan Notifications
-
-### Email Alerts
-
-Configure email notifications for:
-
-- **Scan Completion**: Receive email when scan finishes
-- **Scan Failures**: Alert on errors or failures
-- **Coverage Changes**: Notify when coverage increases or decreases significantly
-- **New Critical Gaps**: Alert on newly discovered critical coverage gaps
-
-To configure:
-1. Go to **Settings** → **Notifications**
-2. Select alert types
-3. Add recipient email addresses
-4. Click **Save Preferences**
-
-### Integration Webhooks
-
-> **Available in**: Enterprise plan
-
-Send scan results to external systems:
-
-- Slack notifications
-- PagerDuty alerts
-- Custom webhooks
-- SIEM integrations
+---
 
 ## Next Steps
 
-- [Understanding Coverage](./understanding-coverage.md) - Interpret MITRE ATT&CK coverage results
-- [Connecting AWS Accounts](./connecting-aws-accounts.md) - Add more accounts to scan
-- [Team Management](./team-management.md) - Share results with your team
-
-## Getting Help
-
-For scan-related issues:
-
-- **Check Account Connection**: Ensure "Connected" status before scanning
-- **Review Permissions**: Verify IAM role has all required permissions
-- **Check Logs**: Navigate to Settings → Audit Logs for detailed error messages
-- **Contact Support**: Email support@a13e.com with scan ID and error details
+- [Using the Dashboards](./using-dashboards.md) - Interpret your scan results
+- [Understanding Coverage](./understanding-coverage.md) - Learn about MITRE ATT&CK mapping
+- [Connecting AWS Accounts](./connecting-aws-accounts.md) - Add AWS accounts
+- [Connecting GCP Accounts](./connecting-gcp-accounts.md) - Add GCP projects

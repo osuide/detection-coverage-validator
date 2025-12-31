@@ -1,179 +1,361 @@
 # Connecting AWS Accounts
 
-This guide walks you through connecting your AWS accounts to A13E for security detection scanning.
+Connect your AWS accounts to A13E for security detection scanning using a read-only IAM role.
 
-## Prerequisites
+## TL;DR
 
-Before connecting an AWS account, ensure you have:
+- A13E uses a **read-only IAM role** with cross-account access
+- Choose **CloudFormation** (5 minutes), **Terraform** (10 minutes), or **Manual** (15-20 minutes)
+- The IAM role uses an **External ID** to prevent confused deputy attacks
+- A13E **cannot** modify resources, read log contents, or access secrets
 
-- **AWS Permissions**: Administrator access or IAM creation permissions (`iam:CreateRole`, `iam:CreatePolicy`, `cloudformation:CreateStack`)
-- **AWS Account ID**: Your 12-digit AWS account number
-- **A13E Account**: Access to the A13E dashboard
+---
 
-During setup, you'll receive an **External ID** from A13E—a unique security token that prevents confused deputy attacks.
+## Before You Start
+
+You'll need:
+
+- **AWS Console access**: Permission to create IAM roles and policies
+- **AWS Account ID**: Your 12-digit account number
+- **About 10 minutes**: For the complete setup process
+
+During setup, A13E provides an **External ID**—a unique security token that ensures only A13E can assume the role.
+
+---
 
 ## Understanding Permissions
 
-A13E uses **read-only permissions** following the principle of least privilege. The IAM role grants access to:
+A13E uses **read-only permissions** following the principle of least privilege.
 
-- GuardDuty, Security Hub, EventBridge findings
-- CloudWatch Logs metadata (log groups, metric filters)
-- AWS Config rules and CloudTrail trail configurations
-- IAM role validation (self-inspection only)
+### What A13E Can Access
 
-A13E **cannot** access billing data, modify resources, read log contents, access secrets, or control compute resources
+| Service | Permissions | Purpose |
+|---------|-------------|---------|
+| GuardDuty | Read detector configuration | Discover threat detection rules |
+| Security Hub | Read findings and controls | Map compliance to MITRE |
+| EventBridge | Read rules and targets | Discover custom detection rules |
+| CloudWatch Logs | Read log groups, queries | Find Insights queries and filters |
+| CloudWatch | Read alarms and metrics | Discover alarm configurations |
+| Config | Read rules and compliance | Find compliance rules |
+| CloudTrail | Read trail configuration | Verify logging is enabled |
+| Inspector | Read findings | Discover vulnerability detections |
+| Macie | Read findings | Discover data protection detections |
+| Lambda | List functions (metadata only) | Identify custom detections |
+| IAM | Read role info (self only) | Validate connection |
+
+### What A13E Cannot Access
+
+- ❌ Billing or cost data
+- ❌ Modify any resources
+- ❌ Read actual log contents
+- ❌ Access secrets or credentials
+- ❌ Launch or terminate compute resources
+- ❌ Access S3 object contents
+
+---
 
 ## Connection Methods
 
-A13E offers three methods to connect your AWS account. Choose the one that best fits your workflow:
+Choose the method that best fits your workflow:
 
-| Method | Best For | Time Required |
-|--------|----------|---------------|
+| Method | Best For | Time |
+|--------|----------|------|
 | **CloudFormation** | Quick setup, AWS Console users | 5 minutes |
 | **Terraform** | Infrastructure-as-Code workflows | 10 minutes |
 | **Manual** | Custom setups, strict change control | 15-20 minutes |
 
+---
+
 ## Method 1: CloudFormation (Recommended)
 
-CloudFormation provides one-click deployment of the required IAM role and policy.
+The fastest way to connect your AWS account.
 
-### Step 1: Add Your Account
+### Step 1: Add Your Account in A13E
 
-1. Navigate to **Accounts** in the A13E dashboard
+1. Navigate to **Accounts** in A13E
 2. Click **Add Account**
-3. Enter account details:
-   - **Account Name**: `Production AWS` (or your preferred name)
-   - **Provider**: Select **AWS**
+3. Enter:
+   - **Account Name**: Descriptive name (e.g., "Production AWS")
+   - **Provider**: AWS
    - **Account ID**: Your 12-digit AWS account ID
+   - **Regions**: Select which regions to scan
 4. Click **Add Account**
 
-### Step 2: Start Connection Wizard
+### Step 2: Start the Connection Wizard
 
-1. Click the **Connect** button (link icon) next to your new account
-2. Review the required permissions page
+1. Click the **Connect** button (link icon) on your new account
+2. Review the permissions A13E will request
 3. Click **Continue**
 
-### Step 3: Download CloudFormation Template
+### Step 3: Download the Template
 
-1. On the **Setup Access** screen, ensure **Use Template** is selected
-2. Click the **CloudFormation** card to download `a13e-iam-role.yaml`
-3. Note the **A13E AWS Account ID** and **External ID** displayed at the top
+1. Ensure **Use Template** is selected
+2. Click **CloudFormation** to download `a13e-iam-role.yaml`
+3. Note the **A13E AWS Account ID** and **External ID** shown at the top
 
 ### Step 4: Deploy in AWS Console
 
 1. Sign in to the **AWS Console** for the account you're connecting
 2. Navigate to **CloudFormation** → **Stacks**
-3. Click **Create stack** → **With new resources**
+3. Click **Create stack** → **With new resources (standard)**
 4. Select **Upload a template file**
-5. Upload the `a13e-iam-role.yaml` file
+5. Upload the downloaded `a13e-iam-role.yaml`
 6. Click **Next**
 
-### Step 5: Configure Stack
+### Step 5: Configure Stack Parameters
 
-1. **Stack name**: `A13E-ReadOnlyRole` (or your preferred name)
+1. **Stack name**: `A13E-ReadOnlyRole`
 2. **Parameters**:
    - **A13EAccountId**: Paste the A13E AWS Account ID from the wizard
    - **ExternalId**: Paste the External ID from the wizard
 3. Click **Next**
+4. Accept defaults on the Configure stack options page
+5. Click **Next**
 
-### Step 6: Review and Create
+### Step 6: Create the Stack
 
-1. Review the stack configuration
-2. Check the box: **"I acknowledge that AWS CloudFormation might create IAM resources"**
-3. Click **Create stack**
-4. Wait for stack status to show **CREATE_COMPLETE** (usually 1-2 minutes)
+1. Review the configuration
+2. **Check the acknowledgement box**: "I acknowledge that AWS CloudFormation might create IAM resources"
+3. Click **Submit**
+4. Wait for status to show **CREATE_COMPLETE** (1-2 minutes)
 
-### Step 7: Copy Role ARN
+### Step 7: Copy the Role ARN
 
-1. In the CloudFormation stack, go to **Outputs** tab
-2. Copy the **RoleArn** value (e.g., `arn:aws:iam::123456789012:role/A13E-ReadOnly`)
+1. Go to the **Outputs** tab of your stack
+2. Copy the **RoleArn** value
+   - Format: `arn:aws:iam::123456789012:role/A13E-ReadOnly`
 
-### Step 8: Complete Connection
+### Step 8: Complete Connection in A13E
 
 1. Return to the A13E connection wizard
-2. Click **I've Created the Role** to proceed to credentials step
-3. Paste the **Role ARN** into the input field
+2. Click **I've Created the Role**
+3. Paste the **Role ARN**
 4. Click **Continue**
 5. Click **Validate Connection**
-6. Wait for validation to complete
-7. Click **Done** when validation succeeds
+6. Wait for validation to complete (shows green checkmarks for each permission)
+7. Click **Done**
+
+Your account now shows "Connected" status and you can run scans.
+
+---
 
 ## Method 2: Terraform
 
-For infrastructure-as-code workflows:
+For teams using Infrastructure-as-Code.
 
-1. Follow the initial account setup from Method 1 (Steps 1-2)
-2. Download the Terraform module (`a13e-aws-role.tf`) from the connection wizard
-3. Update variables with the A13E Account ID and External ID from the wizard
-4. Apply the configuration:
-   ```bash
-   terraform init
-   terraform apply
-   terraform output role_arn
-   ```
-5. Copy the Role ARN and complete connection in the A13E wizard (same as CloudFormation Step 8)
+### Step 1: Start the Wizard
 
-## Method 3: Manual IAM Setup
+Follow Steps 1-2 from the CloudFormation method to add your account and start the connection wizard.
 
-For organisations with strict change control processes:
+### Step 2: Download Terraform Module
 
-1. Follow the initial account setup from Method 1 (Steps 1-2)
-2. In AWS Console, create an IAM policy:
-   - Copy the policy JSON from the A13E connection wizard
-   - Create policy named `A13E-DetectionScanner`
-3. Create an IAM role:
-   - Trusted entity: **Another AWS account**
-   - Enter A13E Account ID and External ID from wizard
-   - Attach the `A13E-DetectionScanner` policy
-   - Name the role `A13E-ReadOnly`
-4. Copy the Role ARN from the role summary
-5. Complete connection in the A13E wizard (same as CloudFormation Step 8)
+1. Click **Terraform** to download the Terraform configuration
+2. Note the **A13E AWS Account ID** and **External ID**
+
+### Step 3: Apply the Configuration
+
+```bash
+# Navigate to where you saved the file
+cd path/to/a13e-terraform
+
+# Update variables in the .tf file or create a terraform.tfvars:
+# a13e_account_id = "FROM_WIZARD"
+# external_id = "FROM_WIZARD"
+
+# Initialise and apply
+terraform init
+terraform plan
+terraform apply
+
+# Get the role ARN
+terraform output role_arn
+```
+
+### Step 4: Complete Connection
+
+1. Copy the role ARN from the Terraform output
+2. Return to A13E and complete the connection wizard (Step 8 from CloudFormation method)
+
+---
+
+## Method 3: Manual Setup
+
+For organisations with strict change control processes.
+
+### Step 1: Create the IAM Policy
+
+1. In AWS Console, go to **IAM** → **Policies**
+2. Click **Create policy**
+3. Switch to **JSON** tab
+4. Paste the policy JSON from the A13E connection wizard
+5. Click **Next**
+6. **Name**: `A13E-DetectionScanner`
+7. **Description**: "Read-only access for A13E detection scanning"
+8. Click **Create policy**
+
+### Step 2: Create the IAM Role
+
+1. Go to **IAM** → **Roles**
+2. Click **Create role**
+3. **Trusted entity type**: AWS account
+4. Select **Another AWS account**
+5. Enter the **A13E AWS Account ID** from the wizard
+6. **Check**: Require external ID
+7. Enter the **External ID** from the wizard
+8. Click **Next**
+
+### Step 3: Attach the Policy
+
+1. Search for `A13E-DetectionScanner`
+2. Check the box to select it
+3. Click **Next**
+
+### Step 4: Name and Create
+
+1. **Role name**: `A13E-ReadOnly`
+2. **Description**: "Cross-account role for A13E detection coverage scanning"
+3. Review the trusted entities and permissions
+4. Click **Create role**
+
+### Step 5: Copy the Role ARN
+
+1. Click on your new role
+2. Copy the **ARN** from the role summary
+
+### Step 6: Complete Connection
+
+Return to A13E and complete the connection wizard (Step 8 from CloudFormation method).
+
+---
 
 ## Validating Your Connection
 
-After entering the Role ARN, A13E validates by:
-1. Assuming the role with the external ID
-2. Testing each required permission
-3. Verifying access to GuardDuty, Security Hub, and other services
+When you click **Validate Connection**, A13E:
 
-**Successful validation** shows a green "Valid" badge with granted permissions listed.
+1. Assumes the IAM role using the External ID
+2. Tests each required permission
+3. Reports success or failure for each service
 
-**Failed validation** shows error details. Common issues:
-- **Trust relationship error**: Verify External ID and A13E Account ID match exactly
-- **Missing permissions**: Ensure the IAM policy is attached to the role
-- **Role not found**: Check the Role ARN for typos
+### Successful Validation
+
+You'll see green checkmarks for:
+- ✓ GuardDuty access
+- ✓ Security Hub access
+- ✓ EventBridge access
+- ✓ CloudWatch access
+- ✓ Config access
+- ✓ CloudTrail access
+
+### Failed Validation
+
+If validation fails, check the specific error:
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| **Trust relationship error** | External ID mismatch | Verify External ID matches exactly |
+| **Role not found** | Typo in Role ARN | Copy ARN directly from AWS Console |
+| **Access denied** | Missing permissions | Ensure policy is attached to role |
+| **Missing permissions** | Incomplete policy | Update policy with latest from wizard |
+
+---
 
 ## Troubleshooting
 
-### "Access Denied" or "Not Authorized"
-Check the IAM role's **Trust relationships** tab. Verify the Principal account and external ID condition match exactly what's shown in the A13E wizard.
+### "Access Denied" Error
 
-### "Missing Permissions"
-In IAM, verify the `A13E-DetectionScanner` policy is attached to the role. Compare the policy JSON with the latest version in the connection wizard.
+The IAM role's trust relationship may be incorrect.
 
-### "Invalid Role ARN Format"
-Verify format: `arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME`. Copy directly from AWS Console to avoid typos.
+1. In AWS Console, go to **IAM** → **Roles** → your A13E role
+2. Click the **Trust relationships** tab
+3. Verify the Principal matches the A13E Account ID
+4. Verify the `sts:ExternalId` condition matches exactly
+
+### "Missing Permissions" Error
+
+The policy may be incomplete or outdated.
+
+1. Download the latest policy JSON from the A13E wizard
+2. Update your IAM policy in AWS Console
+3. Re-validate the connection in A13E
+
+### "Invalid Role ARN Format" Error
+
+Role ARN format: `arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME`
+
+- Ensure no extra spaces
+- Copy directly from AWS Console
+- Don't include any angle brackets or placeholders
 
 ### Connection Shows "Pending Validation"
-Click the Settings button (gear icon) on the account card and select **Validate Connection**.
 
-### Updating Permissions
+Click the **Settings** icon on the account card and select **Validate Connection** to retry.
+
+---
+
+## Updating Permissions
+
 When A13E adds new features requiring additional permissions:
-1. Download the latest template from A13E
-2. **Update** your existing CloudFormation stack or run `terraform apply` (don't create new resources)
+
+1. Download the latest template from the A13E wizard
+2. **Update** your existing stack or policy (don't create new resources)
+   - CloudFormation: Update stack with new template
+   - Terraform: Update module and run `terraform apply`
+   - Manual: Update the IAM policy JSON
 3. Re-validate the connection in A13E
+
+---
 
 ## Multi-Account Setup
 
-**For AWS Organisations**: Use CloudFormation StackSets to deploy the IAM role to multiple accounts simultaneously. Upload the A13E template to StackSets and target your desired accounts or OUs.
+### AWS Organisations
 
-**For separate accounts**: Add each account individually in A13E and complete the connection process. Coverage analysis will aggregate results across all connected accounts.
+Use CloudFormation StackSets to deploy the IAM role to multiple accounts:
+
+1. In CloudFormation, go to **StackSets**
+2. Create a new StackSet with the A13E template
+3. Target your desired accounts or organisational units (OUs)
+4. Deploy to all accounts
+
+Then add each account in A13E and complete the connection using the Role ARN.
+
+### Separate AWS Accounts
+
+Add each account individually in A13E:
+
+1. Add account with unique name
+2. Complete connection wizard
+3. Validate credentials
+4. Repeat for each account
+
+Coverage analysis will aggregate results across all connected accounts.
+
+---
+
+## Security Considerations
+
+### External ID
+
+The External ID prevents confused deputy attacks. Never share your External ID publicly.
+
+### Read-Only Access
+
+A13E's IAM policy grants only read permissions. The role cannot:
+- Create, modify, or delete resources
+- Access customer data in S3, databases, or logs
+- Assume other roles or escalate privileges
+
+### Credential Rotation
+
+The IAM role uses AWS STS for temporary credentials that automatically rotate. No long-term credentials are stored.
+
+### Audit Trail
+
+All A13E API calls to your account are logged in CloudTrail. You can filter for the role name to see exactly what A13E accesses.
+
+---
 
 ## Next Steps
 
-After connecting your AWS account:
 - [Running Scans](./running-scans.md) - Start scanning for detection coverage
 - [Understanding Coverage](./understanding-coverage.md) - Interpret your results
-- [Team Management](./team-management.md) - Share access with your team
-
-Need help? Check AWS CloudTrail for AssumeRole errors, test permissions using the IAM Policy Simulator, or contact support@a13e.com with your Role ARN and error details
+- [Using the Dashboards](./using-dashboards.md) - Navigate your coverage data
