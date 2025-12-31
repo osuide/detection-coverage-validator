@@ -28,12 +28,20 @@ export const docPages: DocPage[] = [
     order: 2,
   },
   {
+    slug: 'connecting-gcp',
+    title: 'Connecting GCP Accounts',
+    description: 'Connect GCP projects using Workload Identity Federation.',
+    readTime: '10 min',
+    icon: 'Cloud',
+    order: 3,
+  },
+  {
     slug: 'running-scans',
     title: 'Running Scans',
     description: 'Learn how to scan your cloud accounts for detections.',
     readTime: '12 min',
     icon: 'Play',
-    order: 3,
+    order: 4,
   },
   {
     slug: 'understanding-coverage',
@@ -41,7 +49,7 @@ export const docPages: DocPage[] = [
     description: 'Deep dive into MITRE ATT&CK coverage analysis.',
     readTime: '15 min',
     icon: 'BarChart3',
-    order: 4,
+    order: 5,
   },
   {
     slug: 'team-management',
@@ -49,7 +57,7 @@ export const docPages: DocPage[] = [
     description: 'Manage users, roles, and permissions.',
     readTime: '6 min',
     icon: 'Users',
-    order: 5,
+    order: 6,
   },
   {
     slug: 'billing',
@@ -57,7 +65,15 @@ export const docPages: DocPage[] = [
     description: 'Understand plans, pricing, and manage your subscription.',
     readTime: '8 min',
     icon: 'CreditCard',
-    order: 6,
+    order: 7,
+  },
+  {
+    slug: 'api-keys',
+    title: 'API Keys',
+    description: 'Generate and manage API keys for programmatic access.',
+    readTime: '5 min',
+    icon: 'Key',
+    order: 8,
   },
 ];
 

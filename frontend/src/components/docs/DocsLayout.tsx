@@ -11,6 +11,7 @@ import {
   X,
   Mail,
   ExternalLink,
+  Key,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { docPages } from '../../pages/docs/docs-content';
@@ -23,13 +24,14 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   BarChart3,
   Users,
   CreditCard,
+  Key,
 };
 
 // Group docs into sections
 const docSections = [
   {
     title: 'Getting Started',
-    pages: docPages.filter(d => ['getting-started', 'connecting-aws'].includes(d.slug)),
+    pages: docPages.filter(d => ['getting-started', 'connecting-aws', 'connecting-gcp'].includes(d.slug)),
   },
   {
     title: 'Features',
@@ -37,7 +39,7 @@ const docSections = [
   },
   {
     title: 'Management',
-    pages: docPages.filter(d => ['team-management', 'billing'].includes(d.slug)),
+    pages: docPages.filter(d => ['team-management', 'billing', 'api-keys'].includes(d.slug)),
   },
 ];
 
@@ -120,12 +122,12 @@ export function DocsLayout({ children }: DocsLayoutProps) {
         {/* Sidebar */}
         <aside
           className={`
-            fixed lg:sticky top-16 left-0 z-40 w-72 h-[calc(100vh-4rem)] bg-slate-900/95 backdrop-blur-lg border-r border-slate-800
+            fixed lg:sticky top-16 left-0 z-40 w-64 h-[calc(100vh-4rem)] bg-slate-900/95 backdrop-blur-lg border-r border-slate-800
             transform transition-transform duration-200 ease-in-out overflow-y-auto
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           `}
         >
-          <nav className="p-6 space-y-8">
+          <nav className="p-5 space-y-6">
             {/* Back link */}
             <div>
               <Link
@@ -140,10 +142,10 @@ export function DocsLayout({ children }: DocsLayoutProps) {
             {/* Doc sections */}
             {docSections.map((section) => (
               <div key={section.title}>
-                <div className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                <div className="px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
                   {section.title}
                 </div>
-                <ul className="space-y-1">
+                <ul className="space-y-0.5">
                   {section.pages.map((doc) => {
                     const Icon = iconMap[doc.icon] || BookOpen;
                     const isActive = currentSlug === doc.slug;
@@ -153,14 +155,14 @@ export function DocsLayout({ children }: DocsLayoutProps) {
                           to={`/docs/${doc.slug}`}
                           onClick={() => setSidebarOpen(false)}
                           className={`
-                            flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all
+                            flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all
                             ${isActive
-                              ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold shadow-lg shadow-blue-500/25'
-                              : 'text-gray-200 hover:bg-slate-800 hover:text-white'
+                              ? 'bg-cyan-500/15 text-cyan-400 font-medium border-l-2 border-cyan-400 -ml-0.5 pl-[11px]'
+                              : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
                             }
                           `}
                         >
-                          <Icon className="h-4 w-4 flex-shrink-0" />
+                          <Icon className="h-4 w-4 flex-shrink-0 opacity-70" />
                           <span>{doc.title}</span>
                         </Link>
                       </li>
@@ -171,17 +173,17 @@ export function DocsLayout({ children }: DocsLayoutProps) {
             ))}
 
             {/* Additional Links */}
-            <div className="pt-6 border-t border-slate-800">
-              <div className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <div className="pt-4 border-t border-slate-800">
+              <div className="px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
                 Resources
               </div>
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 <li>
                   <a
                     href="mailto:support@a13e.com"
-                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-200 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-slate-400 hover:bg-slate-800/70 hover:text-white rounded-lg transition-colors"
                   >
-                    <Mail className="h-4 w-4" />
+                    <Mail className="h-4 w-4 opacity-70" />
                     Contact Support
                   </a>
                 </li>
@@ -190,9 +192,9 @@ export function DocsLayout({ children }: DocsLayoutProps) {
                     href="https://attack.mitre.org/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-200 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-slate-400 hover:bg-slate-800/70 hover:text-white rounded-lg transition-colors"
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    <ExternalLink className="h-4 w-4 opacity-70" />
                     MITRE ATT&CK
                   </a>
                 </li>
@@ -211,7 +213,7 @@ export function DocsLayout({ children }: DocsLayoutProps) {
 
         {/* Main content */}
         <main className="flex-1 min-w-0">
-          <div className="max-w-4xl px-8 sm:px-12 lg:px-20 py-16">
+          <div className="max-w-5xl px-6 sm:px-8 lg:px-12 py-10">
             {children}
           </div>
         </main>
