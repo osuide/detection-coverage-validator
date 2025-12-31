@@ -583,9 +583,16 @@ class GCPCredentialService:
             f"  --member='serviceAccount:{sa_email}' \\",
             f"  --role='projects/{project_id}/roles/a13e_detection_scanner'",
             "",
-            "# NOTE: If using Google SecOps (Chronicle SIEM), you may also need",
-            "# to grant the Chronicle API Viewer role (roles/chronicle.viewer)",
-            "# for read-only access to detection rules and configurations.",
+            "# OPTIONAL: If using Google SecOps (Chronicle SIEM), create a minimal custom role:",
+            "#",
+            f"# gcloud iam roles create a13e_chronicle_reader --project={project_id} \\",
+            "#   --title='A13E Chronicle Reader' \\",
+            "#   --description='Minimal read-only access to Chronicle detection rules' \\",
+            "#   --permissions=chronicle.rules.list,chronicle.referenceLists.list,chronicle.parsers.list",
+            "#",
+            f"# gcloud projects add-iam-policy-binding {project_id} \\",
+            f"#   --member='serviceAccount:{sa_email}' \\",
+            f"#   --role='projects/{project_id}/roles/a13e_chronicle_reader'",
         ]
 
         return commands

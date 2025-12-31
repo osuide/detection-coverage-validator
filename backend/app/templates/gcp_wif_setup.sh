@@ -252,17 +252,11 @@ PERMISSIONS=(
     "securitycenter.findings.get"
     "securitycenter.sources.list"
     "securitycenter.sources.get"
-    # Google SecOps / Chronicle SIEM
+    # Google SecOps / Chronicle SIEM (minimal permissions - only if using Chronicle)
+    # These are the only permissions A13E actually uses for Chronicle scanning
     "chronicle.rules.list"
-    "chronicle.rules.get"
-    "chronicle.detections.list"
-    "chronicle.detections.get"
-    "chronicle.curatedRuleSets.list"
-    "chronicle.curatedRuleSets.get"
-    "chronicle.alertGroupingRules.list"
-    "chronicle.alertGroupingRules.get"
     "chronicle.referenceLists.list"
-    "chronicle.referenceLists.get"
+    "chronicle.parsers.list"
     # Eventarc
     "eventarc.triggers.list"
     "eventarc.triggers.get"

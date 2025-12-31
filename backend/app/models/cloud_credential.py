@@ -523,19 +523,15 @@ GCP_CUSTOM_ROLE = {
         "securitycenter.findings.get",
         "securitycenter.sources.list",
         "securitycenter.sources.get",
-        # Google SecOps / Chronicle SIEM - for YARA-L detection rules (read-only)
-        # Requires Chronicle API Viewer role (roles/chronicle.viewer)
-        # https://cloud.google.com/iam/docs/roles-permissions/chronicle
+        # Google SecOps / Chronicle SIEM - minimal read-only permissions
+        # These are the ONLY permissions A13E actually uses:
+        # - list_rules() → chronicle.rules.list
+        # - list_reference_lists() → chronicle.referenceLists.list
+        # - list_parsers() → chronicle.parsers.list
+        # Recommend creating a custom role rather than using predefined Viewer role
         "chronicle.rules.list",
-        "chronicle.rules.get",
-        "chronicle.detections.list",
-        "chronicle.detections.get",
-        "chronicle.curatedRuleSets.list",
-        "chronicle.curatedRuleSets.get",
-        "chronicle.alertGroupingRules.list",
-        "chronicle.alertGroupingRules.get",
         "chronicle.referenceLists.list",
-        "chronicle.referenceLists.get",
+        "chronicle.parsers.list",
         # Eventarc - for event triggers
         "eventarc.triggers.list",
         "eventarc.triggers.get",
