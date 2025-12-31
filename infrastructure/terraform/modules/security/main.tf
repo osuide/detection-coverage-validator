@@ -95,11 +95,11 @@ exports.handler = async (event) => {
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://js.stripe.com https://cdn.redocly.com",
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
     "img-src 'self' data: blob: https:",
     "connect-src 'self' https://${var.api_domain} https://api.stripe.com",
     "frame-src https://js.stripe.com",
-    "font-src 'self' data:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",

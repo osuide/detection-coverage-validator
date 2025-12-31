@@ -94,8 +94,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install Redocly CLI
-        run: npm install -g @redocly/cli
+      - name: Install Redocly CLI and Pandoc
+        run: |
+          npm install -g @redocly/cli
+          sudo apt-get update && sudo apt-get install -y pandoc
 
       - name: Lint OpenAPI spec
         working-directory: docs
