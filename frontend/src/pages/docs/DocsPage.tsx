@@ -123,6 +123,11 @@ export function DocsPage() {
   const prevDoc = slug ? getPrevDoc(slug) : undefined;
   const headings = parseHeadings(content);
 
+  // Scroll to top when navigating to a new page
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [slug]);
+
   useEffect(() => {
     if (!slug || !markdownFiles[slug]) {
       setError('Document not found');
