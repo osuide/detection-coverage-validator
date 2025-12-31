@@ -77,6 +77,21 @@ from app.models.detection_evaluation_history import (
     EvaluationType,
     EvaluationAlertSeverity,
 )
+from app.models.custom_detection import (
+    CustomDetection,
+    CustomDetectionBatch,
+    CustomDetectionFormat,
+    CustomDetectionStatus,
+)
+from app.models.admin import (
+    AdminUser,
+    AdminSession,
+    AdminRole,
+    ApprovalStatus,
+    IncidentSeverity,
+    IncidentStatus,
+)
+from app.models.gap import CoverageGap
 
 __all__ = [
     # Cloud accounts
@@ -159,4 +174,18 @@ __all__ = [
     "DetectionEvaluationAlert",
     "EvaluationType",
     "EvaluationAlertSeverity",
+    # Custom Detections
+    "CustomDetection",
+    "CustomDetectionBatch",
+    "CustomDetectionFormat",
+    "CustomDetectionStatus",
+    # Admin
+    "AdminUser",
+    "AdminSession",
+    "AdminRole",
+    "ApprovalStatus",
+    "IncidentSeverity",
+    "IncidentStatus",
+    # Coverage Gaps
+    "CoverageGap",
 ]
