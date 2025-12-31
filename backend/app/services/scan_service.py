@@ -357,11 +357,11 @@ class ScanService:
 
             # Record evaluation history for compliance tracking
             try:
-                # Get all detections with evaluation data for this account
+                # Get all detections for this account (not just those with evaluation_summary,
+                # as managed services like Security Hub, GuardDuty store status in raw_config)
                 detections_result = await self.db.execute(
                     select(Detection).where(
                         Detection.cloud_account_id == account.id,
-                        Detection.evaluation_summary.isnot(None),
                     )
                 )
                 detections_with_eval = detections_result.scalars().all()

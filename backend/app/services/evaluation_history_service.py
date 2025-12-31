@@ -39,29 +39,104 @@ DETECTION_TYPE_TO_EVALUATION_TYPE = {
 UNHEALTHY_STATES = {"NON_COMPLIANT", "ALARM", "DISABLED", "ERROR", "BROKEN"}
 
 
-def extract_current_state(evaluation_summary: dict) -> str:
-    """Extract the current state from an evaluation summary.
+def extract_current_state(
+    evaluation_summary: dict | None,
+    raw_config: dict | None = None,
+    detection_type: str | None = None,
+) -> str:
+    """Extract the current state from a detection's data.
+
+    Different detection types store their status in different places:
+    - Config Rules: evaluation_summary.compliance_type
+    - CloudWatch Alarms: evaluation_summary.state
+    - EventBridge: evaluation_summary.state
+    - Security Hub: raw_config.enabled_controls_count (managed)
+    - GuardDuty: raw_config.detector_status
+    - Inspector: raw_config (managed)
+    - Macie: raw_config.macie_status
 
     Args:
         evaluation_summary: The evaluation summary JSONB
+        raw_config: The raw_config JSONB (for managed services)
+        detection_type: The detection type string
 
     Returns:
-        The current state string
+        The current state string: COMPLIANT, NON_COMPLIANT, OK, ALARM,
+        ENABLED, DISABLED, or UNKNOWN
     """
-    if not evaluation_summary:
+    eval_summary = evaluation_summary or {}
+    config = raw_config or {}
+    dtype = str(detection_type or "").lower()
+
+    # First check evaluation_summary (Config, CloudWatch, EventBridge)
+    if eval_summary:
+        if "compliance_type" in eval_summary:
+            return eval_summary.get("compliance_type", "UNKNOWN")
+        if "state" in eval_summary:
+            return eval_summary.get("state", "UNKNOWN")
+
+    # Type-specific logic for managed services
+    if "security_hub" in dtype:
+        # Security Hub: ENABLED if any controls are enabled
+        enabled = config.get("enabled_controls_count", 0)
+        if enabled > 0 or "standard_id" in config or "hub_arn" in config:
+            return "ENABLED"
         return "UNKNOWN"
 
-    # Config rule compliance
-    if "compliance_type" in evaluation_summary:
-        return evaluation_summary.get("compliance_type", "UNKNOWN")
+    if "guardduty" in dtype:
+        detector_status = config.get("detector_status", "")
+        if str(detector_status).upper() == "ENABLED":
+            return "ENABLED"
+        if str(detector_status).upper() == "DISABLED":
+            return "DISABLED"
+        if config.get("detector_id"):
+            return "ENABLED"
+        return "UNKNOWN"
 
-    # CloudWatch alarm state
-    if "state" in evaluation_summary:
-        return evaluation_summary.get("state", "UNKNOWN")
+    if "inspector" in dtype:
+        if (
+            config.get("coverage")
+            or config.get("ec2_coverage")
+            or config.get("ecr_coverage")
+            or config.get("finding_types")
+            or config.get("category")
+        ):
+            return "ENABLED"
+        if config.get("status"):
+            return str(config.get("status")).upper()
+        return "UNKNOWN"
 
-    # EventBridge rule state (check enabled flag)
-    if "state" in evaluation_summary:
-        return evaluation_summary.get("state", "UNKNOWN")
+    if "macie" in dtype:
+        macie_status = config.get("macie_status", "")
+        if str(macie_status).upper() == "ENABLED":
+            return "ENABLED"
+        if str(macie_status).upper() == "DISABLED":
+            return "DISABLED"
+        if config.get("category") or config.get("finding_types"):
+            return "ENABLED"
+        return "UNKNOWN"
+
+    if "cloudwatch_logs_insights" in dtype or "logs_insights" in dtype:
+        # Logs Insights queries are always "enabled" if they exist
+        if config.get("query_string") or config.get("log_group_names"):
+            return "ENABLED"
+        return "UNKNOWN"
+
+    if "lambda" in dtype or "custom_lambda" in dtype:
+        state = config.get("State", config.get("state", ""))
+        if str(state).upper() in ("ACTIVE", "PENDING"):
+            return "ENABLED"
+        if str(state).upper() in ("INACTIVE", "FAILED"):
+            return "DISABLED"
+        if config.get("FunctionArn") or config.get("function_arn"):
+            return "ENABLED"
+        return "UNKNOWN"
+
+    if "gcp_" in dtype:
+        # GCP managed services are enabled if they exist
+        if config.get("project_id") or config.get("source_id"):
+            return "ENABLED"
+        return "UNKNOWN"
 
     return "UNKNOWN"
 
@@ -79,16 +154,30 @@ async def record_evaluation_snapshot(
         scan_id: Optional scan ID that triggered this evaluation
 
     Returns:
-        The created history record, or None if no evaluation data
+        The created history record, or None if account is missing
     """
-    if not detection.evaluation_summary:
-        return None
-
     if not detection.cloud_account_id:
         return None
 
-    # Get the current state from evaluation summary
-    current_state = extract_current_state(detection.evaluation_summary)
+    # Get the current state from evaluation_summary or raw_config
+    dtype = (
+        detection.detection_type.value
+        if hasattr(detection.detection_type, "value")
+        else str(detection.detection_type)
+    )
+    current_state = extract_current_state(
+        detection.evaluation_summary,
+        detection.raw_config,
+        dtype,
+    )
+
+    # Skip if we can't determine state at all
+    if (
+        current_state == "UNKNOWN"
+        and not detection.evaluation_summary
+        and not detection.raw_config
+    ):
+        return None
 
     # Determine evaluation type from detection type
     evaluation_type = DETECTION_TYPE_TO_EVALUATION_TYPE.get(
