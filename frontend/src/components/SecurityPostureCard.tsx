@@ -7,17 +7,13 @@
  * This answers the question: "What violations did our detections find?"
  */
 
-import { useState } from 'react'
 import {
   Shield,
   CheckCircle,
   XCircle,
-  ChevronDown,
-  ChevronUp,
   ExternalLink,
-  AlertTriangle,
 } from 'lucide-react'
-import { DetectionEffectiveness, FailingControlItem } from '../services/api'
+import { DetectionEffectiveness } from '../services/api'
 
 // Human-readable names for Security Hub standards
 const STANDARD_DISPLAY_NAMES: Record<string, string> = {
@@ -47,21 +43,12 @@ const SEVERITY_COLOURS: Record<string, string> = {
   INFORMATIONAL: 'text-gray-500 bg-gray-500/20',
 }
 
-const SEVERITY_DOT_COLOURS: Record<string, string> = {
-  CRITICAL: 'text-red-500',
-  HIGH: 'text-orange-500',
-  MEDIUM: 'text-yellow-500',
-  LOW: 'text-blue-500',
-  INFORMATIONAL: 'text-gray-500',
-}
 
 interface SecurityPostureCardProps {
   standardId: string
   standardName: string
   effectiveness: DetectionEffectiveness
   region: string
-  /** Number of items per page for failing controls */
-  pageSize?: number
 }
 
 export function SecurityPostureCard({
@@ -69,11 +56,7 @@ export function SecurityPostureCard({
   standardName,
   effectiveness,
   region,
-  pageSize = 10,
 }: SecurityPostureCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-
   const displayName = STANDARD_DISPLAY_NAMES[standardId] || standardName
   const consoleUrlPath = STANDARD_CONSOLE_URLS[standardId] || ''
 
@@ -83,15 +66,7 @@ export function SecurityPostureCard({
     failed_count,
     compliance_percent,
     by_severity,
-    all_failing_controls,
   } = effectiveness
-
-  // Calculate pagination
-  const totalPages = Math.ceil(all_failing_controls.length / pageSize)
-  const paginatedControls = all_failing_controls.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  )
 
   // Determine compliance status colour
   const getComplianceColour = (percent: number) => {
@@ -112,9 +87,9 @@ export function SecurityPostureCard({
     : `https://${region}.console.aws.amazon.com/securityhub/home?region=${region}`
 
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-700">
+    <div className="bg-gray-800 rounded-lg border border-gray-700">
+      {/* Card Content */}
+      <div className="p-4">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-blue-400" />
@@ -199,95 +174,6 @@ export function SecurityPostureCard({
           </div>
         )}
       </div>
-
-      {/* Expandable Failing Controls List */}
-      {failed_count > 0 && (
-        <div>
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full px-4 py-2 flex items-center justify-between text-sm text-gray-400 hover:bg-gray-700/50 transition-colors"
-          >
-            <span className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
-              View Failing Controls ({failed_count})
-            </span>
-            {isExpanded ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </button>
-
-          {isExpanded && (
-            <div className="border-t border-gray-700">
-              {/* Controls List */}
-              <div className="max-h-80 overflow-y-auto">
-                {paginatedControls.map((control: FailingControlItem) => (
-                  <div
-                    key={control.control_id}
-                    className="px-4 py-2 border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={SEVERITY_DOT_COLOURS[control.severity]}>●</span>
-                          <span className="text-xs font-mono text-gray-300">
-                            {control.control_id}
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-400 truncate mt-0.5" title={control.title}>
-                          {control.title}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-xs text-red-400">{control.failed_count} failed</span>
-                        {control.passed_count > 0 && (
-                          <span className="text-xs text-gray-500 ml-2">
-                            {control.passed_count} passed
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="px-4 py-2 border-t border-gray-700 flex items-center justify-between">
-                  <span className="text-xs text-gray-500">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-600"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* No Failures Message */}
-      {failed_count === 0 && (
-        <div className="px-4 py-3 text-center">
-          <CheckCircle className="h-6 w-6 text-green-400 mx-auto mb-1" />
-          <p className="text-xs text-gray-400">All controls passing</p>
-        </div>
-      )}
     </div>
   )
 }

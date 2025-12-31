@@ -17,7 +17,6 @@ import {
   ExternalLink,
   Filter,
   MapPin,
-  Clock,
   Eye,
 } from 'lucide-react'
 
@@ -108,36 +107,6 @@ function TechniqueBadge({ techniqueId }: { techniqueId: string }) {
       {techniqueId}
       <ExternalLink className="h-2.5 w-2.5 ml-1" />
     </a>
-  )
-}
-
-// Progress bar component
-function CoverageProgressBar({
-  enabled,
-  total,
-}: {
-  enabled: number
-  total: number
-}) {
-  const percent = total > 0 ? (enabled / total) * 100 : 0
-  const getColour = () => {
-    if (percent >= 80) return 'bg-green-500'
-    if (percent >= 50) return 'bg-yellow-500'
-    return 'bg-red-500'
-  }
-
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-        <div
-          className={`h-full ${getColour()} transition-all duration-300`}
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-      <span className="text-sm font-medium text-gray-300 whitespace-nowrap">
-        {enabled}/{total}
-      </span>
-    </div>
   )
 }
 
@@ -328,115 +297,75 @@ export function SecurityHubAggregatedCard({
 
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-      {/* Main card header - always visible */}
+      {/* Compact card header */}
       <div
-        className="p-4 cursor-pointer hover:bg-gray-700/30 transition-colors"
+        className="px-4 py-3 cursor-pointer hover:bg-gray-700/30 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-start justify-between">
-          {/* Left side: Standard info */}
-          <div className="flex items-start gap-4 flex-1 min-w-0">
-            {/* Icon */}
-            <div className="flex-shrink-0 p-2 bg-blue-900/30 rounded-lg">
-              <Lock className="h-6 w-6 text-blue-400" />
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Icon + Title */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex-shrink-0 p-1.5 bg-blue-900/30 rounded-lg">
+              <Lock className="h-5 w-5 text-blue-400" />
             </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-lg font-medium text-white">
-                  {config.standard_name.replace(/-/g, ' ')}
-                </h3>
-                <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-blue-900/30 text-blue-400">
-                  <Shield className="h-3 w-3 mr-1" />
-                  Security Hub Standard
-                </span>
-              </div>
-
-              {/* Metrics row */}
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Controls progress */}
-                <div>
-                  <div className="text-xs text-gray-500 mb-1">
-                    Controls Enabled
-                  </div>
-                  <CoverageProgressBar
-                    enabled={config.enabled_controls_count}
-                    total={config.total_controls_count}
-                  />
-                </div>
-
-                {/* Techniques covered */}
-                <div>
-                  <div className="text-xs text-gray-500 mb-1">
-                    Techniques Covered
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-semibold text-green-400">
-                      {config.techniques_covered_count}
-                    </span>
-                    <span className="text-sm text-gray-400">
-                      MITRE ATT&CK techniques
-                    </span>
-                  </div>
-                </div>
-
-                {/* Coverage percentage */}
-                <div>
-                  <div className="text-xs text-gray-500 mb-1">
-                    Overall Enablement
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-lg font-semibold ${
-                        enabledPercent >= 80
-                          ? 'text-green-400'
-                          : enabledPercent >= 50
-                          ? 'text-yellow-400'
-                          : 'text-red-400'
-                      }`}
-                    >
-                      {enabledPercent}%
-                    </span>
-                    {config.disabled_controls_count > 0 && (
-                      <span className="text-sm text-gray-500">
-                        ({config.disabled_controls_count} disabled)
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Discovered date and region */}
-              <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3" />
-                  {detection.region}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  Discovered {new Date(detection.discovered_at).toLocaleDateString()}
-                </span>
+            <div className="min-w-0">
+              <h3 className="text-sm font-medium text-white truncate">
+                {config.standard_name.replace(/-/g, ' ')}
+              </h3>
+              <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                <span>{detection.region}</span>
+                <span>•</span>
+                <span>{new Date(detection.discovered_at).toLocaleDateString()}</span>
               </div>
             </div>
           </div>
 
-          {/* Right side: Actions */}
-          <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+          {/* Centre: Compact inline stats */}
+          <div className="hidden md:flex items-center gap-6">
+            {/* Controls */}
+            <div className="flex items-center gap-2">
+              <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${enabledPercent >= 80 ? 'bg-green-500' : enabledPercent >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                  style={{ width: `${enabledPercent}%` }}
+                />
+              </div>
+              <span className="text-xs text-gray-400">
+                {config.enabled_controls_count}/{config.total_controls_count}
+              </span>
+            </div>
+
+            {/* Techniques */}
+            <div className="flex items-center gap-1.5">
+              <Shield className="h-3.5 w-3.5 text-green-400" />
+              <span className="text-sm font-medium text-green-400">{config.techniques_covered_count}</span>
+              <span className="text-xs text-gray-500">techniques</span>
+            </div>
+
+            {/* Enablement % */}
+            <span className={`text-sm font-semibold ${
+              enabledPercent >= 80 ? 'text-green-400' : enabledPercent >= 50 ? 'text-yellow-400' : 'text-red-400'
+            }`}>
+              {enabledPercent}%
+            </span>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-1 flex-shrink-0">
             {onViewDetails && (
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   onViewDetails()
                 }}
-                className="p-2 text-gray-400 hover:text-blue-400 rounded-lg hover:bg-gray-700"
+                className="p-1.5 text-gray-400 hover:text-blue-400 rounded hover:bg-gray-700"
                 title="View details"
               >
                 <Eye className="h-4 w-4" />
               </button>
             )}
             <ChevronDown
-              className={`h-5 w-5 text-gray-400 transition-transform ${
+              className={`h-4 w-4 text-gray-400 transition-transform ${
                 isExpanded ? 'rotate-180' : ''
               }`}
             />

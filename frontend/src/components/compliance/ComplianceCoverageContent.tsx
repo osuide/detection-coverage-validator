@@ -235,7 +235,6 @@ export function ComplianceCoverageContent({ accountId, initialModalState }: Comp
                   standardName={data.standardName}
                   effectiveness={data.effectiveness}
                   region={data.region}
-                  pageSize={5}
                 />
               </div>
             ))}
