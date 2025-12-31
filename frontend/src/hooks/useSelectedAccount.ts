@@ -85,8 +85,13 @@ export function useSelectedAccount(): UseSelectedAccountReturn {
       const account = accounts.find((a) => a.id === accountId)
       if (!account) return
 
-      // Update store
-      setSelectedAccountId(accountId)
+      // Update store with full account object (updates both selectedAccountId and selectedAccount atomically)
+      setSelectedAccount({
+        id: account.id,
+        name: account.name,
+        provider: account.provider,
+        account_id: account.account_id,
+      })
 
       // Invalidate account-specific queries to force refetch
       queryClient.invalidateQueries({ queryKey: ['coverage'] })
@@ -97,7 +102,7 @@ export function useSelectedAccount(): UseSelectedAccountReturn {
       queryClient.invalidateQueries({ queryKey: ['compliance-coverage'] })
       queryClient.invalidateQueries({ queryKey: ['scans'] })
     },
-    [accounts, setSelectedAccountId, queryClient]
+    [accounts, setSelectedAccount, queryClient]
   )
 
   // Get full account object
