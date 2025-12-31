@@ -584,8 +584,8 @@ class GCPCredentialService:
             f"  --role='projects/{project_id}/roles/a13e_detection_scanner'",
             "",
             "# NOTE: If using Google SecOps (Chronicle SIEM), you may also need",
-            "# to grant the Chronicle API Editor or Chronicle API Admin role",
-            "# depending on your Chronicle instance configuration.",
+            "# to grant the Chronicle API Viewer role (roles/chronicle.viewer)",
+            "# for read-only access to detection rules and configurations.",
         ]
 
         return commands

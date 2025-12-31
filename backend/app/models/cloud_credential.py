@@ -523,8 +523,9 @@ GCP_CUSTOM_ROLE = {
         "securitycenter.findings.get",
         "securitycenter.sources.list",
         "securitycenter.sources.get",
-        # Google SecOps / Chronicle SIEM - for YARA-L detection rules
-        # https://cloud.google.com/chronicle/docs/reference/feature-rbac-permissions-roles
+        # Google SecOps / Chronicle SIEM - for YARA-L detection rules (read-only)
+        # Requires Chronicle API Viewer role (roles/chronicle.viewer)
+        # https://cloud.google.com/iam/docs/roles-permissions/chronicle
         "chronicle.rules.list",
         "chronicle.rules.get",
         "chronicle.detections.list",
