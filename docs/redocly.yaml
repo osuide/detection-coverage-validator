@@ -6,78 +6,9 @@ apis:
   main:
     root: ./api/openapi.json
 
-# Theme configuration
-theme:
-  openapi:
-    # Branding
-    theme:
-      colors:
-        primary:
-          main: '#0f172a'  # Slate 900
-        text:
-          primary: '#1e293b'  # Slate 800
-        http:
-          get: '#22c55e'  # Green 500
-          post: '#3b82f6'  # Blue 500
-          put: '#f59e0b'  # Amber 500
-          patch: '#8b5cf6'  # Violet 500
-          delete: '#ef4444'  # Red 500
-
-      typography:
-        fontSize: '16px'
-        fontFamily: 'Inter, system-ui, sans-serif'
-        headings:
-          fontFamily: 'Inter, system-ui, sans-serif'
-        code:
-          fontFamily: 'JetBrains Mono, monospace'
-
-      sidebar:
-        backgroundColor: '#f8fafc'  # Slate 50
-        textColor: '#334155'  # Slate 700
-
-      rightPanel:
-        backgroundColor: '#1e293b'  # Slate 800
-
-    # Layout options
-    hideDownloadButton: false
-    disableSearch: false
-    expandResponses: '200,201'
-    jsonSampleExpandLevel: 2
-    showExtensions: false
-    sortOperationsAlphabetically: false
-    sortTagsAlphabetically: false
-    pathInMiddlePanel: true
-    hideHostname: false
-
-    # Code samples
-    generateCodeSamples:
-      languages:
-        - lang: curl
-          label: cURL
-        - lang: python
-          label: Python
-        - lang: javascript
-          label: JavaScript
-        - lang: node
-          label: Node.js
-
 # Linting rules
-lint:
-  rules:
-    operation-operationId: warn
-    operation-summary: warn
-    no-unresolved-refs: error
-    no-unused-components: warn
-
-# Build output
-output: ./dist
-
-# Plugins
-plugins: []
-
-# Features
-features:
-  openapi:
-    # Enable "Try it" functionality in hosted version
-    # Disabled for static build
-    hideRequestPayloadSample: false
+rules:
+  operation-operationId: warn
+  operation-summary: warn
+  no-unresolved-refs: error
+  no-unused-components: warn
