@@ -5,7 +5,7 @@
  * and alerts for the selected cloud account.
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { History, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -21,9 +21,16 @@ export default function ComplianceHistory() {
   const { selectedAccount, isLoading: accountsLoading, hasAccounts } = useSelectedAccount()
   const [trendDays, setTrendDays] = useState(30)
 
-  // Calculate date range for queries
-  const endDate = new Date().toISOString()
-  const startDate = new Date(Date.now() - trendDays * 24 * 60 * 60 * 1000).toISOString()
+  // Calculate date range for queries - memoized to prevent infinite refetch loop
+  // Without useMemo, new Date strings are created every render, changing the queryKey
+  const { startDate, endDate } = useMemo(() => {
+    const end = new Date()
+    const start = new Date(end.getTime() - trendDays * 24 * 60 * 60 * 1000)
+    return {
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+    }
+  }, [trendDays])
 
   // Fetch account summary
   const { data: summaryData, isLoading: summaryLoading, error: summaryError } = useQuery({
