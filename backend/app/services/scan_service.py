@@ -47,6 +47,7 @@ from app.services.notification_service import trigger_scan_alerts
 from app.services.evaluation_history_service import (
     record_batch_evaluation_snapshots,
     create_state_change_alert,
+    create_initial_unhealthy_alert,
 )
 from app.services.aws_credential_service import aws_credential_service
 from app.services.gcp_wif_service import gcp_wif_service, GCPWIFError, WIFConfiguration
@@ -371,24 +372,40 @@ class ScanService:
                         self.db, detections_with_eval, scan.id
                     )
 
-                    # Create alerts for state changes
+                    # Create alerts for state changes AND initial unhealthy discoveries
+                    alerts_created = 0
                     for record in history_records:
+                        detection = next(
+                            (
+                                d
+                                for d in detections_with_eval
+                                if d.id == record.detection_id
+                            ),
+                            None,
+                        )
+                        if not detection:
+                            continue
+
+                        alert = None
                         if record.state_changed:
-                            detection = next(
-                                (
-                                    d
-                                    for d in detections_with_eval
-                                    if d.id == record.detection_id
-                                ),
-                                None,
+                            # Alert for state changes
+                            alert = await create_state_change_alert(
+                                self.db,
+                                account.organization_id,
+                                record,
+                                detection,
                             )
-                            if detection:
-                                await create_state_change_alert(
-                                    self.db,
-                                    account.organization_id,
-                                    record,
-                                    detection,
-                                )
+                        elif record.previous_state is None:
+                            # Alert for initial unhealthy discoveries
+                            alert = await create_initial_unhealthy_alert(
+                                self.db,
+                                account.organization_id,
+                                record,
+                                detection,
+                            )
+
+                        if alert:
+                            alerts_created += 1
 
                     self.logger.info(
                         "evaluation_history_recorded",
@@ -397,6 +414,7 @@ class ScanService:
                         state_changes=sum(
                             1 for r in history_records if r.state_changed
                         ),
+                        alerts_created=alerts_created,
                     )
             except Exception as eval_history_error:
                 self.logger.warning(

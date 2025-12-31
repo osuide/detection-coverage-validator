@@ -38,6 +38,9 @@ DETECTION_TYPE_TO_EVALUATION_TYPE = {
 # States that indicate unhealthy/non-compliant detections
 UNHEALTHY_STATES = {"NON_COMPLIANT", "ALARM", "DISABLED", "ERROR", "BROKEN"}
 
+# States that warrant an alert when first discovered
+ALERT_WORTHY_INITIAL_STATES = {"NON_COMPLIANT", "ALARM", "DISABLED", "ERROR"}
+
 
 def extract_current_state(
     evaluation_summary: dict | None,
@@ -585,6 +588,74 @@ async def create_state_change_alert(
         details={
             "detection_type": detection.detection_type.value,
             "evaluation_summary": history_record.evaluation_summary,
+        },
+    )
+
+    session.add(alert)
+    return alert
+
+
+async def create_initial_unhealthy_alert(
+    session: AsyncSession,
+    organization_id: uuid.UUID,
+    history_record: DetectionEvaluationHistory,
+    detection: Detection,
+) -> Optional[DetectionEvaluationAlert]:
+    """Create an alert for a detection discovered in an unhealthy state.
+
+    This handles the case where a detection is first discovered (no previous
+    history) and is already in an unhealthy state. This is important because
+    users want to know about problems even if they existed before we started
+    monitoring.
+
+    Args:
+        session: Database session
+        organization_id: The organisation ID
+        history_record: The history record (should have no previous_state)
+        detection: The detection that was discovered
+
+    Returns:
+        The created alert, or None if no alert needed
+    """
+    # Only create alert if:
+    # 1. This is a first-time discovery (no previous state)
+    # 2. The current state is alert-worthy (unhealthy)
+    if history_record.previous_state is not None:
+        return None  # Not a first-time discovery
+
+    if history_record.current_state not in ALERT_WORTHY_INITIAL_STATES:
+        return None  # State doesn't warrant an alert
+
+    # Determine severity - NON_COMPLIANT and ALARM are more severe
+    if history_record.current_state in {"NON_COMPLIANT", "ALARM"}:
+        severity = EvaluationAlertSeverity.WARNING
+    else:
+        severity = EvaluationAlertSeverity.INFO
+
+    alert_type = "initial_unhealthy"
+    title = f"Detection {detection.name} discovered as {history_record.current_state}"
+
+    message = (
+        f"The detection '{detection.name}' ({detection.detection_type.value}) "
+        f"was discovered in a {history_record.current_state} state. "
+        f"This may indicate a pre-existing compliance issue that requires attention."
+    )
+
+    alert = DetectionEvaluationAlert(
+        organization_id=organization_id,
+        cloud_account_id=history_record.cloud_account_id,
+        detection_id=detection.id,
+        evaluation_history_id=history_record.id,
+        alert_type=alert_type,
+        severity=severity,
+        previous_state=None,
+        current_state=history_record.current_state,
+        title=title,
+        message=message,
+        details={
+            "detection_type": detection.detection_type.value,
+            "evaluation_summary": history_record.evaluation_summary,
+            "initial_discovery": True,
         },
     )
 
