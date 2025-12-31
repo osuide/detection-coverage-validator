@@ -124,6 +124,8 @@ jobs:
     needs: build-docs
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'staging' }}
+    outputs:
+      deployed: ${{ steps.tf-outputs.outputs.docs_s3_bucket != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -187,6 +189,7 @@ jobs:
   verify-deployment:
     name: Verify Deployment
     needs: deploy-docs
+    if: needs.deploy-docs.outputs.deployed == 'true'
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'staging' }}
 
