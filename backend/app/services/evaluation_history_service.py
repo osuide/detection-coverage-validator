@@ -118,7 +118,14 @@ def extract_current_state(
 
     if "cloudwatch_logs_insights" in dtype or "logs_insights" in dtype:
         # Logs Insights queries are always "enabled" if they exist
-        if config.get("query_string") or config.get("log_group_names"):
+        # Note: raw_config uses camelCase (queryString, logGroupNames)
+        if (
+            config.get("queryString")
+            or config.get("query_string")
+            or config.get("logGroupNames")
+            or config.get("log_group_names")
+            or config.get("queryDefinitionId")
+        ):
             return "ENABLED"
         return "UNKNOWN"
 
