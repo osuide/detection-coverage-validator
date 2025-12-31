@@ -64,6 +64,10 @@ interface SecurityPostureCardProps {
   showFailingControls?: boolean
   /** Number of items per page for failing controls */
   pageSize?: number
+  /** Total controls enabled (for inline display) */
+  enabledControls?: number
+  /** Total controls available */
+  totalControls?: number
 }
 
 export function SecurityPostureCard({
@@ -73,6 +77,8 @@ export function SecurityPostureCard({
   region,
   showFailingControls = false,
   pageSize = 10,
+  enabledControls,
+  totalControls: totalControlsAvailable,
 }: SecurityPostureCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -102,12 +108,6 @@ export function SecurityPostureCard({
     return 'text-red-400'
   }
 
-  const getProgressBarColour = (percent: number) => {
-    if (percent >= 80) return 'bg-green-500'
-    if (percent >= 50) return 'bg-yellow-500'
-    return 'bg-red-500'
-  }
-
   // Build Security Hub console URL
   const securityHubUrl = consoleUrlPath
     ? `https://${region}.console.aws.amazon.com/securityhub/home?region=${region}#/${consoleUrlPath}`
@@ -117,89 +117,110 @@ export function SecurityPostureCard({
     <div className="bg-gray-800 rounded-lg border border-gray-700">
       {/* Card Content */}
       <div className="p-4">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-blue-400" />
-            <h3 className="text-sm font-semibold text-white truncate" title={displayName}>
-              {displayName}
-            </h3>
+        {/* Header with title and controls count */}
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-blue-400 flex-shrink-0" />
+              <h3 className="text-sm font-semibold text-white truncate" title={displayName}>
+                {displayName}
+              </h3>
+            </div>
+            {/* Inline coverage note */}
+            {enabledControls !== undefined && totalControlsAvailable !== undefined && (
+              <p className="text-xs text-gray-500 mt-1 ml-7">
+                Monitoring {enabledControls} of {totalControlsAvailable} controls
+              </p>
+            )}
           </div>
           <a
             href={securityHubUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-400 hover:text-blue-400 transition-colors"
+            className="text-gray-400 hover:text-blue-400 transition-colors flex-shrink-0"
             title="View in Security Hub"
           >
             <ExternalLink className="h-4 w-4" />
           </a>
         </div>
 
-        {/* Compliance Percentage */}
-        <div className="mt-3">
-          <div className="flex justify-between items-center mb-1">
+        {/* Main stats row - horizontal layout for full width */}
+        <div className="flex flex-wrap items-center gap-6 mt-2">
+          {/* Compliance percentage - prominent */}
+          <div className="flex items-center gap-3">
+            <div className="relative w-14 h-14">
+              <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
+                <circle
+                  cx="28" cy="28" r="24"
+                  fill="none"
+                  stroke="#374151"
+                  strokeWidth="4"
+                />
+                <circle
+                  cx="28" cy="28" r="24"
+                  fill="none"
+                  stroke={compliance_percent >= 80 ? '#22c55e' : compliance_percent >= 50 ? '#eab308' : '#ef4444'}
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(compliance_percent / 100) * 150.8} 150.8`}
+                />
+              </svg>
+              <span className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${getComplianceColour(compliance_percent)}`}>
+                {compliance_percent}%
+              </span>
+            </div>
             <span className="text-xs text-gray-400">Compliance</span>
-            <span className={`text-lg font-bold ${getComplianceColour(compliance_percent)}`}>
-              {compliance_percent}%
-            </span>
           </div>
-          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all ${getProgressBarColour(compliance_percent)}`}
-              style={{ width: `${compliance_percent}%` }}
-            />
-          </div>
-        </div>
 
-        {/* Pass/Fail Summary */}
-        <div className="grid grid-cols-3 gap-2 mt-4">
-          <div className="text-center p-2 bg-gray-900 rounded">
-            <div className="flex items-center justify-center gap-1">
-              <CheckCircle className="h-3 w-3 text-green-400" />
+          {/* Divider */}
+          <div className="h-10 w-px bg-gray-700 hidden sm:block" />
+
+          {/* Pass/Fail stats - inline */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-400" />
               <span className="text-lg font-bold text-green-400">{passed_count}</span>
+              <span className="text-xs text-gray-500">passed</span>
             </div>
-            <span className="text-xs text-gray-500">Passed</span>
-          </div>
-          <div className="text-center p-2 bg-gray-900 rounded">
-            <div className="flex items-center justify-center gap-1">
-              <XCircle className="h-3 w-3 text-red-400" />
+            <div className="flex items-center gap-2">
+              <XCircle className="h-4 w-4 text-red-400" />
               <span className="text-lg font-bold text-red-400">{failed_count}</span>
+              <span className="text-xs text-gray-500">failed</span>
             </div>
-            <span className="text-xs text-gray-500">Failed</span>
+            <div className="text-xs text-gray-500">
+              of {total_controls} controls
+            </div>
           </div>
-          <div className="text-center p-2 bg-gray-900 rounded">
-            <span className="text-lg font-bold text-gray-400">{total_controls}</span>
-            <span className="text-xs text-gray-500 block">Total</span>
-          </div>
-        </div>
 
-        {/* Severity Breakdown */}
-        {failed_count > 0 && (
-          <div className="mt-4">
-            <div className="flex flex-wrap gap-2">
+          {/* Divider */}
+          {failed_count > 0 && <div className="h-10 w-px bg-gray-700 hidden lg:block" />}
+
+          {/* Severity badges - inline */}
+          {failed_count > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
               {by_severity.CRITICAL > 0 && (
-                <span className={`text-xs px-2 py-1 rounded ${SEVERITY_COLOURS.CRITICAL}`}>
-                  Critical: {by_severity.CRITICAL}
+                <span className={`text-xs px-2 py-1 rounded-full ${SEVERITY_COLOURS.CRITICAL}`}>
+                  {by_severity.CRITICAL} Critical
                 </span>
               )}
               {by_severity.HIGH > 0 && (
-                <span className={`text-xs px-2 py-1 rounded ${SEVERITY_COLOURS.HIGH}`}>
-                  High: {by_severity.HIGH}
+                <span className={`text-xs px-2 py-1 rounded-full ${SEVERITY_COLOURS.HIGH}`}>
+                  {by_severity.HIGH} High
                 </span>
               )}
               {by_severity.MEDIUM > 0 && (
-                <span className={`text-xs px-2 py-1 rounded ${SEVERITY_COLOURS.MEDIUM}`}>
-                  Medium: {by_severity.MEDIUM}
+                <span className={`text-xs px-2 py-1 rounded-full ${SEVERITY_COLOURS.MEDIUM}`}>
+                  {by_severity.MEDIUM} Medium
                 </span>
               )}
               {by_severity.LOW > 0 && (
-                <span className={`text-xs px-2 py-1 rounded ${SEVERITY_COLOURS.LOW}`}>
-                  Low: {by_severity.LOW}
+                <span className={`text-xs px-2 py-1 rounded-full ${SEVERITY_COLOURS.LOW}`}>
+                  {by_severity.LOW} Low
                 </span>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Expandable Failing Controls List (only when showFailingControls is true) */}

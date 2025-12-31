@@ -191,49 +191,20 @@ export function ComplianceCoverageContent({ accountId, initialModalState }: Comp
             </div>
           </div>
 
-          {/* Side-by-side cards for each Security Hub standard */}
+          {/* Security Hub standard cards - full width, focused on compliance results */}
           <div className="space-y-4">
             {securityPostureData.map((data) => (
-              <div
+              <SecurityPostureCard
                 key={data.standardId}
-                className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 bg-gray-900/50 rounded-lg"
-              >
-                {/* Left: Detection Coverage - Compact */}
-                <div className="bg-gray-700/30 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-xs font-medium text-gray-400 flex items-center gap-1.5">
-                      <CheckCircle className="w-3.5 h-3.5 text-blue-400" />
-                      Detection Coverage
-                    </h4>
-                    <span className="text-sm font-semibold text-white">
-                      {data.enabledControls}/{data.totalControls}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-gray-600 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500"
-                      style={{
-                        width: `${data.totalControls > 0 ? (data.enabledControls / data.totalControls) * 100 : 0}%`
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1.5">
-                    {data.totalControls > 0
-                      ? `${Math.round((data.enabledControls / data.totalControls) * 100)}% enabled`
-                      : 'No controls'}
-                  </p>
-                </div>
-
-                {/* Right: Detection Effectiveness (what we found) */}
-                <SecurityPostureCard
-                  standardId={data.standardId}
-                  standardName={data.standardName}
-                  effectiveness={data.effectiveness}
-                  region={data.region}
-                  showFailingControls={true}
-                  pageSize={5}
-                />
-              </div>
+                standardId={data.standardId}
+                standardName={data.standardName}
+                effectiveness={data.effectiveness}
+                region={data.region}
+                showFailingControls={true}
+                pageSize={5}
+                enabledControls={data.enabledControls}
+                totalControls={data.totalControls}
+              />
             ))}
           </div>
         </div>
