@@ -186,6 +186,31 @@ resource "aws_iam_role_policy" "a13e_scanner" {
           "lambda:ListTags"
         ]
         Resource = "*"
+      },
+      # Inspector - for vulnerability scanning
+      {
+        Sid    = "A13EInspectorAccess"
+        Effect = "Allow"
+        Action = [
+          "inspector2:BatchGetAccountStatus",
+          "inspector2:ListCoverage",
+          "inspector2:ListCoverageStatistics",
+          "inspector2:ListFindingAggregations"
+        ]
+        Resource = "*"
+      },
+      # Macie - for sensitive data discovery
+      {
+        Sid    = "A13EMacieAccess"
+        Effect = "Allow"
+        Action = [
+          "macie2:GetMacieSession",
+          "macie2:GetAutomatedDiscoveryConfiguration",
+          "macie2:ListClassificationJobs",
+          "macie2:GetFindingStatistics",
+          "macie2:GetBucketStatistics"
+        ]
+        Resource = "*"
       }
     ]
   })

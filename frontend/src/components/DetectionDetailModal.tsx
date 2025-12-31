@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { X, ExternalLink, Shield, MapPin, Clock, AlertCircle, Activity, Zap, CheckCircle, Lock, Database, XCircle, HelpCircle, Bell } from 'lucide-react'
+import { X, ExternalLink, Shield, MapPin, Clock, AlertCircle, Activity, Zap, CheckCircle, Lock, Database, XCircle, HelpCircle, Bell, Search, Eye } from 'lucide-react'
 import { detectionsApi, Detection } from '../services/api'
 
 interface DetectionDetailModalProps {
@@ -49,6 +49,20 @@ const detectionTypeConfig: Record<string, { label: string; icon: React.ElementTy
     color: 'text-blue-900',
     bgColor: 'bg-blue-100',
     description: 'Aggregated security findings from Security Hub'
+  },
+  'inspector_finding': {
+    label: 'AWS Inspector',
+    icon: Search,
+    color: 'text-cyan-900',
+    bgColor: 'bg-cyan-100',
+    description: 'Vulnerability scanning for EC2, ECR, and Lambda'
+  },
+  'macie_finding': {
+    label: 'AWS Macie',
+    icon: Eye,
+    color: 'text-pink-900',
+    bgColor: 'bg-pink-100',
+    description: 'Sensitive data discovery and S3 security'
   }
 }
 

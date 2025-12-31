@@ -28,6 +28,8 @@ from app.scanners.aws.cloudwatch_scanner import (
 )
 from app.scanners.aws.eventbridge_scanner import EventBridgeScanner
 from app.scanners.aws.guardduty_scanner import GuardDutyScanner
+from app.scanners.aws.inspector_scanner import InspectorScanner
+from app.scanners.aws.macie_scanner import MacieScanner
 from app.scanners.aws.config_scanner import ConfigRulesScanner
 from app.scanners.aws.securityhub_scanner import SecurityHubScanner
 from app.scanners.base import RawDetection, BaseScanner
@@ -1004,6 +1006,10 @@ class ScanService:
             scanners.append(EventBridgeScanner(session))
         if not detection_types or "guardduty_finding" in detection_types:
             scanners.append(GuardDutyScanner(session))
+        if not detection_types or "inspector_finding" in detection_types:
+            scanners.append(InspectorScanner(session))
+        if not detection_types or "macie_finding" in detection_types:
+            scanners.append(MacieScanner(session))
         if not detection_types or "config_rule" in detection_types:
             scanners.append(ConfigRulesScanner(session))
         if not detection_types or "security_hub" in detection_types:

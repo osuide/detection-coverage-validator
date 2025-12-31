@@ -14,6 +14,8 @@ Description: |
   - AWS Config rules
   - CloudTrail configuration
   - Lambda function configurations
+  - Inspector vulnerability scanning status
+  - Macie sensitive data discovery configuration
 
   What this role CANNOT access:
   - Log data contents
@@ -157,6 +159,27 @@ Resources:
               - lambda:ListEventSourceMappings
               - lambda:GetFunction
               - lambda:GetFunctionConfiguration
+            Resource: '*'
+
+          # Inspector - Read vulnerability scanning status
+          - Sid: InspectorAccess
+            Effect: Allow
+            Action:
+              - inspector2:BatchGetAccountStatus
+              - inspector2:ListCoverage
+              - inspector2:ListCoverageStatistics
+              - inspector2:ListFindingAggregations
+            Resource: '*'
+
+          # Macie - Read sensitive data discovery configuration
+          - Sid: MacieAccess
+            Effect: Allow
+            Action:
+              - macie2:GetMacieSession
+              - macie2:GetAutomatedDiscoveryConfiguration
+              - macie2:ListClassificationJobs
+              - macie2:GetFindingStatistics
+              - macie2:GetBucketStatistics
             Resource: '*'
 
 Outputs:

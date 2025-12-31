@@ -32,6 +32,8 @@ class DetectionType(str, enum.Enum):
     CONFIG_RULE = "config_rule"
     CUSTOM_LAMBDA = "custom_lambda"
     SECURITY_HUB = "security_hub"
+    INSPECTOR_FINDING = "inspector_finding"  # AWS Inspector vulnerability findings
+    MACIE_FINDING = "macie_finding"  # AWS Macie sensitive data findings
 
     # GCP Detection Types
     GCP_CLOUD_LOGGING = "gcp_cloud_logging"

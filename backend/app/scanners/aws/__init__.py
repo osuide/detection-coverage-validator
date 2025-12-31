@@ -4,7 +4,9 @@ from app.scanners.aws.cloudwatch_scanner import CloudWatchLogsInsightsScanner
 from app.scanners.aws.config_scanner import ConfigRulesScanner
 from app.scanners.aws.eventbridge_scanner import EventBridgeScanner
 from app.scanners.aws.guardduty_scanner import GuardDutyScanner
+from app.scanners.aws.inspector_scanner import InspectorScanner
 from app.scanners.aws.lambda_scanner import LambdaScanner
+from app.scanners.aws.macie_scanner import MacieScanner
 from app.scanners.aws.securityhub_scanner import SecurityHubScanner
 
 # Organisation-level scanners
@@ -18,7 +20,9 @@ __all__ = [
     "ConfigRulesScanner",
     "EventBridgeScanner",
     "GuardDutyScanner",
+    "InspectorScanner",
     "LambdaScanner",
+    "MacieScanner",
     "SecurityHubScanner",
     # Organisation-level scanners
     "OrgCloudTrailScanner",

@@ -47,6 +47,18 @@ const detectionTypeConfig: Record<string, { label: string; icon: React.ElementTy
     icon: Lock,
     color: 'text-blue-400',
     bgColor: 'bg-blue-900/30'
+  },
+  'inspector_finding': {
+    label: 'Inspector',
+    icon: Search,
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-900/30'
+  },
+  'macie_finding': {
+    label: 'Macie',
+    icon: Eye,
+    color: 'text-pink-400',
+    bgColor: 'bg-pink-900/30'
   }
 }
 
