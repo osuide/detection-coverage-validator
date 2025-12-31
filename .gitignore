@@ -99,5 +99,6 @@ add_template_registration.py
 # Ignore all markdown files except specific locations
 *.md
 !README.md
+!CLAUDE.md
 !frontend/public/docs/*.md
 !docs/guides/*.md
