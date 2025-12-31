@@ -57,7 +57,7 @@ jobs:
         working-directory: backend
         env:
           PYTHONPATH: .
-          ENVIRONMENT: production
+          ENVIRONMENT: staging
           SECRET_KEY: docs-generation-only-not-for-production-use
           DATABASE_URL: postgresql+asyncpg://x:x@localhost/x
         run: |
