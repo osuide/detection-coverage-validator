@@ -20,12 +20,13 @@ import {
 import { DetectionEffectiveness, FailingControlItem } from '../services/api'
 
 // Human-readable names for Security Hub standards
+// Note: "AWS NIST 800-53" differentiates from the compliance framework "NIST 800-53 Rev 5"
 const STANDARD_DISPLAY_NAMES: Record<string, string> = {
   fsbp: 'AWS Foundational Security Best Practices',
   cis: 'CIS AWS Foundations Benchmark',
   pci: 'PCI DSS',
-  nist: 'NIST 800-53',
-  nist171: 'NIST 800-171',
+  nist: 'AWS NIST 800-53',
+  nist171: 'AWS NIST 800-171',
   tagging: 'AWS Resource Tagging Standard',
 }
 
