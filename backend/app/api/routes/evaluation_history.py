@@ -61,6 +61,122 @@ ORG_CACHE_HEADER = "private, max-age=900"  # 15 minutes
 # Unhealthy states for calculations
 UNHEALTHY_STATES = {"NON_COMPLIANT", "ALARM", "DISABLED"}
 
+# Healthy states for positive detection (managed services are "healthy" when enabled)
+HEALTHY_STATES = {"COMPLIANT", "OK", "ENABLED", "PASSED"}
+
+
+def _determine_health_status(
+    detection_type: str,
+    evaluation_summary: dict | None,
+    raw_config: dict | None,
+) -> str:
+    """Determine health status for a detection based on type-specific logic.
+
+    Different detection types store their status in different places:
+    - Config Rules: evaluation_summary.compliance_type (COMPLIANT/NON_COMPLIANT)
+    - CloudWatch Alarms: evaluation_summary.state (OK/ALARM/INSUFFICIENT_DATA)
+    - EventBridge: evaluation_summary.state (ENABLED/DISABLED)
+    - Security Hub: raw_config.enabled_controls_count (managed, always healthy if enabled)
+    - GuardDuty: raw_config.detector_status (ENABLED/DISABLED)
+    - Inspector: raw_config (managed, healthy if enabled)
+    - Macie: raw_config.macie_status (managed, healthy if enabled)
+
+    Returns: "HEALTHY", "UNHEALTHY", or "UNKNOWN"
+    """
+    eval_summary = evaluation_summary or {}
+    config = raw_config or {}
+
+    # First check evaluation_summary (Config, CloudWatch, EventBridge)
+    if eval_summary:
+        state = eval_summary.get("compliance_type") or eval_summary.get("state")
+        if state:
+            state_upper = str(state).upper()
+            if state_upper in UNHEALTHY_STATES:
+                return "UNHEALTHY"
+            if state_upper in HEALTHY_STATES:
+                return "HEALTHY"
+
+    # Type-specific logic for managed services that don't use evaluation_summary
+    dtype = str(detection_type).lower()
+
+    if "security_hub" in dtype:
+        # Security Hub: healthy if any controls are enabled
+        enabled = config.get("enabled_controls_count", 0)
+        if enabled > 0:
+            return "HEALTHY"
+        # If it exists but has 0 enabled controls, it's still "enabled" as a service
+        if "standard_id" in config or "hub_arn" in config:
+            return "HEALTHY"
+        return "UNKNOWN"
+
+    if "guardduty" in dtype:
+        # GuardDuty: healthy if detector is enabled
+        detector_status = config.get("detector_status", "")
+        if str(detector_status).upper() == "ENABLED":
+            return "HEALTHY"
+        if str(detector_status).upper() == "DISABLED":
+            return "UNHEALTHY"
+        # If we have detector_id, it's at least configured
+        if config.get("detector_id"):
+            return "HEALTHY"
+        return "UNKNOWN"
+
+    if "inspector" in dtype:
+        # Inspector: healthy if enabled (presence of coverage data indicates enabled)
+        if (
+            config.get("coverage")
+            or config.get("ec2_coverage")
+            or config.get("ecr_coverage")
+        ):
+            return "HEALTHY"
+        if config.get("status") and str(config.get("status")).upper() == "ENABLED":
+            return "HEALTHY"
+        # Inspector findings exist = Inspector is running = healthy
+        if "finding_types" in config or "category" in config:
+            return "HEALTHY"
+        return "UNKNOWN"
+
+    if "macie" in dtype:
+        # Macie: healthy if session is enabled
+        macie_status = config.get("macie_status", "")
+        if str(macie_status).upper() == "ENABLED":
+            return "HEALTHY"
+        if str(macie_status).upper() == "DISABLED":
+            return "UNHEALTHY"
+        # If we have Macie config at all, it's enabled
+        if config.get("category") or config.get("finding_types"):
+            return "HEALTHY"
+        return "UNKNOWN"
+
+    if "cloudwatch_logs_insights" in dtype or "logs_insights" in dtype:
+        # CloudWatch Logs Insights queries: if they exist, they're healthy
+        # (they don't have a state - they're just query definitions)
+        if config.get("query_string") or config.get("log_group_names"):
+            return "HEALTHY"
+        return "UNKNOWN"
+
+    if "lambda" in dtype or "custom_lambda" in dtype:
+        # Lambda functions: healthy if they exist and are not in failed state
+        state = config.get("State", config.get("state", ""))
+        if str(state).upper() in ("ACTIVE", "PENDING"):
+            return "HEALTHY"
+        if str(state).upper() in ("INACTIVE", "FAILED"):
+            return "UNHEALTHY"
+        # If it has a function ARN, it exists and is probably healthy
+        if config.get("FunctionArn") or config.get("function_arn"):
+            return "HEALTHY"
+        return "UNKNOWN"
+
+    # GCP detection types
+    if "gcp_" in dtype:
+        # GCP managed services are healthy if they exist
+        if config.get("project_id") or config.get("source_id"):
+            return "HEALTHY"
+        return "UNKNOWN"
+
+    return "UNKNOWN"
+
+
 router = APIRouter()
 
 
@@ -284,16 +400,13 @@ async def get_account_evaluation_summary(
         start_date = start_date or default_start
         end_date = end_date or default_end
 
-    # Get current detection states
-    detection_query = (
-        select(
-            Detection.detection_type,
-            Detection.evaluation_summary,
-            func.count().label("total"),
-        )
-        .where(Detection.cloud_account_id == cloud_account_id)
-        .group_by(Detection.detection_type, Detection.evaluation_summary)
-    )
+    # Get current detection states - fetch individual detections for proper health checks
+    # We need raw_config for managed services (Security Hub, GuardDuty, etc.)
+    detection_query = select(
+        Detection.detection_type,
+        Detection.evaluation_summary,
+        Detection.raw_config,
+    ).where(Detection.cloud_account_id == cloud_account_id)
     result = await db.execute(detection_query)
     detection_rows = result.all()
 
@@ -322,24 +435,21 @@ async def get_account_evaluation_summary(
             if hasattr(row.detection_type, "value")
             else str(row.detection_type)
         )
-        count = row.total
-        total_detections += count
+        total_detections += 1
 
-        eval_summary = row.evaluation_summary or {}
-
-        # Determine health status
-        current_state = (
-            eval_summary.get("compliance_type")
-            or eval_summary.get("state")
-            or "UNKNOWN"
+        # Use the new helper function to determine health status
+        health_status = _determine_health_status(
+            dtype,
+            row.evaluation_summary,
+            row.raw_config,
         )
 
-        if current_state in UNHEALTHY_STATES:
-            unhealthy_count += count
-        elif current_state == "UNKNOWN":
-            unknown_count += count
+        if health_status == "UNHEALTHY":
+            unhealthy_count += 1
+        elif health_status == "UNKNOWN":
+            unknown_count += 1
         else:
-            healthy_count += count
+            healthy_count += 1
 
         # Build by-type stats
         if dtype not in by_type:
@@ -351,13 +461,13 @@ async def get_account_evaluation_summary(
                 unknown_count=0,
             )
 
-        by_type[dtype].total += count
-        if current_state in UNHEALTHY_STATES:
-            by_type[dtype].unhealthy_count += count
-        elif current_state == "UNKNOWN":
-            by_type[dtype].unknown_count += count
+        by_type[dtype].total += 1
+        if health_status == "UNHEALTHY":
+            by_type[dtype].unhealthy_count += 1
+        elif health_status == "UNKNOWN":
+            by_type[dtype].unknown_count += 1
         else:
-            by_type[dtype].healthy_count += count
+            by_type[dtype].healthy_count += 1
 
     # Get state changes count for trends
     changes_query = (
