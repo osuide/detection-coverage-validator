@@ -32,7 +32,7 @@ A13E is a security tool that helps you identify gaps in your detection coverage.
 
 1. GCP project with billing enabled
 2. `Owner` or `IAM Admin` role to create resources
-3. A13E AWS account ID (provided during onboarding)
+3. A13E AWS account ID (shown in the A13E app during setup: `123080274263`)
 4. Terraform >= 1.0.0
 
 ## Quick Start
@@ -44,7 +44,7 @@ module "a13e_wif" {
   source = "github.com/a13e/terraform-gcp-wif-customer"
 
   project_id          = "your-gcp-project-id"
-  a13e_aws_account_id = "123456789012"  # Provided by A13E
+  a13e_aws_account_id = "123080274263"  # A13E's AWS account ID
 }
 
 output "a13e_config" {
@@ -113,7 +113,7 @@ module "a13e_wif" {
   source = "github.com/a13e/terraform-gcp-wif-customer"
 
   project_id          = "your-gcp-project-id"
-  a13e_aws_account_id = "123456789012"
+  a13e_aws_account_id = "123080274263"
   pool_id             = "my-custom-pool-id"
   provider_id         = "a13e-aws"
 }
@@ -129,7 +129,7 @@ module "a13e_wif_org" {
   source = "github.com/a13e/terraform-gcp-wif-customer"
 
   project_id          = "your-org-admin-project"
-  a13e_aws_account_id = "123456789012"
+  a13e_aws_account_id = "123080274263"
 }
 
 # Grant SA access to child projects

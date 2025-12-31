@@ -25,7 +25,7 @@ terraform {
 variable "a13e_account_id" {
   description = "A13E's AWS Account ID for cross-account access"
   type        = string
-  default     = "123456789012"  # Replace with actual A13E account ID
+  default     = "123080274263"  # A13E's AWS account ID
 }
 
 variable "external_id" {

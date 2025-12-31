@@ -125,6 +125,7 @@ class SetupInstructionsResponse(BaseModel):
     """Setup instructions for connecting cloud account."""
 
     provider: str
+    a13e_aws_account_id: str  # A13E's AWS account ID for trust policy/WIF
     external_id: Optional[str]  # For AWS
     iam_policy: Optional[dict]  # For AWS
     custom_role: Optional[dict]  # For GCP
@@ -212,6 +213,7 @@ async def get_setup_instructions(
 
         return SetupInstructionsResponse(
             provider="aws",
+            a13e_aws_account_id=a13e_account_id,
             external_id=external_id,
             iam_policy=AWS_IAM_POLICY,
             custom_role=None,
@@ -245,6 +247,7 @@ async def get_setup_instructions(
 
         return SetupInstructionsResponse(
             provider="gcp",
+            a13e_aws_account_id=a13e_account_id,
             external_id=None,
             iam_policy=None,
             custom_role=GCP_CUSTOM_ROLE,
@@ -272,7 +275,7 @@ async def get_setup_instructions(
                 "Option B - Manual Setup:",
                 "  1. Go to GCP IAM Console → Workload Identity Federation",
                 "  2. Create a new pool named 'a13e-pool'",
-                "  3. Add an AWS provider with A13E's account ID",
+                f"  3. Add an AWS provider with A13E's account ID: {a13e_account_id}",
                 "  4. Create service account 'a13e-scanner' with read-only security permissions",
                 "  5. Grant the WIF pool permission to impersonate the service account",
                 "  6. Return here with the service account email",

@@ -7,11 +7,11 @@
 # Prerequisites:
 #   - gcloud CLI installed and authenticated
 #   - Owner or IAM Admin role on the GCP project
-#   - A13E AWS account ID (provided during onboarding)
+#   - A13E AWS account ID (shown in the A13E app during setup: 123080274263)
 #
 # Usage:
 #   chmod +x gcp_wif_setup.sh
-#   ./gcp_wif_setup.sh --project your-project-id --aws-account 123456789012
+#   ./gcp_wif_setup.sh --project your-project-id --aws-account 123080274263
 #
 # For help:
 #   ./gcp_wif_setup.sh --help
@@ -76,7 +76,7 @@ Optional:
   --help                    Show this help message
 
 Example:
-  $0 --project my-gcp-project --aws-account 123456789012
+  $0 --project my-gcp-project --aws-account 123080274263
 
 EOF
     exit 0

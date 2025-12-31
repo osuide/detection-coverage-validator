@@ -25,7 +25,7 @@ Description: |
 Parameters:
   A13ETrustAccountId:
     Type: String
-    Default: '123456789012'  # Replace with actual A13E AWS account ID
+    Default: '123080274263'  # A13E's AWS account ID
     Description: The AWS Account ID of A13E's scanning infrastructure
     AllowedPattern: '^\d{12}$'
     ConstraintDescription: Must be a 12-digit AWS Account ID

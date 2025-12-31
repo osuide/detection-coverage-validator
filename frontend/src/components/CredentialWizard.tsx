@@ -264,9 +264,6 @@ export default function CredentialWizard({
     )
   }
 
-  // A13E's AWS Account ID - this would come from config in production
-  const A13E_AWS_ACCOUNT_ID = '123456789012'
-
   const [setupMethod, setSetupMethod] = useState<'template' | 'manual'>('template')
 
   const renderSetupStep = () => {
@@ -284,14 +281,16 @@ export default function CredentialWizard({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs text-blue-600 uppercase tracking-wide font-medium">A13E AWS Account ID</p>
-                    <code className="text-lg font-mono text-gray-900">{A13E_AWS_ACCOUNT_ID}</code>
+                    <code className="text-lg font-mono text-gray-900">{instructions?.a13e_aws_account_id || 'Loading...'}</code>
                   </div>
-                  <button
-                    onClick={() => copyToClipboard(A13E_AWS_ACCOUNT_ID, 'a13e_account')}
-                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
-                  >
-                    {copied === 'a13e_account' ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                  </button>
+                  {instructions?.a13e_aws_account_id && (
+                    <button
+                      onClick={() => copyToClipboard(instructions.a13e_aws_account_id, 'a13e_account')}
+                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                    >
+                      {copied === 'a13e_account' ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                    </button>
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Use this when setting up the trust relationship</p>
               </div>
@@ -408,7 +407,7 @@ export default function CredentialWizard({
                       <li>Name the policy <strong>"A13E-DetectionScanner"</strong> and create it</li>
                       <li>Go to <strong>IAM → Roles → Create role</strong></li>
                       <li>Select <strong>"AWS account"</strong> as trusted entity type</li>
-                      <li>Choose <strong>"Another AWS account"</strong> and enter: <code className="bg-gray-200 px-1 rounded">{A13E_AWS_ACCOUNT_ID}</code></li>
+                      <li>Choose <strong>"Another AWS account"</strong> and enter: <code className="bg-gray-200 px-1 rounded">{instructions?.a13e_aws_account_id || 'Loading...'}</code></li>
                       <li>Check <strong>"Require external ID"</strong> and enter the External ID shown above</li>
                       <li>Click <strong>Next</strong>, search for and attach <strong>"A13E-DetectionScanner"</strong> policy</li>
                       <li>Name the role <strong>"A13E-ReadOnly"</strong> and create it</li>
@@ -467,12 +466,32 @@ export default function CredentialWizard({
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h5 className="font-medium text-blue-900 mb-3 flex items-center">
             <Shield className="w-5 h-5 mr-2" />
-            GCP Project Information
+            Required Information for WIF Setup
           </h5>
-          <div className="bg-white rounded-lg p-3 border border-blue-100">
-            <p className="text-xs text-blue-600 uppercase tracking-wide font-medium">Your Project ID</p>
-            <code className="text-lg font-mono text-gray-900">{accountName.split(' ')[0] || 'your-project-id'}</code>
-            <p className="text-xs text-gray-500 mt-1">This is the GCP project where you'll create the service account</p>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="bg-white rounded-lg p-3 border border-blue-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-blue-600 uppercase tracking-wide font-medium">A13E AWS Account ID</p>
+                  <code className="text-lg font-mono text-gray-900">{instructions?.a13e_aws_account_id || 'Loading...'}</code>
+                </div>
+                {instructions?.a13e_aws_account_id && (
+                  <button
+                    onClick={() => copyToClipboard(instructions.a13e_aws_account_id, 'a13e_account')}
+                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                  >
+                    {copied === 'a13e_account' ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Use this when configuring the AWS provider in WIF</p>
+            </div>
+
+            <div className="bg-white rounded-lg p-3 border border-blue-100">
+              <p className="text-xs text-blue-600 uppercase tracking-wide font-medium">Your GCP Project ID</p>
+              <code className="text-lg font-mono text-gray-900">{accountName.split(' ')[0] || 'your-project-id'}</code>
+              <p className="text-xs text-gray-500 mt-1">This is the GCP project where you'll create the service account</p>
+            </div>
           </div>
         </div>
 

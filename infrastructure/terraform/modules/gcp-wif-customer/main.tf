@@ -13,7 +13,7 @@
 #   module "a13e_wif" {
 #     source              = "github.com/a13e/terraform-gcp-wif-customer"
 #     project_id          = "your-gcp-project"
-#     a13e_aws_account_id = "123456789012"  # Provided by A13E
+#     a13e_aws_account_id = "123080274263"  # A13E's AWS account ID
 #   }
 
 terraform {
@@ -37,9 +37,9 @@ variable "project_id" {
 }
 
 variable "a13e_aws_account_id" {
-  description = "A13E's AWS account ID (provided by A13E)"
+  description = "A13E's AWS account ID (shown in the A13E app during setup)"
   type        = string
-  default     = "123456789012" # Replace with actual A13E AWS account ID
+  default     = "123080274263" # A13E's AWS account ID
 }
 
 variable "a13e_aws_role_name" {
