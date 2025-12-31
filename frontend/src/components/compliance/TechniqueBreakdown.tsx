@@ -6,7 +6,7 @@
  * provide the coverage.
  */
 
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import {
   CheckCircle,
   XCircle,

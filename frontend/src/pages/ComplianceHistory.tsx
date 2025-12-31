@@ -8,7 +8,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { History, ArrowLeft } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { evaluationHistoryApi } from '../services/api'
 import { useSelectedAccount } from '../hooks/useSelectedAccount'
 import {

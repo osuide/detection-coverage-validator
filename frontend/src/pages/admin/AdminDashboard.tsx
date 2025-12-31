@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import {
   Shield, Users, Building2, CreditCard, Activity,
   AlertTriangle, Settings, LogOut, TrendingUp,

@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { AlertTriangle, Cloud, Building, Info, ChevronDown, ChevronRight, FileCode, ExternalLink } from 'lucide-react'
 import { ControlGapItem, CloudApplicability, MissingTechniqueDetail } from '../../services/complianceApi'
 

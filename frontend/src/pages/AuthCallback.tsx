@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { Shield, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { cognitoApi } from '../services/cognitoApi'

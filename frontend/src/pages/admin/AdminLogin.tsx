@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Shield, Lock, Mail, AlertCircle, Key, Fingerprint, Loader2 } from 'lucide-react';
 import { useAdminAuthStore, adminAuthActions } from '../../stores/adminAuthStore';
 import MFASetupModal from '../../components/MFASetupModal';

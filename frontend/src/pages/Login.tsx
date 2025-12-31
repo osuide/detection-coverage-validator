@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router'
 import { useAuth } from '../contexts/AuthContext'
 import { cognitoApi, CognitoConfig } from '../services/cognitoApi'
 import { githubApi, GitHubConfig } from '../services/githubApi'

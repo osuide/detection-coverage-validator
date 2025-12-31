@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router'
 import {
   Database, RefreshCw, ChevronLeft, Check, AlertCircle,
   Users, Target, Package, Link as LinkIcon, Clock,

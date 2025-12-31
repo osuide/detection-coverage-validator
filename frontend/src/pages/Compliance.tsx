@@ -5,7 +5,7 @@
  * URL params preserve modal state for proper back navigation.
  */
 
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router'
 import { BarChart3, History } from 'lucide-react'
 import { ComplianceCoverageContent } from '../components/compliance'
 import { useSelectedAccount } from '../hooks/useSelectedAccount'

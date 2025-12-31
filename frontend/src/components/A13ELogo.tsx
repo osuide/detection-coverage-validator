@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 
 interface A13ELogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl'

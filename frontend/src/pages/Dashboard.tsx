@@ -11,7 +11,7 @@ import {
   Bell
 } from 'lucide-react'
 import { coverageApi, scansApi, detectionsApi, scanStatusApi, Detection, DetectionEffectiveness } from '../services/api'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import CoverageGauge from '../components/CoverageGauge'
 import TacticHeatmap from '../components/TacticHeatmap'
 import { SecurityPostureCard, SecurityPostureEmptyState } from '../components/SecurityPostureCard'
