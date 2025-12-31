@@ -1,0 +1,234 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'backend/app/api/**'
+      - 'backend/scripts/generate_public_openapi.py'
+      - 'backend/scripts/verify_openapi_security.py'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - prod
+
+# Ensure only one docs deployment runs at a time
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-west-2
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '22'
+  # Safe: workflow_dispatch inputs are controlled choice values, not user-provided text
+  DEPLOY_ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+
+jobs:
+  generate-openapi:
+    name: Generate OpenAPI Spec
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Generate sanitised OpenAPI spec
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+          ENVIRONMENT: production
+          SECRET_KEY: docs-generation-only
+          DATABASE_URL: postgresql+asyncpg://x:x@localhost/x
+        run: |
+          python scripts/generate_public_openapi.py
+
+      - name: Verify spec security
+        working-directory: backend
+        run: |
+          python scripts/verify_openapi_security.py ../docs/api/openapi.json
+
+      - name: Upload OpenAPI spec
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: docs/api/openapi.json
+          retention-days: 1
+
+  build-docs:
+    name: Build Documentation
+    needs: generate-openapi
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download OpenAPI spec
+        uses: actions/download-artifact@v4
+        with:
+          name: openapi-spec
+          path: docs/api/
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Redocly CLI
+        run: npm install -g @redocly/cli
+
+      - name: Lint OpenAPI spec
+        working-directory: docs
+        run: redocly lint api/openapi.json
+
+      - name: Build documentation
+        working-directory: docs
+        run: |
+          # Build API reference
+          redocly build-docs api/openapi.json -o dist/index.html
+
+          # Copy static assets
+          cp 404.html dist/
+          cp -r guides dist/
+          cp -r examples dist/
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-build
+          path: docs/dist/
+          retention-days: 1
+
+  deploy-docs:
+    name: Deploy Documentation
+    needs: build-docs
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-build
+          path: docs/dist/
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get Terraform outputs
+        id: tf-outputs
+        working-directory: infrastructure/terraform
+        env:
+          TF_STATE_KEY: ${{ env.DEPLOY_ENVIRONMENT }}/terraform.tfstate
+        run: |
+          terraform init -backend-config="key=${TF_STATE_KEY}"
+          echo "docs_s3_bucket=$(terraform output -raw docs_s3_bucket_name 2>/dev/null || echo '')" >> $GITHUB_OUTPUT
+          echo "docs_cloudfront_id=$(terraform output -raw docs_cloudfront_distribution_id 2>/dev/null || echo '')" >> $GITHUB_OUTPUT
+
+      - name: Deploy to S3
+        if: steps.tf-outputs.outputs.docs_s3_bucket != ''
+        env:
+          S3_BUCKET: ${{ steps.tf-outputs.outputs.docs_s3_bucket }}
+        run: |
+          aws s3 sync docs/dist/ "s3://${S3_BUCKET}/" \
+            --delete \
+            --cache-control "max-age=3600"
+
+      - name: Invalidate CloudFront cache
+        if: steps.tf-outputs.outputs.docs_cloudfront_id != ''
+        env:
+          CF_DISTRIBUTION_ID: ${{ steps.tf-outputs.outputs.docs_cloudfront_id }}
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${CF_DISTRIBUTION_ID}" \
+            --paths "/*"
+
+      - name: Output docs URL
+        env:
+          ENVIRONMENT: ${{ env.DEPLOY_ENVIRONMENT }}
+        run: |
+          if [ "${ENVIRONMENT}" = "staging" ]; then
+            echo "Documentation deployed to: https://docs.staging.a13e.com"
+          else
+            echo "Documentation deployed to: https://docs.a13e.com"
+          fi
+
+  verify-deployment:
+    name: Verify Deployment
+    needs: deploy-docs
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - name: Wait for CloudFront propagation
+        run: sleep 30
+
+      - name: Verify docs site is accessible
+        env:
+          ENVIRONMENT: ${{ env.DEPLOY_ENVIRONMENT }}
+        run: |
+          if [ "${ENVIRONMENT}" = "staging" ]; then
+            URL="https://docs.staging.a13e.com"
+          else
+            URL="https://docs.a13e.com"
+          fi
+
+          echo "Checking ${URL}..."
+
+          # Retry up to 5 times
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${URL}" || echo "000")
+            if [ "${STATUS}" = "200" ]; then
+              echo "Documentation site is accessible (HTTP ${STATUS})"
+              exit 0
+            fi
+            echo "Attempt ${i}: HTTP ${STATUS}, retrying in 10s..."
+            sleep 10
+          done
+
+          echo "Failed to verify documentation site"
+          exit 1
+
+      - name: Verify security headers
+        env:
+          ENVIRONMENT: ${{ env.DEPLOY_ENVIRONMENT }}
+        run: |
+          if [ "${ENVIRONMENT}" = "staging" ]; then
+            URL="https://docs.staging.a13e.com"
+          else
+            URL="https://docs.a13e.com"
+          fi
+
+          echo "Checking security headers on ${URL}..."
+          HEADERS=$(curl -s -I "${URL}")
+
+          # Check for required security headers
+          echo "${HEADERS}" | grep -qi "strict-transport-security" && echo "✓ HSTS present" || echo "✗ HSTS missing"
+          echo "${HEADERS}" | grep -qi "x-content-type-options" && echo "✓ X-Content-Type-Options present" || echo "✗ X-Content-Type-Options missing"
+          echo "${HEADERS}" | grep -qi "x-frame-options" && echo "✓ X-Frame-Options present" || echo "✗ X-Frame-Options missing"

@@ -196,3 +196,13 @@ variable "github_repo" {
   type        = string
   default     = "osuide/detection-coverage-validator"
 }
+
+# ============================================================================
+# API Documentation Site
+# ============================================================================
+
+variable "enable_docs" {
+  description = "Enable API documentation site at docs.a13e.com"
+  type        = bool
+  default     = false
+}

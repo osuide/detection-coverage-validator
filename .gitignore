@@ -80,11 +80,22 @@ docker-compose.override.yml
 agents/
 plans/
 design/
-/docs/
 backend/docs/
 add_template_registration.py
 
-# Ignore all markdown files except README.md and website docs
+# API Documentation Site (docs.a13e.com)
+# Ignore internal/development docs
+/docs/architecture/
+/docs/plans/
+/docs/security/
+/docs/user-guide/
+/docs/*.md
+# Generated at build time
+/docs/api/
+/docs/dist/
+
+# Ignore all markdown files except specific locations
 *.md
 !README.md
 !frontend/public/docs/*.md
+!docs/guides/*.md

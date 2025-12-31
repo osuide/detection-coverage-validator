@@ -128,6 +128,11 @@ module "dns" {
   alb_dns_name           = module.backend.alb_dns_name
   alb_zone_id            = module.backend.alb_zone_id
   cloudfront_domain_name = module.frontend.cloudfront_domain_name
+
+  # Docs site (docs.a13e.com)
+  enable_docs                 = var.enable_docs
+  docs_cloudfront_domain_name = var.enable_docs ? module.docs[0].cloudfront_domain_name : ""
+  docs_cloudfront_zone_id     = var.enable_docs ? module.docs[0].cloudfront_zone_id : "Z2FDTNDATAQYW2"
 }
 
 # Security (Lambda@Edge CSP + WAF)
@@ -206,6 +211,28 @@ module "frontend" {
   domain_name     = var.enable_https && var.domain_name != "" ? (var.subdomain != "" ? "${var.subdomain}.${var.domain_name}" : var.domain_name) : ""
   certificate_arn = var.enable_https && var.domain_name != "" ? module.dns[0].cloudfront_certificate_arn : ""
   api_endpoint    = module.backend.api_endpoint
+  lambda_edge_arn = var.enable_https && var.domain_name != "" ? module.security[0].lambda_edge_arn : ""
+  waf_acl_arn     = var.enable_https && var.domain_name != "" ? module.security[0].waf_acl_arn : ""
+}
+
+# =============================================================================
+# API Documentation Site (docs.a13e.com)
+# =============================================================================
+# Static documentation site hosted via S3 + CloudFront.
+# Enabled via enable_docs variable in tfvars.
+
+module "docs" {
+  count  = var.enable_docs ? 1 : 0
+  source = "./modules/docs"
+
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  environment     = var.environment
+  domain_name     = var.enable_https && var.domain_name != "" ? (var.subdomain != "" ? "docs.${var.subdomain}.${var.domain_name}" : "docs.${var.domain_name}") : ""
+  certificate_arn = var.enable_https && var.domain_name != "" ? module.dns[0].docs_certificate_arn : ""
   lambda_edge_arn = var.enable_https && var.domain_name != "" ? module.security[0].lambda_edge_arn : ""
   waf_acl_arn     = var.enable_https && var.domain_name != "" ? module.security[0].waf_acl_arn : ""
 }

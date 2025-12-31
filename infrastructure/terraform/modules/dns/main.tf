@@ -49,6 +49,25 @@ variable "cloudfront_zone_id" {
   default     = "Z2FDTNDATAQYW2" # CloudFront's static zone ID
 }
 
+# Docs site variables
+variable "enable_docs" {
+  type        = bool
+  description = "Enable docs.a13e.com subdomain"
+  default     = false
+}
+
+variable "docs_cloudfront_domain_name" {
+  type        = string
+  description = "CloudFront distribution domain name for docs"
+  default     = ""
+}
+
+variable "docs_cloudfront_zone_id" {
+  type        = string
+  description = "CloudFront hosted zone ID for docs"
+  default     = "Z2FDTNDATAQYW2" # CloudFront's static zone ID
+}
+
 data "aws_route53_zone" "main" {
   name         = "${var.domain_name}."
   private_zone = false
@@ -57,6 +76,7 @@ data "aws_route53_zone" "main" {
 locals {
   frontend_domain = var.subdomain != "" ? "${var.subdomain}.${var.domain_name}" : var.domain_name
   api_domain      = var.subdomain != "" ? "api.${var.subdomain}.${var.domain_name}" : "api.${var.domain_name}"
+  docs_domain     = var.subdomain != "" ? "docs.${var.subdomain}.${var.domain_name}" : "docs.${var.domain_name}"
 }
 
 # ACM Certificate for CloudFront (must be in us-east-1)
@@ -170,6 +190,69 @@ resource "aws_route53_record" "api" {
   depends_on = [aws_acm_certificate_validation.alb]
 }
 
+# =============================================================================
+# Docs Site (docs.a13e.com)
+# =============================================================================
+
+# ACM Certificate for Docs CloudFront (must be in us-east-1)
+resource "aws_acm_certificate" "docs" {
+  count             = var.enable_docs ? 1 : 0
+  provider          = aws.us_east_1
+  domain_name       = local.docs_domain
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name        = "a13e-${var.environment}-docs-cert"
+    Environment = var.environment
+  }
+}
+
+# DNS Validation Records for Docs cert
+resource "aws_route53_record" "docs_cert_validation" {
+  for_each = var.enable_docs ? {
+    for dvo in aws_acm_certificate.docs[0].domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  } : {}
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = data.aws_route53_zone.main.zone_id
+}
+
+# Certificate Validation for Docs
+resource "aws_acm_certificate_validation" "docs" {
+  count                   = var.enable_docs ? 1 : 0
+  provider                = aws.us_east_1
+  certificate_arn         = aws_acm_certificate.docs[0].arn
+  validation_record_fqdns = [for record in aws_route53_record.docs_cert_validation : record.fqdn]
+}
+
+# Route 53 Record for Docs (CloudFront)
+resource "aws_route53_record" "docs" {
+  count   = var.enable_docs && var.docs_cloudfront_domain_name != "" ? 1 : 0
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = local.docs_domain
+  type    = "A"
+
+  alias {
+    name                   = var.docs_cloudfront_domain_name
+    zone_id                = var.docs_cloudfront_zone_id
+    evaluate_target_health = false
+  }
+
+  depends_on = [aws_acm_certificate_validation.docs]
+}
+
 output "frontend_domain" {
   value = local.frontend_domain
 }
@@ -188,4 +271,13 @@ output "alb_certificate_arn" {
 
 output "hosted_zone_id" {
   value = data.aws_route53_zone.main.zone_id
+}
+
+# Docs outputs
+output "docs_domain" {
+  value = var.enable_docs ? local.docs_domain : ""
+}
+
+output "docs_certificate_arn" {
+  value = var.enable_docs ? aws_acm_certificate_validation.docs[0].certificate_arn : ""
 }

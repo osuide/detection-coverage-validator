@@ -107,3 +107,19 @@ output "codebuild_github_actions_policy_arn" {
   description = "IAM policy ARN to attach to GitHub Actions user for CodeBuild access"
   value       = var.enable_codebuild_tests ? module.codebuild[0].github_actions_policy_arn : null
 }
+
+# Docs outputs (only when enabled)
+output "docs_s3_bucket_name" {
+  description = "S3 bucket name for docs deployment"
+  value       = var.enable_docs ? module.docs[0].s3_bucket_name : null
+}
+
+output "docs_cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for docs cache invalidation"
+  value       = var.enable_docs ? module.docs[0].cloudfront_distribution_id : null
+}
+
+output "docs_url" {
+  description = "Documentation site URL"
+  value       = var.enable_docs && var.enable_https && var.domain_name != "" ? "https://${var.subdomain != "" ? "docs.${var.subdomain}.${var.domain_name}" : "docs.${var.domain_name}"}" : (var.enable_docs ? module.docs[0].cloudfront_url : null)
+}

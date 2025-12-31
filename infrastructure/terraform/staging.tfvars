@@ -69,3 +69,10 @@ cookie_domain = ".a13e.com"
 # Enables CodeBuild project for running integration tests inside VPC.
 # Triggered manually via GitHub Actions or weekly scheduled runs.
 enable_codebuild_tests = true
+
+# ============================================================================
+# API Documentation Site
+# ============================================================================
+# Enable docs.staging.a13e.com for public API documentation.
+# Uses S3 + CloudFront with the same security controls as frontend.
+enable_docs = true
