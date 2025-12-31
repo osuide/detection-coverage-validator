@@ -247,22 +247,21 @@ class GCPCredentialService:
                     )
 
             # Test Security Command Center permissions
+            # A13E only uses list_sources and list_notification_configs
             if HAS_SCC:
                 try:
                     scc_client = securitycenter_v1.SecurityCenterClient(
                         credentials=creds
                     )
-                    parent = f"projects/{project_id}/sources/-"
-                    # List findings
+                    parent = f"projects/{project_id}"
+                    # Test list_sources (what our scanner actually uses)
                     list(
-                        scc_client.list_findings(request={"parent": parent}, timeout=10)
+                        scc_client.list_sources(request={"parent": parent}, timeout=10)
                     )
                     granted.extend(
                         [
-                            "securitycenter.findings.list",
-                            "securitycenter.findings.get",
                             "securitycenter.sources.list",
-                            "securitycenter.sources.get",
+                            "securitycenter.notificationconfigs.list",
                         ]
                     )
                 except Exception as e:
@@ -270,30 +269,24 @@ class GCPCredentialService:
                     if "permission_denied" in error_str or "permission" in error_str:
                         missing.extend(
                             [
-                                "securitycenter.findings.list",
-                                "securitycenter.findings.get",
                                 "securitycenter.sources.list",
-                                "securitycenter.sources.get",
+                                "securitycenter.notificationconfigs.list",
                             ]
                         )
                     elif "not enabled" in error_str or "not activated" in error_str:
                         # SCC not enabled - that's OK, permission would work if enabled
                         granted.extend(
                             [
-                                "securitycenter.findings.list",
-                                "securitycenter.findings.get",
                                 "securitycenter.sources.list",
-                                "securitycenter.sources.get",
+                                "securitycenter.notificationconfigs.list",
                             ]
                         )
             else:
                 # SCC library not installed - assume permissions would work if configured
                 granted.extend(
                     [
-                        "securitycenter.findings.list",
-                        "securitycenter.findings.get",
                         "securitycenter.sources.list",
-                        "securitycenter.sources.get",
+                        "securitycenter.notificationconfigs.list",
                     ]
                 )
 
@@ -531,22 +524,13 @@ class GCPCredentialService:
             "monitoring.alertPolicies.get",
             "monitoring.notificationChannels.list",
             "monitoring.notificationChannels.get",
-            # Security Command Center
-            "securitycenter.findings.list",
-            "securitycenter.findings.get",
+            # Security Command Center (minimal - only what A13E uses)
             "securitycenter.sources.list",
-            "securitycenter.sources.get",
-            # Google SecOps / Chronicle SIEM
+            "securitycenter.notificationconfigs.list",
+            # Google SecOps / Chronicle SIEM (minimal - only what A13E uses)
             "chronicle.rules.list",
-            "chronicle.rules.get",
-            "chronicle.detections.list",
-            "chronicle.detections.get",
-            "chronicle.curatedRuleSets.list",
-            "chronicle.curatedRuleSets.get",
-            "chronicle.alertGroupingRules.list",
-            "chronicle.alertGroupingRules.get",
             "chronicle.referenceLists.list",
-            "chronicle.referenceLists.get",
+            "chronicle.parsers.list",
             # Eventarc
             "eventarc.triggers.list",
             "eventarc.triggers.get",

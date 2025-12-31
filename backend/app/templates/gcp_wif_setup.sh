@@ -247,11 +247,11 @@ PERMISSIONS=(
     "monitoring.alertPolicies.get"
     "monitoring.notificationChannels.list"
     "monitoring.notificationChannels.get"
-    # Security Command Center
-    "securitycenter.findings.list"
-    "securitycenter.findings.get"
+    # Security Command Center (minimal permissions - only what A13E uses)
+    # - list_sources() → securitycenter.sources.list
+    # - list_notification_configs() → securitycenter.notificationconfigs.list
     "securitycenter.sources.list"
-    "securitycenter.sources.get"
+    "securitycenter.notificationconfigs.list"
     # Google SecOps / Chronicle SIEM (minimal permissions - only if using Chronicle)
     # These are the only permissions A13E actually uses for Chronicle scanning
     "chronicle.rules.list"

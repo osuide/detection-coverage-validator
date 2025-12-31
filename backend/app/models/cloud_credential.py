@@ -518,11 +518,12 @@ GCP_CUSTOM_ROLE = {
         "monitoring.alertPolicies.get",
         "monitoring.notificationChannels.list",
         "monitoring.notificationChannels.get",
-        # Security Command Center - for findings
-        "securitycenter.findings.list",
-        "securitycenter.findings.get",
+        # Security Command Center - minimal read-only permissions
+        # These are the ONLY permissions A13E actually uses:
+        # - list_sources() → securitycenter.sources.list
+        # - list_notification_configs() → securitycenter.notificationconfigs.list
         "securitycenter.sources.list",
-        "securitycenter.sources.get",
+        "securitycenter.notificationconfigs.list",
         # Google SecOps / Chronicle SIEM - minimal read-only permissions
         # These are the ONLY permissions A13E actually uses:
         # - list_rules() → chronicle.rules.list
