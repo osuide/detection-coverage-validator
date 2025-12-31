@@ -109,8 +109,18 @@ jobs:
 
           # Copy static assets
           cp 404.html dist/
-          cp -r guides dist/
           cp -r examples dist/
+
+          # Convert markdown guides to HTML
+          mkdir -p dist/guides
+          for md_file in guides/*.md; do
+            filename=$(basename "$md_file" .md)
+            pandoc "$md_file" \
+              --standalone \
+              --metadata title="A13E Documentation" \
+              --css="https://cdn.jsdelivr.net/npm/water.css@2/out/dark.min.css" \
+              -o "dist/guides/${filename}.html"
+          done
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

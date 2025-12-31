@@ -94,7 +94,7 @@ exports.handler = async (event) => {
   // See: https://stripe.com/docs/security/guide#content-security-policy
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+    "script-src 'self' 'unsafe-inline' https://js.stripe.com https://cdn.redocly.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "connect-src 'self' https://${var.api_domain} https://api.stripe.com",
