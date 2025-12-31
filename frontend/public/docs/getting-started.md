@@ -87,7 +87,7 @@ If you've enabled MFA:
 
 We strongly recommend enabling MFA for all accounts, especially Admin and Owner roles.
 
-1. Navigate to **Profile** (click your avatar in the top-right)
+1. Navigate to **Profile** (click your avatar in the bottom-left sidebar)
 2. Find the **Security** section
 3. Click **Enable MFA**
 4. Scan the QR code with your authenticator app (Google Authenticator, Authy, 1Password, etc.)
