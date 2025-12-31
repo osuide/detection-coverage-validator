@@ -232,7 +232,7 @@ A: No. To change a key's configuration, revoke it and create a new one with the 
 
 **Q: What's the rate limit for API requests?**
 
-A: Rate limits depend on your subscription tier. Individual: 100 requests/minute. Pro: 500 requests/minute. Enterprise: Custom limits.
+A: Rate limits depend on your subscription tier. Individual: 1,000 requests/hour. Pro: 10,000 requests/hour. Enterprise: 100,000 requests/hour.
 
 ---
 

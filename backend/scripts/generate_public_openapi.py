@@ -112,17 +112,17 @@ Requests are rate-limited based on your subscription tier:
 
 | Tier | Rate Limit | Price |
 |------|------------|-------|
-| Individual | 100 requests/minute | £29/mo |
-| Pro | 500 requests/minute | £250/mo |
-| Enterprise | Custom limits | Custom |
+| Individual | 1,000 requests/hour | £29/mo |
+| Pro | 10,000 requests/hour | £250/mo |
+| Enterprise | 100,000 requests/hour | Custom |
 
-> **Note:** API access requires a paid subscription. The Free tier does not include API access.
+> **Note:** API access requires a paid subscription. Free tier users will receive a `403 Forbidden` response.
 
 Rate limit headers are included in all responses:
 
 | Header | Description |
 |--------|-------------|
-| `X-RateLimit-Limit` | Maximum requests allowed |
+| `X-RateLimit-Limit` | Maximum requests per hour |
 | `X-RateLimit-Remaining` | Requests remaining in current window |
 | `X-RateLimit-Reset` | Unix timestamp when limit resets |
 

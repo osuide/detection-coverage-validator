@@ -101,6 +101,14 @@ async def get_api_key_context(
             if subscription:
                 tier = subscription.tier.value
 
+        # API access requires a paid subscription
+        if tier == "free":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="API access requires a paid subscription. "
+                "Please upgrade to Individual, Pro, or Enterprise.",
+            )
+
         # Check rate limit
         try:
             rate_limit_headers = await check_api_rate_limit(api_key, tier)

@@ -11,8 +11,8 @@ from fastapi import HTTPException, status
 
 
 # Rate limits by tier (requests per hour)
+# Note: Free tier does not have API access - handled in auth.py
 RATE_LIMITS = {
-    "free": 100,
     "individual": 1000,
     "pro": 10000,
     "enterprise": 100000,  # Effectively unlimited
@@ -80,7 +80,7 @@ class InMemoryRateLimiter:
         Raises:
             RateLimitExceeded: If rate limit is exceeded
         """
-        limit = RATE_LIMITS.get(tier, RATE_LIMITS["free"])
+        limit = RATE_LIMITS.get(tier, RATE_LIMITS["individual"])
         key = self._get_key(api_key)
 
         # Clean old requests
