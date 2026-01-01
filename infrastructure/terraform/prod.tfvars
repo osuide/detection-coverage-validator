@@ -40,11 +40,12 @@ enable_multi_az_rds = true
 #   TF_VAR_stripe_secret_key=sk_live_...
 #   TF_VAR_stripe_webhook_secret=whsec_...
 #
-# Production price IDs - obtain from Stripe Dashboard after creating products
+# Production price IDs (live mode)
+# Note: These are USD prices. Create GBP prices via Stripe Dashboard if needed.
 stripe_price_ids = {
-  subscriber         = "price_XXXXX" # A13E Individual GBP 29/mo
-  enterprise         = "price_XXXXX" # A13E Pro GBP 250/mo
-  additional_account = "price_XXXXX" # Additional account add-on
+  subscriber         = "price_1SfnCFAB6j5KiVeU3vDWa7BR" # A13E Individual $29/mo
+  enterprise         = "price_1SfnEYAB6j5KiVeUSz0GddjY" # A13E Enterprise $499/mo
+  additional_account = "price_1SfnQRAB6j5KiVeUc8KSiSGT" # Additional account $9/mo
 }
 
 # =============================================================================
