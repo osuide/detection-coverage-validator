@@ -368,16 +368,25 @@ def main():
         ]
         print(f"  {', '.join(methods):12} {path}")
 
-    # Ensure output directory exists
-    output_dir = backend_dir.parent / "docs" / "api"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Output to static folder (included in Docker image)
+    static_output_dir = backend_dir / "app" / "static" / "docs"
+    static_output_dir.mkdir(parents=True, exist_ok=True)
+    static_output_path = static_output_dir / "public-openapi.json"
 
-    # Write the sanitised schema
-    output_path = output_dir / "openapi.json"
-    with open(output_path, "w") as f:
+    with open(static_output_path, "w") as f:
         json.dump(public_schema, f, indent=2)
 
-    print(f"\nOutput: {output_path}")
+    print(f"\nOutput: {static_output_path}")
+
+    # Also write to docs folder for reference (not used at runtime)
+    docs_output_dir = backend_dir.parent / "docs" / "api"
+    docs_output_dir.mkdir(parents=True, exist_ok=True)
+    docs_output_path = docs_output_dir / "openapi.json"
+
+    with open(docs_output_path, "w") as f:
+        json.dump(public_schema, f, indent=2)
+
+    print(f"Also saved to: {docs_output_path}")
 
     # Print summary
     print("\n" + "=" * 60)

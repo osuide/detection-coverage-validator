@@ -1,0 +1,1379 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "A13E Public API",
+    "description": "\n# A13E Detection Coverage Validator - Public API\n\nProgrammatic access to your cloud security detection coverage data.\n\n## Overview\n\nThe A13E Public API enables you to integrate detection coverage data into your security workflows, dashboards, and automation pipelines. Use it to:\n\n- **Monitor coverage** - Track your MITRE ATT&CK coverage across cloud accounts\n- **Trigger scans** - Initiate detection discovery scans programmatically\n- **Query detections** - List and inspect discovered security detections\n- **Identify gaps** - Find uncovered techniques prioritised by risk\n\n## Authentication\n\nAll requests require an API key passed in the `X-API-Key` header:\n\n```bash\ncurl -H \"X-API-Key: dcv_live_xxxxxxxxxx\" \\\n  https://api.a13e.com/api/v1/public/accounts/{id}/coverage\n```\n\n### Getting an API Key\n\n1. Sign in to the [A13E Dashboard](https://app.a13e.com)\n2. Navigate to **Settings** \u2192 **API Keys**\n3. Click **Create API Key**\n4. Copy the key immediately (it won't be shown again)\n\nAPI keys begin with `dcv_live_`.\n\n## Rate Limiting\n\nRequests are rate-limited based on your subscription tier:\n\n| Tier | Rate Limit | Price |\n|------|------------|-------|\n| Individual | 1,000 requests/hour | \u00a329/mo |\n| Pro | 10,000 requests/hour | \u00a3250/mo |\n| Enterprise | 100,000 requests/hour | Custom |\n\n> **Note:** API access requires a paid subscription. Free tier users will receive a `403 Forbidden` response.\n\nRate limit headers are included in all responses:\n\n| Header | Description |\n|--------|-------------|\n| `X-RateLimit-Limit` | Maximum requests per hour |\n| `X-RateLimit-Remaining` | Requests remaining in current window |\n| `X-RateLimit-Reset` | Unix timestamp when limit resets |\n\nWhen rate limited, you'll receive a `429 Too Many Requests` response. Use exponential backoff when retrying.\n\n## Error Handling\n\nThe API uses standard HTTP status codes:\n\n| Code | Meaning |\n|------|---------|\n| `200` | Success |\n| `400` | Bad request (invalid parameters) |\n| `401` | Unauthorised (invalid or missing API key) |\n| `403` | Forbidden (insufficient permissions) |\n| `404` | Resource not found |\n| `409` | Conflict (e.g., scan already running) |\n| `429` | Rate limit exceeded |\n| `500` | Internal server error |\n\nError responses include a JSON body with details:\n\n```json\n{\n  \"detail\": \"Cloud account not found\"\n}\n```\n\n## Code Examples\n\n### Python\n\n```python\nimport requests\n\nAPI_KEY = \"dcv_live_xxxxxxxxxx\"\nBASE_URL = \"https://api.a13e.com/api/v1/public\"\n\nheaders = {\"X-API-Key\": API_KEY}\n\n# Get coverage for an account\nresponse = requests.get(\n    f\"{BASE_URL}/accounts/{account_id}/coverage\",\n    headers=headers\n)\ncoverage = response.json()\nprint(f\"Coverage: {coverage['coverage_percent']:.1f}%\")\n```\n\n### JavaScript\n\n```javascript\nconst API_KEY = 'dcv_live_xxxxxxxxxx';\nconst BASE_URL = 'https://api.a13e.com/api/v1/public';\n\nconst response = await fetch(\n  `${BASE_URL}/accounts/${accountId}/coverage`,\n  { headers: { 'X-API-Key': API_KEY } }\n);\nconst coverage = await response.json();\nconsole.log(`Coverage: ${coverage.coverage_percent.toFixed(1)}%`);\n```\n\n### cURL\n\n```bash\n# Get coverage summary\ncurl -H \"X-API-Key: dcv_live_xxx\" \\\n  \"https://api.a13e.com/api/v1/public/accounts/{account_id}/coverage\"\n\n# Trigger a scan\ncurl -X POST -H \"X-API-Key: dcv_live_xxx\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"regions\": [\"eu-west-2\"]}' \\\n  \"https://api.a13e.com/api/v1/public/accounts/{account_id}/scans\"\n```\n",
+    "version": "1.0.0",
+    "contact": {
+      "name": "A13E Support",
+      "email": "support@a13e.com",
+      "url": "https://app.a13e.com/support"
+    },
+    "license": {
+      "name": "Proprietary",
+      "url": "https://app.a13e.com/terms"
+    }
+  },
+  "paths": {
+    "/api/v1/public/accounts/{cloud_account_id}/coverage": {
+      "get": {
+        "tags": [
+          "Coverage"
+        ],
+        "summary": "Get Account Coverage",
+        "description": "Get coverage summary for a cloud account.\n\nReturns the latest coverage snapshot including total techniques,\ncovered techniques, and coverage percentage.",
+        "operationId": "get_account_coverage_api_v1_public_accounts__cloud_account_id__coverage_get",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cloud_account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cloud Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicCoverageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/accounts/{cloud_account_id}/coverage/techniques": {
+      "get": {
+        "tags": [
+          "Coverage"
+        ],
+        "summary": "Get Technique Coverage",
+        "description": "Get per-technique coverage details.\n\nReturns coverage status for each MITRE ATT&CK technique\nwith filtering options by tactic or status.",
+        "operationId": "get_technique_coverage_api_v1_public_accounts__cloud_account_id__coverage_techniques_get",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cloud_account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cloud Account Id"
+            }
+          },
+          {
+            "name": "tactic",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by tactic ID",
+              "title": "Tactic"
+            },
+            "description": "Filter by tactic ID"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status: covered, partial, uncovered",
+              "title": "Status"
+            },
+            "description": "Filter by status: covered, partial, uncovered"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TechniquesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/accounts/{cloud_account_id}/coverage/gaps": {
+      "get": {
+        "tags": [
+          "Coverage"
+        ],
+        "summary": "Get Coverage Gaps",
+        "description": "Get coverage gaps for a cloud account.\n\nReturns uncovered techniques prioritised by importance.",
+        "operationId": "get_coverage_gaps_api_v1_public_accounts__cloud_account_id__coverage_gaps_get",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cloud_account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cloud Account Id"
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by priority: critical, high, medium, low",
+              "title": "Priority"
+            },
+            "description": "Filter by priority: critical, high, medium, low"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GapsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/accounts/{cloud_account_id}/detections": {
+      "get": {
+        "tags": [
+          "Coverage",
+          "Detections"
+        ],
+        "summary": "List Account Detections",
+        "description": "List detections for a cloud account.\n\nReturns paginated list of discovered security detections\nwith optional filtering by type, status, or region.",
+        "operationId": "list_account_detections_api_v1_public_accounts__cloud_account_id__detections_get",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cloud_account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cloud Account Id"
+            }
+          },
+          {
+            "name": "detection_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by detection type",
+              "title": "Detection Type"
+            },
+            "description": "Filter by detection type"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status",
+              "title": "Status"
+            },
+            "description": "Filter by status"
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by region",
+              "title": "Region"
+            },
+            "description": "Filter by region"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectionsListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/detections/{detection_id}": {
+      "get": {
+        "tags": [
+          "Coverage",
+          "Detections"
+        ],
+        "summary": "Get Detection",
+        "description": "Get detection details.\n\nReturns full details of a specific detection including\nmapped MITRE ATT&CK techniques.",
+        "operationId": "get_detection_api_v1_public_detections__detection_id__get",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "detection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Detection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectionDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/accounts/{cloud_account_id}/scans": {
+      "post": {
+        "tags": [
+          "Coverage",
+          "Scans"
+        ],
+        "summary": "Create Scan",
+        "description": "Trigger a new scan for a cloud account.\n\nCreates a new scan job that will discover security detections\nin the specified cloud account. Returns immediately with the\nscan ID - use GET /scans/{id} to check status.",
+        "operationId": "create_scan_api_v1_public_accounts__cloud_account_id__scans_post",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cloud_account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cloud Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanCreateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Coverage",
+          "Scans"
+        ],
+        "summary": "List Account Scans",
+        "description": "List scans for a cloud account.\n\nReturns most recent scans with optional status filtering.",
+        "operationId": "list_account_scans_api_v1_public_accounts__cloud_account_id__scans_get",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cloud_account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cloud Account Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status",
+              "title": "Status"
+            },
+            "description": "Filter by status"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScansListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/scans/{scan_id}": {
+      "get": {
+        "tags": [
+          "Coverage",
+          "Scans"
+        ],
+        "summary": "Get Scan",
+        "description": "Get scan details and status.\n\nReturns full details of a specific scan including\nprogress and results.",
+        "operationId": "get_scan_api_v1_public_scans__scan_id__get",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Scan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/scans/{scan_id}/results": {
+      "get": {
+        "tags": [
+          "Coverage",
+          "Scans"
+        ],
+        "summary": "Get Scan Results",
+        "description": "Get scan results summary.\n\nReturns a summary of detection changes from this scan.",
+        "operationId": "get_scan_results_api_v1_public_scans__scan_id__results_get",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Scan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Scan Results Api V1 Public Scans  Scan Id  Results Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CoverageGapItem": {
+        "properties": {
+          "technique_id": {
+            "type": "string",
+            "title": "Technique Id"
+          },
+          "technique_name": {
+            "type": "string",
+            "title": "Technique Name"
+          },
+          "tactic_id": {
+            "type": "string",
+            "title": "Tactic Id"
+          },
+          "tactic_name": {
+            "type": "string",
+            "title": "Tactic Name"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority"
+          },
+          "has_template": {
+            "type": "boolean",
+            "title": "Has Template"
+          }
+        },
+        "type": "object",
+        "required": [
+          "technique_id",
+          "technique_name",
+          "tactic_id",
+          "tactic_name",
+          "priority",
+          "has_template"
+        ],
+        "title": "CoverageGapItem",
+        "description": "Coverage gap item."
+      },
+      "DetectionDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "detection_type": {
+            "type": "string",
+            "title": "Detection Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "source_arn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Arn"
+          },
+          "region": {
+            "type": "string",
+            "title": "Region"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_managed": {
+            "type": "boolean",
+            "title": "Is Managed"
+          },
+          "mapping_count": {
+            "type": "integer",
+            "title": "Mapping Count"
+          },
+          "mapped_techniques": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Mapped Techniques"
+          },
+          "discovered_at": {
+            "type": "string",
+            "title": "Discovered At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "detection_type",
+          "status",
+          "source_arn",
+          "region",
+          "description",
+          "is_managed",
+          "mapping_count",
+          "mapped_techniques",
+          "discovered_at",
+          "updated_at"
+        ],
+        "title": "DetectionDetailResponse",
+        "description": "Full detection detail response."
+      },
+      "DetectionItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "detection_type": {
+            "type": "string",
+            "title": "Detection Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "region": {
+            "type": "string",
+            "title": "Region"
+          },
+          "is_managed": {
+            "type": "boolean",
+            "title": "Is Managed"
+          },
+          "mapping_count": {
+            "type": "integer",
+            "title": "Mapping Count"
+          },
+          "discovered_at": {
+            "type": "string",
+            "title": "Discovered At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "detection_type",
+          "status",
+          "region",
+          "is_managed",
+          "mapping_count",
+          "discovered_at"
+        ],
+        "title": "DetectionItem",
+        "description": "Detection item in list response."
+      },
+      "DetectionsListResponse": {
+        "properties": {
+          "cloud_account_id": {
+            "type": "string",
+            "title": "Cloud Account Id"
+          },
+          "detections": {
+            "items": {
+              "$ref": "#/components/schemas/DetectionItem"
+            },
+            "type": "array",
+            "title": "Detections"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cloud_account_id",
+          "detections",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "DetectionsListResponse",
+        "description": "Detections list response."
+      },
+      "GapsResponse": {
+        "properties": {
+          "cloud_account_id": {
+            "type": "string",
+            "title": "Cloud Account Id"
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageGapItem"
+            },
+            "type": "array",
+            "title": "Gaps"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cloud_account_id",
+          "gaps",
+          "total"
+        ],
+        "title": "GapsResponse",
+        "description": "Gaps list response."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PublicCoverageResponse": {
+        "properties": {
+          "cloud_account_id": {
+            "type": "string",
+            "title": "Cloud Account Id"
+          },
+          "cloud_account_name": {
+            "type": "string",
+            "title": "Cloud Account Name"
+          },
+          "total_techniques": {
+            "type": "integer",
+            "title": "Total Techniques"
+          },
+          "covered_techniques": {
+            "type": "integer",
+            "title": "Covered Techniques"
+          },
+          "coverage_percent": {
+            "type": "number",
+            "title": "Coverage Percent"
+          },
+          "average_confidence": {
+            "type": "number",
+            "title": "Average Confidence"
+          },
+          "last_scan_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Scan At"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cloud_account_id",
+          "cloud_account_name",
+          "total_techniques",
+          "covered_techniques",
+          "coverage_percent",
+          "average_confidence",
+          "last_scan_at",
+          "created_at"
+        ],
+        "title": "PublicCoverageResponse",
+        "description": "Public API coverage response."
+      },
+      "ScanCreateRequest": {
+        "properties": {
+          "regions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regions"
+          }
+        },
+        "type": "object",
+        "title": "ScanCreateRequest",
+        "description": "Request to create a new scan."
+      },
+      "ScanCreateResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "message"
+        ],
+        "title": "ScanCreateResponse",
+        "description": "Response after creating a scan."
+      },
+      "ScanDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "cloud_account_id": {
+            "type": "string",
+            "title": "Cloud Account Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "progress_percent": {
+            "type": "integer",
+            "title": "Progress Percent"
+          },
+          "current_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Step"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Regions"
+          },
+          "detections_found": {
+            "type": "integer",
+            "title": "Detections Found"
+          },
+          "detections_new": {
+            "type": "integer",
+            "title": "Detections New"
+          },
+          "detections_updated": {
+            "type": "integer",
+            "title": "Detections Updated"
+          },
+          "detections_removed": {
+            "type": "integer",
+            "title": "Detections Removed"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errors"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "cloud_account_id",
+          "status",
+          "progress_percent",
+          "current_step",
+          "regions",
+          "detections_found",
+          "detections_new",
+          "detections_updated",
+          "detections_removed",
+          "errors",
+          "started_at",
+          "completed_at",
+          "created_at"
+        ],
+        "title": "ScanDetailResponse",
+        "description": "Full scan detail response."
+      },
+      "ScanItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "progress_percent": {
+            "type": "integer",
+            "title": "Progress Percent"
+          },
+          "detections_found": {
+            "type": "integer",
+            "title": "Detections Found"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "progress_percent",
+          "detections_found",
+          "started_at",
+          "completed_at",
+          "created_at"
+        ],
+        "title": "ScanItem",
+        "description": "Scan item in list response."
+      },
+      "ScansListResponse": {
+        "properties": {
+          "cloud_account_id": {
+            "type": "string",
+            "title": "Cloud Account Id"
+          },
+          "scans": {
+            "items": {
+              "$ref": "#/components/schemas/ScanItem"
+            },
+            "type": "array",
+            "title": "Scans"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cloud_account_id",
+          "scans",
+          "total"
+        ],
+        "title": "ScansListResponse",
+        "description": "Scans list response."
+      },
+      "TechniqueCoverageItem": {
+        "properties": {
+          "technique_id": {
+            "type": "string",
+            "title": "Technique Id"
+          },
+          "technique_name": {
+            "type": "string",
+            "title": "Technique Name"
+          },
+          "tactic_id": {
+            "type": "string",
+            "title": "Tactic Id"
+          },
+          "tactic_name": {
+            "type": "string",
+            "title": "Tactic Name"
+          },
+          "detection_count": {
+            "type": "integer",
+            "title": "Detection Count"
+          },
+          "max_confidence": {
+            "type": "number",
+            "title": "Max Confidence"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "technique_id",
+          "technique_name",
+          "tactic_id",
+          "tactic_name",
+          "detection_count",
+          "max_confidence",
+          "status"
+        ],
+        "title": "TechniqueCoverageItem",
+        "description": "Technique coverage item."
+      },
+      "TechniquesResponse": {
+        "properties": {
+          "cloud_account_id": {
+            "type": "string",
+            "title": "Cloud Account Id"
+          },
+          "techniques": {
+            "items": {
+              "$ref": "#/components/schemas/TechniqueCoverageItem"
+            },
+            "type": "array",
+            "title": "Techniques"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cloud_account_id",
+          "techniques",
+          "total"
+        ],
+        "title": "TechniquesResponse",
+        "description": "Techniques list response."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "API key for authentication. Create keys in the A13E Dashboard under Settings \u2192 API Keys.\n\nFormat: `dcv_live_xxxxxxxxxx`"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Coverage",
+      "description": "Coverage metrics and gap analysis for cloud accounts. Get overall coverage percentages, per-technique breakdown, and prioritised gaps with remediation guidance."
+    },
+    {
+      "name": "Detections",
+      "description": "Discovered security detections in your cloud accounts. List detections by account with filtering, and get detailed information including MITRE ATT&CK technique mappings."
+    },
+    {
+      "name": "Scans",
+      "description": "Detection discovery scans. Trigger new scans to discover security detections, monitor scan progress, and retrieve scan results."
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://api.a13e.com",
+      "description": "Production API"
+    }
+  ],
+  "externalDocs": {
+    "description": "A13E Documentation",
+    "url": "https://docs.a13e.com"
+  }
+}
