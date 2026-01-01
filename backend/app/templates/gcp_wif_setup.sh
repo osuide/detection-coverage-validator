@@ -33,7 +33,7 @@ A13E_AWS_ROLE_NAME="A13E-Scanner-Role"
 
 # WIF pool configuration (defaults work for most cases)
 POOL_ID="a13e-pool"
-PROVIDER_ID="aws"
+PROVIDER_ID="a13e-aws"
 SERVICE_ACCOUNT_ID="a13e-scanner"
 CUSTOM_ROLE_ID="a13e_detection_scanner"
 

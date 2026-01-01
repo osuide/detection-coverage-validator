@@ -73,7 +73,7 @@ class GCPCredentialCreate(BaseModel):
 
     # WIF-specific fields
     pool_id: str = Field(default="a13e-pool", description="WIF pool ID")
-    provider_id: str = Field(default="aws", description="WIF provider ID")
+    provider_id: str = Field(default="a13e-aws", description="WIF provider ID")
     pool_location: str = Field(default="global", description="WIF pool location")
 
     @field_validator("credential_type")

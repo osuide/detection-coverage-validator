@@ -36,10 +36,9 @@ Customer Setup Requirements:
 """
 
 import asyncio
-import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from typing import Any, Optional
 
@@ -47,8 +46,12 @@ import httpx
 import structlog
 
 # Google Cloud SDK imports
+from google.auth import aws as google_auth_aws
 from google.auth import credentials as ga_credentials
 from google.auth import impersonated_credentials
+
+# Import the ECS-compatible AWS credentials supplier
+from app.services.ecs_wif_credentials import EcsAwsSecurityCredentialsSupplier
 
 logger = structlog.get_logger()
 
@@ -79,8 +82,8 @@ class WIFConfiguration:
     # WIF pool ID created by customer
     pool_id: str = "a13e-pool"
 
-    # AWS provider ID within the pool
-    provider_id: str = "aws"
+    # AWS provider ID within the pool (must be 4-32 chars)
+    provider_id: str = "a13e-aws"
 
     # Service account email to impersonate
     service_account_email: str = ""
@@ -120,7 +123,7 @@ class WIFConfiguration:
             project_id=data["project_id"],
             pool_location=data.get("pool_location", "global"),
             pool_id=data.get("pool_id", "a13e-pool"),
-            provider_id=data.get("provider_id", "aws"),
+            provider_id=data.get("provider_id", "a13e-aws"),
             service_account_email=data.get("service_account_email", ""),
         )
 
@@ -226,151 +229,50 @@ class GCPWIFCredentialService:
             func = partial(func, **kwargs)
         return await loop.run_in_executor(_gcp_executor, func, *args)
 
-    async def get_aws_oidc_token(self, audience: str) -> str:
-        """Get AWS OIDC token from ECS task metadata.
-
-        When running on ECS, the task can request OIDC tokens from the
-        container metadata service. This token is used for federation.
-
-        Args:
-            audience: The audience for the token (GCP WIF audience)
-
-        Returns:
-            JWT token string
-
-        Raises:
-            AWSTokenError: If unable to obtain token
-        """
-        import os
-
-        # Check if we're running on ECS (has metadata endpoint)
-        # Container credential URI is set by ECS
-        container_creds_uri = os.environ.get("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI")
-        if not container_creds_uri:
-            # Not running on ECS - check for local development token
-            dev_token = os.environ.get("A13E_DEV_AWS_OIDC_TOKEN")
-            if dev_token:
-                self.logger.warning(
-                    "using_dev_oidc_token",
-                    message="Using development OIDC token - not for production",
-                )
-                return dev_token
-            raise AWSTokenError(
-                "Not running on ECS and no development token available. "
-                "Set AWS_CONTAINER_CREDENTIALS_RELATIVE_URI (ECS) or "
-                "A13E_DEV_AWS_OIDC_TOKEN (development)."
-            )
-
-        # ECS metadata endpoint for OIDC tokens
-        # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html
-        metadata_uri = os.environ.get(
-            "AWS_CONTAINER_CREDENTIALS_FULL_URI",
-            f"http://169.254.170.2{container_creds_uri}",
-        )
-
-        # Request OIDC token with specific audience
-        # This requires sts:AssumeRoleWithWebIdentity permission on the task role
-        try:
-            client = await self._get_http_client()
-
-            # The token endpoint for ECS tasks
-            # Note: ECS Anywhere uses different endpoint
-            token_endpoint = f"{metadata_uri.rsplit('/', 1)[0]}/credential-provider"
-
-            response = await client.get(
-                token_endpoint,
-                params={"audience": audience},
-                headers={
-                    "Authorization": os.environ.get(
-                        "AWS_CONTAINER_AUTHORIZATION_TOKEN", ""
-                    )
-                },
-            )
-
-            if response.status_code != 200:
-                raise AWSTokenError(
-                    f"Failed to get OIDC token from ECS: {response.status_code} - {response.text}"
-                )
-
-            token_data = response.json()
-            return token_data.get("token", token_data.get("Token", ""))
-
-        except httpx.HTTPError as e:
-            raise AWSTokenError(f"HTTP error getting ECS OIDC token: {e}")
-        except Exception as e:
-            raise AWSTokenError(f"Error getting ECS OIDC token: {e}")
-
-    async def exchange_token_for_gcp_credentials(
+    def _create_wif_credentials(
         self,
-        aws_token: str,
         wif_config: WIFConfiguration,
     ) -> ga_credentials.Credentials:
-        """Exchange AWS OIDC token for GCP federated credentials.
+        """Create WIF credentials using AWS credentials from ECS.
 
-        This performs the STS token exchange at GCP's endpoint.
+        Uses the EcsAwsSecurityCredentialsSupplier which properly handles:
+        - ECS task role via AWS_CONTAINER_CREDENTIALS_RELATIVE_URI
+        - boto3.Session().get_credentials() for ECS compatibility
+        - SigV4 signing for AWS-to-GCP token exchange
 
         Args:
-            aws_token: AWS OIDC JWT token
             wif_config: WIF configuration with pool details
 
         Returns:
-            GCP Credentials object (federated)
+            GCP Credentials object (federated, not yet impersonated)
 
         Raises:
-            WIFTokenExchangeError: If token exchange fails
+            WIFTokenExchangeError: If credential creation fails
         """
         try:
-            # Build the STS exchange request
-            # https://cloud.google.com/iam/docs/reference/sts/rest/v1/TopLevel/token
-            exchange_request = {
-                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
-                "audience": wif_config.audience,
-                "subject_token_type": "urn:ietf:params:aws:token-type:aws4_request",
-                "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
-                "subject_token": aws_token,
-                "scope": " ".join(self.REQUIRED_SCOPES),
-            }
+            # Create the custom AWS credentials supplier for ECS
+            supplier = EcsAwsSecurityCredentialsSupplier()
 
-            client = await self._get_http_client()
-            response = await client.post(
-                self.GCP_STS_ENDPOINT,
-                data=exchange_request,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-
-            if response.status_code != 200:
-                error_detail = response.json() if response.content else {}
-                raise WIFTokenExchangeError(
-                    f"GCP STS token exchange failed: {response.status_code} - "
-                    f"{error_detail.get('error_description', response.text)}"
-                )
-
-            token_data = response.json()
-
-            # Create credentials from the exchanged token
-            # This is a federated identity, not yet impersonated
-            from google.oauth2 import credentials as oauth2_creds
-
-            federated_creds = oauth2_creds.Credentials(
-                token=token_data["access_token"],
-                expiry=datetime.fromtimestamp(
-                    time.time() + token_data.get("expires_in", 3600),
-                    tz=timezone.utc,
-                ),
+            # Create AWS-based WIF credentials using google.auth.aws
+            # This handles the SigV4 signing and token exchange automatically
+            wif_credentials = google_auth_aws.Credentials(
+                audience=wif_config.audience,
+                subject_token_type="urn:ietf:params:aws:token-type:aws4_request",
+                token_url=self.GCP_STS_ENDPOINT,
+                aws_security_credentials_supplier=supplier,
             )
 
             self.logger.info(
-                "token_exchange_success",
+                "wif_credentials_created",
                 project_id=wif_config.project_id,
-                expires_in=token_data.get("expires_in", 3600),
+                pool_id=wif_config.pool_id,
+                provider_id=wif_config.provider_id,
             )
 
-            return federated_creds
+            return wif_credentials
 
-        except WIFTokenExchangeError:
-            raise
         except Exception as e:
-            raise WIFTokenExchangeError(f"Token exchange error: {e}")
+            raise WIFTokenExchangeError(f"Failed to create WIF credentials: {e}")
 
     async def impersonate_service_account(
         self,
@@ -465,25 +367,17 @@ class GCPWIFCredentialService:
             service_account=wif_config.service_account_email,
         )
 
-        # Step 1: Get AWS OIDC token
-        aws_token = await self.get_aws_oidc_token(wif_config.audience)
+        # Step 1: Create WIF credentials using AWS credentials from ECS
+        # This uses boto3 to get credentials and google.auth.aws for token exchange
+        wif_creds = await self._run_sync(self._create_wif_credentials, wif_config)
 
-        # Step 2: Exchange for GCP federated credentials
-        federated_creds = await self.exchange_token_for_gcp_credentials(
-            aws_token, wif_config
-        )
-
-        # Step 3: Impersonate customer's service account
+        # Step 2: Impersonate customer's service account
         impersonated_creds = await self.impersonate_service_account(
-            federated_creds, wif_config
+            wif_creds, wif_config
         )
 
         # Calculate expiry (1 hour from now)
-        expires_at = datetime.now(timezone.utc).replace(microsecond=0)
-        expires_at = expires_at.replace(
-            hour=expires_at.hour,
-            minute=expires_at.minute + 60,
-        )
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
         result = GCPCredentialResult(
             credentials=impersonated_creds,
@@ -538,31 +432,24 @@ class GCPWIFCredentialService:
 
         result["steps_completed"].append("configuration_check")
 
-        # Step 2: Try to get AWS OIDC token
+        # Step 2: Try to create WIF credentials using AWS credentials from ECS
+        # This uses boto3 and google.auth.aws for proper SigV4 token exchange
         try:
-            aws_token = await self.get_aws_oidc_token(wif_config.audience)
-            result["steps_completed"].append("aws_oidc_token")
-        except AWSTokenError as e:
-            result["message"] = f"AWS token error: {e}"
-            result["steps_failed"].append("aws_oidc_token")
-            return result
-
-        # Step 3: Try token exchange
-        try:
-            federated_creds = await self.exchange_token_for_gcp_credentials(
-                aws_token, wif_config
-            )
+            wif_creds = await self._run_sync(self._create_wif_credentials, wif_config)
+            result["steps_completed"].append("aws_credentials")
             result["steps_completed"].append("gcp_token_exchange")
         except WIFTokenExchangeError as e:
-            result["message"] = (
-                f"Token exchange failed. Check WIF pool configuration: {e}"
-            )
+            result["message"] = f"WIF credential creation failed: {e}"
             result["steps_failed"].append("gcp_token_exchange")
             return result
+        except Exception as e:
+            result["message"] = f"AWS credentials error: {e}"
+            result["steps_failed"].append("aws_credentials")
+            return result
 
-        # Step 4: Try impersonation
+        # Step 3: Try impersonation
         try:
-            await self.impersonate_service_account(federated_creds, wif_config)
+            await self.impersonate_service_account(wif_creds, wif_config)
             result["steps_completed"].append("service_account_impersonation")
         except WIFImpersonationError as e:
             result["message"] = (

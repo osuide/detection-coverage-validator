@@ -55,9 +55,9 @@ variable "pool_id" {
 }
 
 variable "provider_id" {
-  description = "ID for the AWS provider within the pool"
+  description = "ID for the AWS provider within the pool (must be 4-32 chars)"
   type        = string
-  default     = "aws"
+  default     = "a13e-aws"
 }
 
 variable "service_account_id" {

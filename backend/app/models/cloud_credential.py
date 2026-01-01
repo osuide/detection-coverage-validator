@@ -208,7 +208,7 @@ class CloudCredential(Base):
             project_id=self.gcp_project_id,
             pool_location=self.gcp_wif_pool_location or "global",
             pool_id=self.gcp_workload_identity_pool or "a13e-pool",
-            provider_id=self.gcp_wif_provider_id or "aws",
+            provider_id=self.gcp_wif_provider_id or "a13e-aws",
             service_account_email=self.gcp_service_account_email,
         )
 
@@ -217,7 +217,7 @@ class CloudCredential(Base):
         project_id: str,
         service_account_email: str,
         pool_id: str = "a13e-pool",
-        provider_id: str = "aws",
+        provider_id: str = "a13e-aws",
         pool_location: str = "global",
     ) -> None:
         """Set WIF configuration fields.
@@ -226,7 +226,7 @@ class CloudCredential(Base):
             project_id: GCP project ID
             service_account_email: Service account to impersonate
             pool_id: WIF pool ID
-            provider_id: WIF provider ID (default: aws)
+            provider_id: WIF provider ID (default: a13e-aws)
             pool_location: WIF pool location (default: global)
         """
         self.credential_type = CredentialType.GCP_WORKLOAD_IDENTITY
