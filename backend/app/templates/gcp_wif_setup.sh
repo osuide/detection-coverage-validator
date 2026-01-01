@@ -143,6 +143,13 @@ log_info "Using AWS account: $A13E_AWS_ACCOUNT_ID"
 # Set the project
 gcloud config set project "$PROJECT_ID"
 
+# Get the project number (required for WIF principal set URIs)
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)")
+if [[ -z "$PROJECT_NUMBER" ]]; then
+    log_error "Failed to get project number for $PROJECT_ID"
+    exit 1
+fi
+
 # ----------------------------------------------------------------------------
 # Step 1: Enable required APIs
 # ----------------------------------------------------------------------------
@@ -249,9 +256,9 @@ PERMISSIONS=(
     "monitoring.notificationChannels.get"
     # Security Command Center (minimal permissions - only what A13E uses)
     # - list_sources() → securitycenter.sources.list
-    # - list_notification_configs() → securitycenter.notificationconfigs.list
+    # - list_notification_configs() → securitycenter.notificationconfig.list
     "securitycenter.sources.list"
-    "securitycenter.notificationconfigs.list"
+    "securitycenter.notificationconfig.list"
     # Google SecOps / Chronicle SIEM (minimal permissions - only if using Chronicle)
     # These are the only permissions A13E actually uses for Chronicle scanning
     "chronicle.rules.list"
@@ -310,8 +317,8 @@ log_info "Role binding created"
 
 log_info "Step 7/7: Configuring WIF impersonation permissions..."
 
-# Get the full pool name
-POOL_NAME="projects/${PROJECT_ID}/locations/global/workloadIdentityPools/${POOL_ID}"
+# Get the full pool name (must use project number, not project ID)
+POOL_NAME="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}"
 
 # Workload Identity User role
 gcloud iam service-accounts add-iam-policy-binding "$SERVICE_ACCOUNT_EMAIL" \
