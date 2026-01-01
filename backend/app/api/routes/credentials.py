@@ -615,10 +615,40 @@ async def validate_credential(
     # Validate based on provider
     if credential.credential_type == CredentialType.AWS_IAM_ROLE:
         validation = await aws_credential_service.validate_credentials(credential)
-    elif credential.credential_type in [
-        CredentialType.GCP_WORKLOAD_IDENTITY,
-        CredentialType.GCP_SERVICE_ACCOUNT_KEY,
-    ]:
+    elif credential.credential_type == CredentialType.GCP_WORKLOAD_IDENTITY:
+        # Use WIF service for WIF credentials (runs on AWS ECS)
+        wif_config = credential.get_wif_configuration()
+        if not wif_config:
+            raise HTTPException(
+                status_code=400,
+                detail="Incomplete WIF configuration. Missing project_id or service_account_email.",
+            )
+        try:
+            wif_result = await gcp_wif_service.validate_wif_configuration(wif_config)
+            # Convert WIF result to standard validation format
+            if wif_result["valid"]:
+                validation = {
+                    "status": CredentialStatus.VALID,
+                    "message": wif_result["message"],
+                    "granted_permissions": [],  # WIF validation doesn't check permissions
+                    "missing_permissions": [],
+                }
+            else:
+                validation = {
+                    "status": CredentialStatus.INVALID,
+                    "message": wif_result["message"],
+                    "granted_permissions": [],
+                    "missing_permissions": [],
+                }
+        except GCPWIFError as e:
+            validation = {
+                "status": CredentialStatus.INVALID,
+                "message": f"WIF validation error: {str(e)}",
+                "granted_permissions": [],
+                "missing_permissions": [],
+            }
+    elif credential.credential_type == CredentialType.GCP_SERVICE_ACCOUNT_KEY:
+        # Legacy SA key validation (deprecated)
         validation = await gcp_credential_service.validate_credentials(credential)
     else:
         raise HTTPException(status_code=400, detail="Unknown credential type")
