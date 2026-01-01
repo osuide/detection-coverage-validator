@@ -53,13 +53,6 @@ provider "aws" {
   }
 }
 
-# Google Cloud provider (for Workspace WIF)
-# Only used when enable_workspace_wif = true
-provider "google" {
-  project = var.workspace_gcp_project_id
-  region  = "europe-west2"
-}
-
 # Data sources
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
@@ -250,11 +243,13 @@ module "backend" {
   cookie_domain = var.cookie_domain
 
   # Google Workspace WIF configuration
-  workspace_wif_enabled           = var.enable_workspace_wif && var.workspace_gcp_project_id != ""
+  # WIF resources are managed separately in ../terraform-gcp-wif/
+  # These values are passed directly from variables (WIF already exists)
+  workspace_wif_enabled           = var.enable_workspace_wif
   workspace_gcp_project_number    = var.workspace_gcp_project_number
-  workspace_wif_pool_id           = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? module.workspace_wif[0].workload_identity_pool_id : ""
-  workspace_wif_provider_id       = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? "aws-${var.environment}" : ""
-  workspace_service_account_email = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? module.workspace_wif[0].service_account_email : ""
+  workspace_wif_pool_id           = var.enable_workspace_wif ? "a13e-internal-${var.environment}" : ""
+  workspace_wif_provider_id       = var.enable_workspace_wif ? "aws-${var.environment}" : ""
+  workspace_service_account_email = var.workspace_service_account_email
   workspace_admin_email           = var.workspace_admin_email
 }
 
@@ -419,29 +414,12 @@ module "codebuild" {
 # ============================================================================
 # Google Workspace Integration (WIF)
 # ============================================================================
-# Enables automated support, CRM, and operations via Google Workspace APIs.
-# Uses Workload Identity Federation - no service account keys required.
+# WIF is managed separately in ../terraform-gcp-wif/ because:
+# - Requires GCP credentials (not available in GitHub Actions CI)
+# - Rarely changes after initial setup
+# - Internal tooling only (not customer-facing)
 #
-# After applying, you must manually configure domain-wide delegation:
-# 1. Go to admin.google.com → Security → API Controls → Domain-wide Delegation
-# 2. Add the service account Client ID with required OAuth scopes
-# See module output for detailed instructions.
-
-module "workspace_wif" {
-  count  = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? 1 : 0
-  source = "./modules/gcp-wif-workspace"
-
-  gcp_project_id                 = var.workspace_gcp_project_id
-  aws_account_id                 = data.aws_caller_identity.current.account_id
-  aws_region                     = var.aws_region
-  environment                    = var.environment
-  workspace_domain               = "a13e.com"
-  workspace_admin_email          = var.workspace_admin_email
-  existing_service_account_email = var.workspace_service_account_email
-
-  # Allow the backend ECS task role to federate
-  # Note: Role name must match exactly what's in backend module (ecs-task-role, not backend-task-role)
-  allowed_aws_roles = [
-    "a13e-${var.environment}-ecs-task-role"
-  ]
-}
+# To manage WIF resources:
+#   cd ../terraform-gcp-wif
+#   gcloud auth application-default login
+#   terraform apply -var-file="staging.tfvars"
