@@ -230,6 +230,12 @@ class Settings(BaseSettings):
         None  # Only for local dev (fallback when WIF disabled)
     )
 
+    # Support System Configuration
+    # These IDs are created by the /workspace/setup endpoint
+    support_crm_spreadsheet_id: Optional[str] = None  # Google Sheets ID for CRM
+    support_templates_folder_id: Optional[str] = None  # Drive folder ID for templates
+    support_email: str = "support@a13e.com"
+
     # Coverage Thresholds
     confidence_threshold_covered: float = 0.6
     confidence_threshold_partial: float = 0.4

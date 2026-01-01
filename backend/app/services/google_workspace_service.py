@@ -437,6 +437,395 @@ class GoogleWorkspaceService:
 
         return result
 
+    # =========================================================================
+    # Group Member Management
+    # =========================================================================
+
+    def add_group_member(
+        self,
+        group_email: str,
+        member_email: str,
+        role: str = "MEMBER",
+    ) -> dict:
+        """
+        Add a member to a Google Group.
+
+        Args:
+            group_email: Group email address (e.g., support@a13e.com)
+            member_email: Email of the member to add
+            role: Member role - MEMBER, MANAGER, or OWNER
+
+        Returns:
+            Created member object
+        """
+        try:
+            member = (
+                self.admin.members()
+                .insert(
+                    groupKey=group_email,
+                    body={
+                        "email": member_email,
+                        "role": role,
+                    },
+                )
+                .execute()
+            )
+            logger.info(
+                "group_member_added",
+                group=group_email,
+                member=member_email,
+                role=role,
+            )
+            return member
+        except HttpError as e:
+            if e.resp.status == 409:
+                logger.info(
+                    "group_member_exists",
+                    group=group_email,
+                    member=member_email,
+                )
+                return {"email": member_email, "role": role, "status": "exists"}
+            raise
+
+    def remove_group_member(
+        self,
+        group_email: str,
+        member_email: str,
+    ) -> None:
+        """
+        Remove a member from a Google Group.
+
+        Args:
+            group_email: Group email address
+            member_email: Email of the member to remove
+        """
+        self.admin.members().delete(
+            groupKey=group_email,
+            memberKey=member_email,
+        ).execute()
+        logger.info(
+            "group_member_removed",
+            group=group_email,
+            member=member_email,
+        )
+
+    def list_group_members(self, group_email: str) -> list[dict]:
+        """
+        List all members of a Google Group.
+
+        Args:
+            group_email: Group email address
+
+        Returns:
+            List of member objects with email, role, and status
+        """
+        members = []
+        page_token = None
+
+        while True:
+            response = (
+                self.admin.members()
+                .list(
+                    groupKey=group_email,
+                    pageToken=page_token,
+                )
+                .execute()
+            )
+
+            members.extend(response.get("members", []))
+            page_token = response.get("nextPageToken")
+
+            if not page_token:
+                break
+
+        logger.debug(
+            "group_members_listed",
+            group=group_email,
+            count=len(members),
+        )
+        return members
+
+    # =========================================================================
+    # Gmail Filter Management
+    # =========================================================================
+
+    def get_label_id(self, label_name: str) -> Optional[str]:
+        """
+        Get the ID of a Gmail label by name.
+
+        Args:
+            label_name: Label name (e.g., 'Support/Category/Billing')
+
+        Returns:
+            Label ID or None if not found
+        """
+        labels = self.gmail.users().labels().list(userId="me").execute()
+        for label in labels.get("labels", []):
+            if label.get("name") == label_name:
+                return label.get("id")
+        return None
+
+    def create_gmail_filter(
+        self,
+        criteria: dict,
+        action: dict,
+    ) -> dict:
+        """
+        Create a Gmail filter for automated labelling.
+
+        Args:
+            criteria: Filter criteria dict with keys like:
+                - from: Sender email/domain
+                - to: Recipient
+                - subject: Subject contains
+                - query: Full search query
+            action: Action dict with keys like:
+                - addLabelIds: List of label IDs to add
+                - removeLabelIds: List of label IDs to remove
+                - forward: Email address to forward to
+
+        Returns:
+            Created filter object
+        """
+        filter_body = {
+            "criteria": criteria,
+            "action": action,
+        }
+
+        result = (
+            self.gmail.users()
+            .settings()
+            .filters()
+            .create(userId="me", body=filter_body)
+            .execute()
+        )
+
+        logger.info(
+            "gmail_filter_created",
+            filter_id=result.get("id"),
+            criteria=criteria,
+        )
+        return result
+
+    def list_gmail_filters(self) -> list[dict]:
+        """
+        List all Gmail filters.
+
+        Returns:
+            List of filter objects
+        """
+        result = self.gmail.users().settings().filters().list(userId="me").execute()
+        filters = result.get("filter", [])
+        logger.debug("gmail_filters_listed", count=len(filters))
+        return filters
+
+    def delete_gmail_filter(self, filter_id: str) -> None:
+        """
+        Delete a Gmail filter.
+
+        Args:
+            filter_id: ID of the filter to delete
+        """
+        self.gmail.users().settings().filters().delete(
+            userId="me",
+            id=filter_id,
+        ).execute()
+        logger.info("gmail_filter_deleted", filter_id=filter_id)
+
+    # =========================================================================
+    # Sheet Reading Operations
+    # =========================================================================
+
+    def get_sheet_values(
+        self,
+        spreadsheet_id: str,
+        range_name: str,
+    ) -> list[list[Any]]:
+        """
+        Read values from a sheet range.
+
+        Args:
+            spreadsheet_id: Spreadsheet ID
+            range_name: A1 notation range (e.g., 'Tickets!A1:L100')
+
+        Returns:
+            2D array of values
+        """
+        result = (
+            self.sheets.spreadsheets()
+            .values()
+            .get(
+                spreadsheetId=spreadsheet_id,
+                range=range_name,
+            )
+            .execute()
+        )
+
+        values = result.get("values", [])
+        logger.debug(
+            "sheet_values_read",
+            spreadsheet_id=spreadsheet_id,
+            range=range_name,
+            rows=len(values),
+        )
+        return values
+
+    def update_sheet_values(
+        self,
+        spreadsheet_id: str,
+        range_name: str,
+        values: list[list[Any]],
+    ) -> dict:
+        """
+        Update values in a sheet range.
+
+        Args:
+            spreadsheet_id: Spreadsheet ID
+            range_name: A1 notation range
+            values: 2D array of values to write
+
+        Returns:
+            Update response
+        """
+        result = (
+            self.sheets.spreadsheets()
+            .values()
+            .update(
+                spreadsheetId=spreadsheet_id,
+                range=range_name,
+                valueInputOption="USER_ENTERED",
+                body={"values": values},
+            )
+            .execute()
+        )
+
+        logger.debug(
+            "sheet_values_updated",
+            spreadsheet_id=spreadsheet_id,
+            range=range_name,
+        )
+        return result
+
+    # =========================================================================
+    # Drive File Operations
+    # =========================================================================
+
+    def list_files_in_folder(
+        self,
+        folder_id: str,
+        mime_type: Optional[str] = None,
+    ) -> list[dict]:
+        """
+        List files in a Drive folder.
+
+        Args:
+            folder_id: Folder ID
+            mime_type: Optional MIME type filter (e.g., 'application/vnd.google-apps.document')
+
+        Returns:
+            List of file objects with id, name, mimeType, webViewLink
+        """
+        query = f"'{folder_id}' in parents and trashed = false"
+        if mime_type:
+            query += f" and mimeType = '{mime_type}'"
+
+        files = []
+        page_token = None
+
+        while True:
+            response = (
+                self.drive.files()
+                .list(
+                    q=query,
+                    fields="nextPageToken, files(id, name, mimeType, webViewLink, modifiedTime)",
+                    pageToken=page_token,
+                )
+                .execute()
+            )
+
+            files.extend(response.get("files", []))
+            page_token = response.get("nextPageToken")
+
+            if not page_token:
+                break
+
+        logger.debug(
+            "drive_files_listed",
+            folder_id=folder_id,
+            count=len(files),
+        )
+        return files
+
+    def get_document_content(self, doc_id: str) -> str:
+        """
+        Get the text content of a Google Doc.
+
+        Args:
+            doc_id: Document ID
+
+        Returns:
+            Plain text content of the document
+        """
+        doc = self.docs.documents().get(documentId=doc_id).execute()
+
+        # Extract text from document body
+        content = []
+        for element in doc.get("body", {}).get("content", []):
+            if "paragraph" in element:
+                for text_run in element["paragraph"].get("elements", []):
+                    if "textRun" in text_run:
+                        content.append(text_run["textRun"].get("content", ""))
+
+        text = "".join(content)
+        logger.debug(
+            "document_content_read",
+            doc_id=doc_id,
+            length=len(text),
+        )
+        return text
+
+    def send_email(
+        self,
+        to: str,
+        subject: str,
+        body: str,
+        cc: Optional[list[str]] = None,
+    ) -> dict:
+        """
+        Send an email via Gmail API.
+
+        Args:
+            to: Recipient email address
+            subject: Email subject
+            body: Email body (plain text)
+            cc: Optional list of CC recipients
+
+        Returns:
+            Sent message object
+        """
+        import base64
+        from email.mime.text import MIMEText
+
+        message = MIMEText(body)
+        message["to"] = to
+        message["subject"] = subject
+        if cc:
+            message["cc"] = ", ".join(cc)
+
+        raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+
+        result = (
+            self.gmail.users().messages().send(userId="me", body={"raw": raw}).execute()
+        )
+
+        logger.info(
+            "email_sent",
+            to=to,
+            subject=subject,
+            message_id=result.get("id"),
+        )
+        return result
+
 
 # Singleton instance
 _workspace_service: Optional[GoogleWorkspaceService] = None
