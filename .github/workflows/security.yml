@@ -33,7 +33,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Bandit results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: bandit-results
@@ -65,7 +65,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload npm audit results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: npm-audit-results
@@ -94,7 +94,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload pip-audit results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: pip-audit-results
@@ -127,7 +127,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy IaC results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: trivy-iac-results
@@ -166,7 +166,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: trivy-results
@@ -225,7 +225,7 @@ jobs:
           python -m pytest tests/unit/test_security_acl.py -v --tb=short
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: auth-security-test-results
