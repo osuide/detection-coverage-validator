@@ -110,7 +110,7 @@ export default function Terms() {
               <h2 className="text-2xl font-semibold text-white border-b border-slate-700 pb-2">5. Subscription and Fees</h2>
               <h3 className="text-xl font-medium text-white mt-4">5.1 Subscription Tiers</h3>
               <p className="text-gray-300">
-                The Service is offered under various subscription tiers (Free, Individual, Pro, Enterprise) with different features, usage limits, and pricing. Current pricing is available at <Link to="/#pricing" className="text-cyan-400 hover:text-cyan-300">a13e.com/#pricing</Link>.
+                The Service is offered under various subscription tiers (Free, Individual, Pro, Enterprise) with different features, usage limits, and pricing. Current pricing is available on our <Link to="/#pricing" className="text-cyan-400 hover:text-cyan-300">pricing page</Link>.
               </p>
               <h3 className="text-xl font-medium text-white mt-4">5.2 Payment Terms</h3>
               <p className="text-gray-300">
@@ -300,7 +300,7 @@ export default function Terms() {
                 </p>
                 <ul className="text-gray-300 space-y-2">
                   <li><strong className="text-white">Email:</strong> <a href="mailto:legal@a13e.com" className="text-cyan-400 hover:text-cyan-300">legal@a13e.com</a></li>
-                  <li><strong className="text-white">Support:</strong> <Link to="/support" className="text-cyan-400 hover:text-cyan-300">a13e.com/support</Link></li>
+                  <li><strong className="text-white">Support:</strong> <Link to="/support" className="text-cyan-400 hover:text-cyan-300">app.a13e.com/support</Link></li>
                 </ul>
               </div>
             </section>
@@ -323,8 +323,11 @@ export default function Terms() {
               <Link to="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
                 Privacy
               </Link>
-              <Link to="/support" className="text-gray-400 hover:text-white text-sm transition-colors">
-                Support
+              <Link to="/security" className="text-gray-400 hover:text-white text-sm transition-colors">
+                Security
+              </Link>
+              <Link to="/compliance-info" className="text-gray-400 hover:text-white text-sm transition-colors">
+                Compliance
               </Link>
             </div>
           </div>

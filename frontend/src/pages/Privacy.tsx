@@ -327,7 +327,7 @@ export default function Privacy() {
                 </p>
                 <ul className="text-gray-300 space-y-2">
                   <li><strong className="text-white">Email:</strong> <a href="mailto:privacy@a13e.com" className="text-cyan-400 hover:text-cyan-300">privacy@a13e.com</a></li>
-                  <li><strong className="text-white">General Support:</strong> <Link to="/support" className="text-cyan-400 hover:text-cyan-300">a13e.com/support</Link></li>
+                  <li><strong className="text-white">General Support:</strong> <Link to="/support" className="text-cyan-400 hover:text-cyan-300">app.a13e.com/support</Link></li>
                 </ul>
               </div>
             </section>
@@ -350,8 +350,11 @@ export default function Privacy() {
               <Link to="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
                 Privacy
               </Link>
-              <Link to="/support" className="text-gray-400 hover:text-white text-sm transition-colors">
-                Support
+              <Link to="/security" className="text-gray-400 hover:text-white text-sm transition-colors">
+                Security
+              </Link>
+              <Link to="/compliance-info" className="text-gray-400 hover:text-white text-sm transition-colors">
+                Compliance
               </Link>
             </div>
           </div>

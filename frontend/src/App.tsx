@@ -25,6 +25,8 @@ import ComplianceHistory from './pages/ComplianceHistory'
 import Landing from './pages/Landing'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
+import Security from './pages/Security'
+import ComplianceInfo from './pages/ComplianceInfo'
 import Support from './pages/Support'
 
 // Organisation pages
@@ -84,6 +86,8 @@ function App() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/security" element={<Security />} />
+        <Route path="/compliance-info" element={<ComplianceInfo />} />
         <Route path="/support" element={<Support />} />
 
         {/* Documentation routes (public) */}

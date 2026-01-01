@@ -97,8 +97,14 @@ export default function Support() {
               <Link to="/terms" className="text-gray-400 hover:text-white text-sm transition-colors">
                 Terms
               </Link>
-              <Link to="/support" className="text-gray-400 hover:text-white text-sm transition-colors">
-                Support
+              <Link to="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
+                Privacy
+              </Link>
+              <Link to="/security" className="text-gray-400 hover:text-white text-sm transition-colors">
+                Security
+              </Link>
+              <Link to="/compliance-info" className="text-gray-400 hover:text-white text-sm transition-colors">
+                Compliance
               </Link>
             </div>
           </div>
