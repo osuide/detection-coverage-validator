@@ -8,7 +8,7 @@ Requires admin authentication.
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.api.deps import require_role
+from app.core.security import require_role
 from app.models.user import User, UserRole
 from app.services.google_workspace_service import get_workspace_service
 
