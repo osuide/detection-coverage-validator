@@ -14,7 +14,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db
+from app.core.database import get_db
 from app.core.security import verify_support_api_key
 from app.models.billing import AccountTier, Subscription
 from app.models.cloud_account import CloudAccount
