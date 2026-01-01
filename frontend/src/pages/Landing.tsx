@@ -849,7 +849,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="border-t border-slate-800 mt-8 pt-8 text-center text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} A13E. All rights reserved. DCV is a product of A13E.
+            &copy; {new Date().getFullYear()} A13E. All rights reserved. DCV is a product of A13E - An OSUIDE INC Company.
           </div>
         </div>
       </footer>
