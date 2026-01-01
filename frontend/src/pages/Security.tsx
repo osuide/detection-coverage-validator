@@ -311,7 +311,7 @@ export default function Security() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-gray-500 text-sm">
-              &copy; {new Date().getFullYear()} A13E Limited. All rights reserved. An OSUIDE INC Company.
+              &copy; {new Date().getFullYear()} A13E. All rights reserved. An OSUIDE INC Company.
             </p>
             <div className="flex gap-6">
               <Link to="/terms" className="text-gray-400 hover:text-white text-sm transition-colors">
