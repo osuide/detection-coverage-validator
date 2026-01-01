@@ -39,7 +39,7 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'staging' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download OpenAPI spec
         uses: actions/download-artifact@v4
@@ -140,7 +140,7 @@ jobs:
       deployed: ${{ steps.tf-outputs.outputs.docs_s3_bucket != '' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
