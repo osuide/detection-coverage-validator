@@ -290,7 +290,7 @@ curl -X POST -H "X-API-Key: dcv_live_xxx" \\
     }
     sanitised["info"]["license"] = {
         "name": "Proprietary",
-        "url": "https://a13e.com/terms",
+        "url": "https://app.a13e.com/terms",
     }
 
     # Add external docs link
