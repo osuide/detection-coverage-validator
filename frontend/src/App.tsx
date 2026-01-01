@@ -52,6 +52,7 @@ import AdminAdmins from './pages/admin/AdminAdmins'
 import AdminMitreData from './pages/admin/AdminMitreData'
 import AdminProfile from './pages/admin/AdminProfile'
 import AdminAuthProvider from './components/AdminAuthProvider'
+import ScrollToTop from './components/ScrollToTop'
 
 function App() {
   return (
@@ -78,6 +79,7 @@ function App() {
           },
         }}
       />
+      <ScrollToTop />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Landing />} />
