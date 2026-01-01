@@ -832,6 +832,54 @@ def require_tier(*tiers: Any) -> Callable:
     return dependency
 
 
+# Support API authentication
+
+
+async def verify_support_api_key(
+    x_support_api_key: str = Depends(
+        lambda: HTTPBearer(scheme_name="Support-API-Key", auto_error=True)
+    ),
+) -> str:
+    """Verify the support API key for support system integration.
+
+    This provides a dedicated authentication mechanism for the Google Workspace
+    support integration, separate from regular user authentication.
+
+    The support API key is configured via the SUPPORT_API_KEY environment variable.
+
+    Raises:
+        HTTPException 503: If support API is not configured
+        HTTPException 401: If the API key is invalid
+    """
+    import secrets
+
+    if not settings.support_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Support API not configured",
+        )
+
+    # Extract token from credentials if HTTPAuthorizationCredentials
+    token = (
+        x_support_api_key.credentials
+        if hasattr(x_support_api_key, "credentials")
+        else str(x_support_api_key)
+    )
+
+    if not secrets.compare_digest(token, settings.support_api_key):
+        logger.warning(
+            "invalid_support_api_key",
+            message="Invalid support API key provided",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid support API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return token
+
+
 # Commonly used dependencies
 RequireAuth = Depends(require_auth())
 RequireAdmin = Depends(require_role(UserRole.OWNER, UserRole.ADMIN))

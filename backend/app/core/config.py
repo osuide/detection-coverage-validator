@@ -206,6 +206,30 @@ class Settings(BaseSettings):
     smtp_password: Optional[str] = None
     smtp_from_email: str = "noreply@a13e.com"  # Single source of truth for email sender
 
+    # Support System Integration
+    # API key for Google Workspace support integration
+    # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+    support_api_key: Optional[str] = None
+
+    # Google Workspace Integration (WIF)
+    # These settings enable automated support, CRM, and operations via Workspace APIs
+    # Uses Workload Identity Federation - no service account keys required in production
+    workspace_wif_enabled: bool = True
+    workspace_gcp_project_number: Optional[str] = (
+        None  # Numeric project number (not ID)
+    )
+    workspace_wif_pool_id: str = "a13e-internal-production"
+    workspace_wif_provider_id: str = "aws-production"
+    workspace_service_account_email: Optional[str] = (
+        None  # e.g. a13e-workspace@project.iam.gserviceaccount.com
+    )
+    workspace_admin_email: str = (
+        "austin@a13e.com"  # User to impersonate for Workspace APIs
+    )
+    workspace_service_account_key_path: Optional[str] = (
+        None  # Only for local dev (fallback when WIF disabled)
+    )
+
     # Coverage Thresholds
     confidence_threshold_covered: float = 0.6
     confidence_threshold_partial: float = 0.4
