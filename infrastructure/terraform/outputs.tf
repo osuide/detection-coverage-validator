@@ -123,3 +123,25 @@ output "docs_url" {
   description = "Documentation site URL"
   value       = var.enable_docs && var.enable_https && var.domain_name != "" ? "https://${var.subdomain != "" ? "docs.${var.subdomain}.${var.domain_name}" : "docs.${var.domain_name}"}" : (var.enable_docs ? module.docs[0].cloudfront_url : null)
 }
+
+# Google Workspace WIF outputs (only when enabled)
+output "workspace_wif_service_account_email" {
+  description = "Service account email for Workspace access"
+  value       = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? module.workspace_wif[0].service_account_email : null
+}
+
+output "workspace_wif_service_account_client_id" {
+  description = "Service account Client ID (needed for domain-wide delegation in Workspace Admin)"
+  value       = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? module.workspace_wif[0].service_account_unique_id : null
+}
+
+output "workspace_wif_configuration" {
+  description = "Workspace WIF configuration for backend environment variables"
+  value       = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? module.workspace_wif[0].configuration : null
+  sensitive   = true
+}
+
+output "workspace_wif_delegation_instructions" {
+  description = "Instructions for setting up domain-wide delegation"
+  value       = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? module.workspace_wif[0].domain_wide_delegation_instructions : null
+}

@@ -48,6 +48,8 @@ from app.api.routes import (
     gaps,
     evaluation_history,
     webauthn,
+    support,
+    workspace_setup,
 )
 from app.api.routes.admin import router as admin_router
 from app.api.v1.public import router as public_api_router
@@ -794,6 +796,12 @@ app.include_router(admin_router, prefix="/api/v1/admin")
 
 # Public API routes (API key authentication)
 app.include_router(public_api_router, prefix="/api/v1")
+
+# Support system integration (dedicated API key auth)
+app.include_router(support.router, prefix="/api", tags=["Support Integration"])
+
+# Google Workspace setup (admin only)
+app.include_router(workspace_setup.router, prefix="/api/v1", tags=["Workspace Setup"])
 
 
 @app.get("/")

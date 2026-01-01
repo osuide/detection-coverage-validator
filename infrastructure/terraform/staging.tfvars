@@ -76,3 +76,15 @@ enable_codebuild_tests = true
 # Enable docs.staging.a13e.com for public API documentation.
 # Uses S3 + CloudFront with the same security controls as frontend.
 enable_docs = true
+
+# ============================================================================
+# Google Workspace Integration (WIF)
+# ============================================================================
+# Enables automated support, CRM, and operations via Google Workspace APIs.
+# Uses Workload Identity Federation - no service account keys required.
+# See docs/designs/google-workspace-automation.md for setup instructions.
+enable_workspace_wif            = true
+workspace_gcp_project_id        = "a13e-workspace-automation"
+workspace_gcp_project_number    = "323306277338"
+workspace_admin_email           = "austin@a13e.com"
+workspace_service_account_email = "workspace-automation@a13e-workspace-automation.iam.gserviceaccount.com"
