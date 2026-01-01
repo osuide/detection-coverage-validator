@@ -58,7 +58,7 @@ plan.out
 !example.tfvars
 !staging.tfvars
 !prod.tfvars
-.env.terraform
+.env.terraform*
 
 # Testing
 .coverage
