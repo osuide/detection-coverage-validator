@@ -1,10 +1,13 @@
-"""Support context API for customer support integration.
+"""Support API for customer support integration.
 
-This module provides a dedicated API endpoint for the Google Workspace
-support system to fetch customer context. It is authenticated via a
-separate support API key to ensure security isolation.
+This module provides:
+1. Internal support API endpoint (support API key auth) for fetching customer context
+2. User-facing support endpoints for submitting tickets and getting context
+
+Uses Google Workspace integration for ticket routing and CRM logging.
 """
 
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
@@ -14,8 +17,9 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import verify_support_api_key
+from app.core.security import get_current_user, verify_support_api_key
 from app.models.billing import AccountTier, Subscription
 from app.models.cloud_account import CloudAccount
 from app.models.detection import Detection
@@ -24,6 +28,7 @@ from app.models.scan import Scan
 from app.models.user import Organization, OrganizationMember, User
 
 router = APIRouter(prefix="/support", tags=["support"])
+settings = get_settings()
 
 
 class RecentScanInfo(BaseModel):
@@ -388,3 +393,208 @@ def _build_support_notes(
             notes.append(f"Inactive - last login {days_since_login} days ago")
 
     return notes
+
+
+# =========================================================================
+# User-Facing Support Endpoints
+# =========================================================================
+
+
+class UserSupportContext(BaseModel):
+    """User's support context for form pre-filling."""
+
+    email: str
+    full_name: Optional[str] = None
+    organisation_name: Optional[str] = None
+    tier: str
+    tier_display: str
+    cloud_accounts_count: int
+
+
+class SubmitTicketRequest(BaseModel):
+    """Request to submit a support ticket."""
+
+    subject: str = Field(..., min_length=5, max_length=200)
+    description: str = Field(..., min_length=20, max_length=5000)
+    category: str = Field(
+        ...,
+        pattern="^(billing|technical|feature_request|bug_report|account|integration)$",
+    )
+    cloud_provider: Optional[str] = Field(None, pattern="^(aws|gcp|multi_cloud)$")
+
+
+class SubmitTicketResponse(BaseModel):
+    """Response after submitting a ticket."""
+
+    ticket_id: str
+    message: str
+    submitted_at: datetime
+
+
+@router.get(
+    "/context",
+    response_model=UserSupportContext,
+    summary="Get current user's support context",
+    description="Get user context for pre-filling the support form.",
+)
+async def get_user_support_context(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserSupportContext:
+    """Get current user's support context for form pre-fill."""
+    # Get organisation membership
+    membership_result = await db.execute(
+        select(OrganizationMember)
+        .where(OrganizationMember.user_id == current_user.id)
+        .limit(1)
+    )
+    membership = membership_result.scalar_one_or_none()
+
+    organisation = None
+    subscription = None
+    cloud_accounts_count = 0
+
+    if membership:
+        # Get organisation
+        org_result = await db.execute(
+            select(Organization).where(Organization.id == membership.organization_id)
+        )
+        organisation = org_result.scalar_one_or_none()
+
+        if organisation:
+            # Get subscription
+            sub_result = await db.execute(
+                select(Subscription).where(
+                    Subscription.organization_id == organisation.id
+                )
+            )
+            subscription = sub_result.scalar_one_or_none()
+
+            # Count cloud accounts
+            accounts_result = await db.execute(
+                select(func.count(CloudAccount.id)).where(
+                    CloudAccount.organization_id == organisation.id
+                )
+            )
+            cloud_accounts_count = accounts_result.scalar() or 0
+
+    tier = subscription.tier if subscription else AccountTier.FREE
+
+    return UserSupportContext(
+        email=current_user.email,
+        full_name=current_user.full_name,
+        organisation_name=organisation.name if organisation else None,
+        tier=tier.value,
+        tier_display=tier.value.title(),
+        cloud_accounts_count=cloud_accounts_count,
+    )
+
+
+@router.post(
+    "/tickets",
+    response_model=SubmitTicketResponse,
+    summary="Submit a support ticket",
+    description="Submit a support ticket. Logs to CRM and sends email to support.",
+)
+async def submit_support_ticket(
+    request: SubmitTicketRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SubmitTicketResponse:
+    """Submit a support ticket.
+
+    This endpoint:
+    1. Generates a ticket ID
+    2. Logs the ticket to the CRM spreadsheet
+    3. Sends an email to support@a13e.com
+    """
+    # Generate ticket ID
+    ticket_id = f"TKT-{uuid.uuid4().hex[:8].upper()}"
+    submitted_at = datetime.now(timezone.utc)
+
+    # Get user context for logging
+    context = await get_user_support_context(current_user, db)
+
+    # Category display mapping
+    category_display = {
+        "billing": "Billing",
+        "technical": "Technical",
+        "feature_request": "Feature Request",
+        "bug_report": "Bug Report",
+        "account": "Account",
+        "integration": "Integration",
+    }
+
+    # Try to log to CRM and send email
+    try:
+        from app.services.google_workspace_service import get_workspace_service
+
+        ws = get_workspace_service()
+
+        # Log to CRM spreadsheet if configured
+        if settings.support_crm_spreadsheet_id:
+            ws.append_to_sheet(
+                spreadsheet_id=settings.support_crm_spreadsheet_id,
+                sheet_name="Tickets",
+                values=[
+                    [
+                        ticket_id,
+                        submitted_at.isoformat(),
+                        current_user.email,
+                        context.tier_display,
+                        category_display.get(request.category, request.category),
+                        "Normal",  # Default priority
+                        "New",  # Initial status
+                        request.subject,
+                        request.description[:500],  # Truncate for sheet
+                        request.cloud_provider or "N/A",
+                        "",  # Assigned To
+                        "",  # Resolution Notes
+                    ]
+                ],
+            )
+
+        # Send email to support
+        email_body = f"""
+New Support Ticket: {ticket_id}
+
+Customer: {current_user.email}
+Name: {context.full_name or 'N/A'}
+Organisation: {context.organisation_name or 'N/A'}
+Tier: {context.tier_display}
+Cloud Accounts: {context.cloud_accounts_count}
+
+Category: {category_display.get(request.category, request.category)}
+Cloud Provider: {request.cloud_provider or 'N/A'}
+
+Subject: {request.subject}
+
+Description:
+{request.description}
+
+---
+Submitted via A13E Support Form at {submitted_at.strftime('%Y-%m-%d %H:%M UTC')}
+"""
+
+        ws.send_email(
+            to=settings.support_email,
+            subject=f"[{ticket_id}] {request.subject}",
+            body=email_body,
+        )
+
+    except Exception as e:
+        # Log error but don't fail the request - ticket was submitted
+        import structlog
+
+        logger = structlog.get_logger()
+        logger.error(
+            "support_ticket_logging_failed",
+            ticket_id=ticket_id,
+            error=str(e),
+        )
+
+    return SubmitTicketResponse(
+        ticket_id=ticket_id,
+        message="Your support ticket has been submitted. We'll respond shortly.",
+        submitted_at=submitted_at,
+    )
