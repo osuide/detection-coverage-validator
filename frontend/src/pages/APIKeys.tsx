@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react'
+import { Link } from 'react-router'
 import {
   Key,
   Plus,
@@ -9,6 +10,8 @@ import {
   X,
   Shield,
   Info,
+  ExternalLink,
+  BookOpen,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
@@ -148,7 +151,24 @@ export default function APIKeys() {
         <div>
           <h1 className="text-2xl font-bold text-white">API Keys</h1>
           <p className="mt-1 text-sm text-gray-400">
-            Manage API keys for programmatic access to the platform
+            Manage API keys for programmatic access to the platform.{' '}
+            <Link
+              to="/docs/api-keys"
+              className="text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              View documentation
+            </Link>
+            {' | '}
+            <a
+              href={`${import.meta.env.VITE_API_BASE_URL || ''}/redoc`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              API Reference
+            </a>
           </p>
         </div>
         <button
