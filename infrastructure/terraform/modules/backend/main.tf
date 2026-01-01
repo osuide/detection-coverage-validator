@@ -529,6 +529,17 @@ resource "aws_iam_role_policy" "ecs_task" {
           "ses:SendRawEmail"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "ECSExec"
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -763,6 +774,9 @@ resource "aws_ecs_service" "backend" {
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = var.environment == "prod" ? 2 : 1
   launch_type     = "FARGATE"
+
+  # Enable ECS Exec for debugging and running scripts
+  enable_execute_command = true
 
   network_configuration {
     # When use_private_subnets=true, ECS runs in private subnets with NAT Gateway
