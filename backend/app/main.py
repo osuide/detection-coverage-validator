@@ -450,8 +450,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning("cache_close_failed", error=str(e))
 
 
-# SECURITY: Disable API documentation in production
-# Docs are only available in development and staging for debugging
+# SECURITY: Disable internal API documentation in production
+# /docs (Swagger) and /openapi.json (full internal spec) are only for development/staging
+# /redoc uses /public/openapi.json (public API only) and is available in all environments
 docs_url = "/docs" if settings.environment in ("development", "staging") else None
 openapi_url = (
     "/openapi.json" if settings.environment in ("development", "staging") else None
@@ -506,18 +507,21 @@ async def get_public_openapi() -> JSONResponse:
 
 
 # Custom ReDoc endpoint with dark theme to match app styling
-if settings.environment in ("development", "staging"):
+# NOTE: /redoc is available in ALL environments because it serves the PUBLIC API spec only
+# (via /public/openapi.json). No internal endpoints are exposed. This is intentional
+# for external API integrators who need documentation in production.
 
-    @app.get("/redoc", include_in_schema=False)
-    async def custom_redoc_html() -> HTMLResponse:
-        """Serve ReDoc API documentation with dark theme.
 
-        SECURITY: Uses the PUBLIC API spec only - no internal endpoints exposed.
-        Uses self-hosted ReDoc bundle for strict CSP compliance.
-        No external CDN dependencies.
+@app.get("/redoc", include_in_schema=False)
+async def custom_redoc_html() -> HTMLResponse:
+    """Serve ReDoc API documentation with dark theme.
+
+    SECURITY: Uses the PUBLIC API spec only - no internal endpoints exposed.
+    Uses self-hosted ReDoc bundle for strict CSP compliance.
+    No external CDN dependencies.
+    """
+    return HTMLResponse(
         """
-        return HTMLResponse(
-            """
 <!DOCTYPE html>
 <html>
 <head>
@@ -581,8 +585,8 @@ if settings.environment in ("development", "staging"):
     <script src="/static/docs/redoc.standalone.js"></script>
 </body>
 </html>
-            """
-        )
+        """
+    )
 
 
 # === Global Exception Handler ===
