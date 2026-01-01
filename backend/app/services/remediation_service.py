@@ -38,14 +38,19 @@ class DetailedRecommendation:
     name: str
     description: str
     detection_type: str
-    aws_service: str
-
-    # Implementation artefacts
-    query: Optional[str]
+    # AWS fields
+    aws_service: Optional[str]
+    query: Optional[str]  # CloudWatch Logs Insights query
     event_pattern: Optional[Dict[str, Any]]
     guardduty_finding_types: Optional[List[str]]
     cloudformation_template: Optional[str]
-    terraform_template: Optional[str]
+    terraform_template: Optional[str]  # AWS Terraform
+    # GCP fields
+    gcp_service: Optional[str]
+    gcp_logging_query: Optional[str]
+    gcp_terraform_template: Optional[str]
+    # Cloud provider indicator
+    cloud_provider: Optional[str]  # "aws", "gcp", or "multi"
 
     # Alert configuration
     alert_severity: str
@@ -179,12 +184,20 @@ class RemediationService:
             name=strategy.name,
             description=strategy.description,
             detection_type=strategy.detection_type.value,
+            # AWS fields
             aws_service=strategy.aws_service,
             query=impl.query,
             event_pattern=impl.event_pattern,
             guardduty_finding_types=impl.guardduty_finding_types,
             cloudformation_template=impl.cloudformation_template,
             terraform_template=impl.terraform_template,
+            # GCP fields
+            gcp_service=strategy.gcp_service,
+            gcp_logging_query=impl.gcp_logging_query,
+            gcp_terraform_template=impl.gcp_terraform_template,
+            # Cloud provider
+            cloud_provider=strategy.cloud_provider.value,
+            # Common fields
             alert_severity=impl.alert_severity,
             alert_title=impl.alert_title,
             alert_description_template=impl.alert_description_template,

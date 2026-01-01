@@ -76,12 +76,20 @@ class StrategyDetailResponse(BaseModel):
     name: str
     description: str
     detection_type: str
-    aws_service: str
-    query: Optional[str] = None
+    # AWS fields
+    aws_service: Optional[str] = None
+    query: Optional[str] = None  # CloudWatch Logs Insights query
     event_pattern: Optional[dict] = None
     guardduty_finding_types: Optional[List[str]] = None
     cloudformation_template: Optional[str] = None
-    terraform_template: Optional[str] = None
+    terraform_template: Optional[str] = None  # AWS Terraform
+    # GCP fields
+    gcp_service: Optional[str] = None
+    gcp_logging_query: Optional[str] = None
+    gcp_terraform_template: Optional[str] = None
+    # Cloud provider indicator
+    cloud_provider: Optional[str] = None  # "aws", "gcp", or "multi"
+    # Common fields
     alert_severity: str
     alert_title: str
     alert_description_template: str
@@ -242,12 +250,20 @@ async def get_strategy_details(
         name=details.name,
         description=details.description,
         detection_type=details.detection_type,
+        # AWS fields
         aws_service=details.aws_service,
         query=details.query,
         event_pattern=details.event_pattern,
         guardduty_finding_types=details.guardduty_finding_types,
         cloudformation_template=details.cloudformation_template,
         terraform_template=details.terraform_template,
+        # GCP fields
+        gcp_service=details.gcp_service,
+        gcp_logging_query=details.gcp_logging_query,
+        gcp_terraform_template=details.gcp_terraform_template,
+        # Cloud provider indicator
+        cloud_provider=details.cloud_provider,
+        # Common fields
         alert_severity=details.alert_severity,
         alert_title=details.alert_title,
         alert_description_template=details.alert_description_template,

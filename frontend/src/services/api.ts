@@ -377,12 +377,20 @@ export interface StrategyDetail {
   name: string
   description: string
   detection_type: string
-  aws_service: string
-  query: string | null
+  // AWS fields
+  aws_service: string | null
+  query: string | null  // CloudWatch Logs Insights query
   event_pattern: Record<string, unknown> | null
   guardduty_finding_types: string[] | null
   cloudformation_template: string | null
-  terraform_template: string | null
+  terraform_template: string | null  // AWS Terraform
+  // GCP fields
+  gcp_service: string | null
+  gcp_logging_query: string | null
+  gcp_terraform_template: string | null
+  // Cloud provider indicator
+  cloud_provider: string | null  // "aws", "gcp", or "multi"
+  // Common fields
   alert_severity: string
   alert_title: string
   alert_description_template: string

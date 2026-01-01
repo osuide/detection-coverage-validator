@@ -16,7 +16,7 @@ export default function StrategyDetailModal({
   strategyName,
   onClose,
 }: StrategyDetailModalProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'query' | 'cloudformation' | 'terraform' | 'response'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'query' | 'cloudformation' | 'terraform' | 'gcp_query' | 'gcp_terraform' | 'response'>('overview')
   const [copiedField, setCopiedField] = useState<string | null>(null)
 
   const { data: details, isLoading, error } = useQuery({
@@ -32,9 +32,13 @@ export default function StrategyDetailModal({
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BookOpen },
-    ...(details?.query ? [{ id: 'query', label: 'Query', icon: Terminal }] : []),
+    // AWS tabs
+    ...(details?.query ? [{ id: 'query', label: 'AWS Query', icon: Terminal }] : []),
     ...(details?.cloudformation_template ? [{ id: 'cloudformation', label: 'CloudFormation', icon: Cloud }] : []),
-    ...(details?.terraform_template ? [{ id: 'terraform', label: 'Terraform', icon: FileCode }] : []),
+    ...(details?.terraform_template ? [{ id: 'terraform', label: 'AWS Terraform', icon: FileCode }] : []),
+    // GCP tabs
+    ...(details?.gcp_logging_query ? [{ id: 'gcp_query', label: 'GCP Query', icon: Terminal }] : []),
+    ...(details?.gcp_terraform_template ? [{ id: 'gcp_terraform', label: 'GCP Terraform', icon: FileCode }] : []),
     { id: 'response', label: 'Response', icon: Shield },
   ] as const
 
@@ -54,7 +58,14 @@ export default function StrategyDetailModal({
             <div>
               <h2 className="text-lg font-semibold text-gray-900">{strategyName}</h2>
               <p className="text-sm text-gray-500">
-                {techniqueId} &bull; {details?.detection_type} via {details?.aws_service}
+                {techniqueId} &bull; {details?.detection_type} via {details?.gcp_service || details?.aws_service || 'n/a'}
+                {details?.cloud_provider && (
+                  <span className={`ml-2 px-1.5 py-0.5 text-xs rounded ${
+                    details.cloud_provider === 'gcp' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {details.cloud_provider.toUpperCase()}
+                  </span>
+                )}
               </p>
             </div>
             <button
@@ -101,7 +112,7 @@ export default function StrategyDetailModal({
                 )}
                 {activeTab === 'query' && details.query && (
                   <CodeTab
-                    title="CloudWatch Logs Insights Query"
+                    title="AWS CloudWatch Logs Insights Query"
                     code={details.query}
                     language="sql"
                     onCopy={() => copyToClipboard(details.query!, 'query')}
@@ -119,11 +130,29 @@ export default function StrategyDetailModal({
                 )}
                 {activeTab === 'terraform' && details.terraform_template && (
                   <CodeTab
-                    title="Terraform Configuration"
+                    title="AWS Terraform Configuration"
                     code={details.terraform_template}
                     language="hcl"
                     onCopy={() => copyToClipboard(details.terraform_template!, 'tf')}
                     copied={copiedField === 'tf'}
+                  />
+                )}
+                {activeTab === 'gcp_query' && details.gcp_logging_query && (
+                  <CodeTab
+                    title="GCP Cloud Logging Query"
+                    code={details.gcp_logging_query}
+                    language="sql"
+                    onCopy={() => copyToClipboard(details.gcp_logging_query!, 'gcp_query')}
+                    copied={copiedField === 'gcp_query'}
+                  />
+                )}
+                {activeTab === 'gcp_terraform' && details.gcp_terraform_template && (
+                  <CodeTab
+                    title="GCP Terraform Configuration"
+                    code={details.gcp_terraform_template}
+                    language="hcl"
+                    onCopy={() => copyToClipboard(details.gcp_terraform_template!, 'gcp_tf')}
+                    copied={copiedField === 'gcp_tf'}
                   />
                 )}
                 {activeTab === 'response' && (
