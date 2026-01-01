@@ -10,7 +10,7 @@ import uuid
 from fastapi import FastAPI, Request
 from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
 
@@ -450,7 +450,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 # SECURITY: Disable API documentation in production
 # Docs are only available in development and staging for debugging
 docs_url = "/docs" if settings.environment in ("development", "staging") else None
-redoc_url = "/redoc" if settings.environment in ("development", "staging") else None
 openapi_url = (
     "/openapi.json" if settings.environment in ("development", "staging") else None
 )
@@ -461,9 +460,85 @@ app = FastAPI(
     description="Multi-cloud security detection coverage analysis platform",
     lifespan=lifespan,
     docs_url=docs_url,
-    redoc_url=redoc_url,
+    redoc_url=None,  # Disabled - using custom dark theme endpoint below
     openapi_url=openapi_url,
 )
+
+
+# Custom ReDoc endpoint with dark theme to match app styling
+if settings.environment in ("development", "staging"):
+
+    @app.get("/redoc", include_in_schema=False)
+    async def custom_redoc_html() -> HTMLResponse:
+        """Serve ReDoc API documentation with dark theme."""
+        return HTMLResponse(
+            """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>A13E API Reference</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <redoc
+        spec-url='/openapi.json'
+        theme='{
+            "colors": {
+                "primary": { "main": "#22d3ee" },
+                "success": { "main": "#10b981" },
+                "warning": { "main": "#f59e0b" },
+                "error": { "main": "#ef4444" },
+                "text": { "primary": "#1f2937", "secondary": "#4b5563" },
+                "http": {
+                    "get": "#22d3ee",
+                    "post": "#10b981",
+                    "put": "#f59e0b",
+                    "delete": "#ef4444",
+                    "patch": "#a855f7"
+                },
+                "responses": {
+                    "success": { "color": "#10b981", "backgroundColor": "#064e3b" },
+                    "error": { "color": "#ef4444", "backgroundColor": "#7f1d1d" },
+                    "redirect": { "color": "#f59e0b", "backgroundColor": "#78350f" },
+                    "info": { "color": "#3b82f6", "backgroundColor": "#1e3a5f" }
+                }
+            },
+            "typography": {
+                "fontSize": "15px",
+                "fontFamily": "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+                "headings": { "fontFamily": "Inter, -apple-system, BlinkMacSystemFont, sans-serif" },
+                "code": { "fontFamily": "JetBrains Mono, monospace", "fontSize": "13px", "backgroundColor": "#1e293b" }
+            },
+            "sidebar": {
+                "backgroundColor": "#0f172a",
+                "textColor": "#9ca3af",
+                "activeTextColor": "#22d3ee"
+            },
+            "rightPanel": {
+                "backgroundColor": "#1e293b",
+                "textColor": "#e2e8f0"
+            },
+            "schema": {
+                "nestedBackground": "#f1f5f9"
+            }
+        }'
+        hide-hostname="true"
+        hide-download-button="false"
+        native-scrollbars="true"
+    ></redoc>
+    <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+</body>
+</html>
+            """
+        )
 
 
 # === Global Exception Handler ===
