@@ -221,3 +221,30 @@ VPC (10.0.0.0/16)
 **No NAT Gateway** - backend has public IPs for external APIs (HIBP, Google, GitHub, Cognito, MITRE).
 
 **Security**: WAF with OWASP CRS, RDS/Redis private only, IAM least privilege.
+
+## Frontend (React)
+
+### ScrollToTop on Navigation
+
+React Router preserves scroll position between route changes by default. The `ScrollToTop` component in `frontend/src/components/ScrollToTop.tsx` resets scroll position on every navigation:
+
+```tsx
+import { useEffect } from 'react'
+import { useLocation } from 'react-router'
+
+export default function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
+```
+
+**Added in App.tsx before `<Routes>`** - applies to all pages including nested admin and protected routes.
+
+### URL References
+
+- **App URL**: `app.a13e.com` (not `a13e.com`)
+- **Marketing site**: `a13e.com` or `staging.a13e.com`
+- Use `<Link to="/path">` for internal navigation, not `<a href="#">`
