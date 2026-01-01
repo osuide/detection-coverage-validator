@@ -24,6 +24,7 @@ from app.core.database import get_db
 from app.core.security import (
     AuthContext,
     get_auth_context,
+    get_client_ip,
     require_feature,
     require_role,
     require_scope,
@@ -363,7 +364,7 @@ async def invite_member(
             "role": body.role.value,
             "message": body.message,
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     await db.commit()
@@ -448,7 +449,7 @@ async def cancel_invite(
             "action": "invite_cancelled",
             "invited_email": invite.invited_email,
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     await db.delete(invite)
@@ -528,7 +529,7 @@ async def accept_invite(
             "role": invite.role.value,
             "organization_name": invite.organization.name,
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     await db.commit()
@@ -638,7 +639,7 @@ async def update_member_role(
             "old_role": old_role.value,
             "new_role": body.role.value,
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     await db.commit()
@@ -727,7 +728,7 @@ async def remove_member(
             "removed_email": member.user.email if member.user else member.invited_email,
             "role": member.role.value,
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     # Soft delete - mark as removed
@@ -771,7 +772,7 @@ async def leave_organization(
             "action": "self_leave",
             "role": auth.membership.role.value,
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     # Mark as removed

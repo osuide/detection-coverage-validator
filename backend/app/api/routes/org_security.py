@@ -13,7 +13,7 @@ import structlog
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import AuthContext, require_role
+from app.core.security import AuthContext, get_client_ip, require_role
 from app.models.user import AuditLog, AuditLogAction, UserRole
 from app.models.security import OrganizationSecuritySettings, VerifiedDomain
 
@@ -200,7 +200,7 @@ async def update_security_settings(
         action=AuditLogAction.ORG_SETTINGS_UPDATED,
         resource_type="security_settings",
         details={"changes": update_data, "previous": old_values},
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         success=True,
     )
     db.add(audit_log)
@@ -294,7 +294,7 @@ async def add_domain(
         action=AuditLogAction.ORG_SETTINGS_UPDATED,
         resource_type="verified_domain",
         details={"action": "add", "domain": domain},
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         success=True,
     )
     db.add(audit_log)
@@ -410,7 +410,7 @@ async def confirm_domain_verification(
         action=AuditLogAction.ORG_SETTINGS_UPDATED,
         resource_type="verified_domain",
         details={"action": "verify", "domain": domain.domain},
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         success=True,
     )
     db.add(audit_log)
@@ -466,7 +466,7 @@ async def update_domain(
         action=AuditLogAction.ORG_SETTINGS_UPDATED,
         resource_type="verified_domain",
         details={"action": "update", "domain": domain.domain, "changes": update_data},
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         success=True,
     )
     db.add(audit_log)
@@ -507,7 +507,7 @@ async def remove_domain(
         action=AuditLogAction.ORG_SETTINGS_UPDATED,
         resource_type="verified_domain",
         details={"action": "remove", "domain": domain_name},
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         success=True,
     )
     db.add(audit_log)

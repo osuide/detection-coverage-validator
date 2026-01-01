@@ -16,7 +16,7 @@ import structlog
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import AuthContext, require_role, require_scope
+from app.core.security import AuthContext, get_client_ip, require_role, require_scope
 from app.models.user import UserRole, AuditLog, AuditLogAction
 from app.models.cloud_account import CloudAccount, CloudProvider
 from app.models.cloud_credential import (
@@ -386,7 +386,7 @@ async def create_aws_credential(
             "action": "aws_credential_created",
             "role_arn": body.role_arn[:50] + "...",
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         success=True,
     )
     db.add(audit_log)
@@ -481,7 +481,7 @@ async def create_gcp_credential(
             "wif_pool_id": body.pool_id,
             "wif_provider_id": body.provider_id,
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         success=True,
     )
     db.add(audit_log)
@@ -575,7 +575,7 @@ async def validate_gcp_wif(
             "valid": validation_result["valid"],
             "steps_completed": validation_result["steps_completed"],
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         success=validation_result["valid"],
     )
     db.add(audit_log)
@@ -646,7 +646,7 @@ async def validate_credential(
             "status": validation["status"].value,
             "missing_count": len(validation["missing_permissions"]),
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         success=validation["status"] == CredentialStatus.VALID,
     )
     db.add(audit_log)
@@ -717,7 +717,7 @@ async def delete_credential(
         resource_type="cloud_credential",
         resource_id=str(credential.id),
         details={"action": "credential_deleted"},
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         success=True,
     )
     db.add(audit_log)

@@ -631,7 +631,10 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "CORS_ORIGINS", value = var.frontend_url != "" && var.frontend_url != "http://localhost:3001" ? var.frontend_url : "*" },
       { name = "FRONTEND_URL", value = var.frontend_url },
       { name = "FORCE_RELOAD_COMPLIANCE", value = var.force_reload_compliance ? "true" : "false" },
-      { name = "COOKIE_DOMAIN", value = var.cookie_domain }
+      { name = "COOKIE_DOMAIN", value = var.cookie_domain },
+      # Trust X-Forwarded-For headers from ALB (required for correct client IP in audit logs)
+      { name = "TRUST_PROXY_HEADERS", value = "true" },
+      { name = "TRUSTED_PROXY_CIDRS", value = "10.0.0.0/8" }
       ],
       # Cognito OAuth configuration (only if Cognito is enabled)
       var.cognito_user_pool_id != "" ? [

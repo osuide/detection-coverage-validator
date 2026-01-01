@@ -11,7 +11,7 @@ import structlog
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import AuthContext, require_role
+from app.core.security import AuthContext, get_client_ip, require_role
 from app.core.cache import (
     get_cached_billing_scan_status,
     cache_billing_scan_status,
@@ -462,7 +462,7 @@ async def create_checkout(
                 "action": "checkout_created",
                 "additional_accounts": body.additional_accounts,
             },
-            ip_address=request.client.host if request.client else None,
+            ip_address=get_client_ip(request),
             success=True,
         )
         db.add(audit_log)
@@ -511,7 +511,7 @@ async def create_portal(
             action=AuditLogAction.ORG_SETTINGS_UPDATED,
             resource_type="billing",
             details={"action": "portal_accessed"},
-            ip_address=request.client.host if request.client else None,
+            ip_address=get_client_ip(request),
             success=True,
         )
         db.add(audit_log)

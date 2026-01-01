@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_role
+from app.core.security import AuthContext, get_auth_context, get_client_ip, require_role
 from app.models.user import (
     APIKey,
     UserRole,
@@ -236,7 +236,7 @@ async def create_api_key(
             "scopes": body.scopes,
             "expires_days": body.expires_days,
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     await db.commit()
@@ -428,7 +428,7 @@ async def revoke_api_key(
             "key_name": key.name,
             "key_prefix": key.key_prefix,
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     await db.commit()
