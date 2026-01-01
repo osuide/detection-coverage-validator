@@ -274,6 +274,30 @@ resource "aws_cloudwatch_event_target" "sns" {
   dead_letter_config {
     arn = aws_sqs_queue.events_dlq.arn
   }
+  input_transformer {
+    input_paths = {
+      account       = "$.account"
+      region        = "$.region"
+      time          = "$.time"
+      eventName     = "$.detail.eventName"
+      eventSource   = "$.detail.eventSource"
+      sourceIP      = "$.detail.sourceIPAddress"
+      userIdentity  = "$.detail.userIdentity.arn"
+    }
+
+    input_template = <<-EOT
+"CloudTrail Security Alert
+Time: <time>
+Account: <account>
+Region: <region>
+Event: <eventName>
+Source: <eventSource>
+User: <userIdentity>
+Source IP: <sourceIP>
+Action: Review CloudTrail event and investigate"
+EOT
+  }
+
 }
 
 data "aws_caller_identity" "current" {}

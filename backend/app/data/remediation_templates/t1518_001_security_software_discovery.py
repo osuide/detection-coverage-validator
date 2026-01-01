@@ -200,6 +200,30 @@ resource "aws_cloudwatch_event_target" "sns" {
   dead_letter_config {
     arn = aws_sqs_queue.dlq.arn
   }
+  input_transformer {
+    input_paths = {
+      account    = "$.account"
+      region     = "$.region"
+      time       = "$.time"
+      type       = "$.detail.type"
+      severity   = "$.detail.severity"
+      title      = "$.detail.title"
+      description = "$.detail.description"
+    }
+
+    input_template = <<-EOT
+"GuardDuty Finding Alert
+Time: <time>
+Account: <account>
+Region: <region>
+Finding: <type>
+Severity: <severity>
+Title: <title>
+Description: <description>
+Action: Review finding in GuardDuty console and investigate"
+EOT
+  }
+
 }
 
 data "aws_caller_identity" "current" {}
@@ -391,6 +415,30 @@ resource "aws_cloudwatch_event_target" "sns" {
   dead_letter_config {
     arn = aws_sqs_queue.dlq.arn
   }
+  input_transformer {
+    input_paths = {
+      account    = "$.account"
+      region     = "$.region"
+      time       = "$.time"
+      type       = "$.detail.type"
+      severity   = "$.detail.severity"
+      title      = "$.detail.title"
+      description = "$.detail.description"
+    }
+
+    input_template = <<-EOT
+"GuardDuty Finding Alert
+Time: <time>
+Account: <account>
+Region: <region>
+Finding: <type>
+Severity: <severity>
+Title: <title>
+Description: <description>
+Action: Review finding in GuardDuty console and investigate"
+EOT
+  }
+
 }
 
 resource "aws_sns_topic_policy" "allow_events" {

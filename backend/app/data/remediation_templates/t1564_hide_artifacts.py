@@ -370,6 +370,29 @@ resource "aws_cloudwatch_event_target" "sns" {
   dead_letter_config {
     arn = aws_sqs_queue.lambda_dlq.arn
   }
+  input_transformer {
+    input_paths = {
+      account        = "$.account"
+      region         = "$.region"
+      time           = "$.time"
+      configRuleName = "$.detail.configRuleName"
+      resourceType   = "$.detail.resourceType"
+      resourceId     = "$.detail.resourceId"
+      complianceType = "$.detail.newEvaluationResult.complianceType"
+    }
+
+    input_template = <<-EOT
+"AWS Config Compliance Alert
+Time: <time>
+Account: <account>
+Region: <region>
+Rule: <configRuleName>
+Resource: <resourceType> / <resourceId>
+Compliance: <complianceType>
+Action: Review Config rule and remediate"
+EOT
+  }
+
 }
 
 data "aws_caller_identity" "current" {}
@@ -836,6 +859,29 @@ resource "aws_cloudwatch_event_target" "sns" {
   dead_letter_config {
     arn = aws_sqs_queue.tags_dlq.arn
   }
+  input_transformer {
+    input_paths = {
+      account        = "$.account"
+      region         = "$.region"
+      time           = "$.time"
+      configRuleName = "$.detail.configRuleName"
+      resourceType   = "$.detail.resourceType"
+      resourceId     = "$.detail.resourceId"
+      complianceType = "$.detail.newEvaluationResult.complianceType"
+    }
+
+    input_template = <<-EOT
+"AWS Config Compliance Alert
+Time: <time>
+Account: <account>
+Region: <region>
+Rule: <configRuleName>
+Resource: <resourceType> / <resourceId>
+Compliance: <complianceType>
+Action: Review Config rule and remediate"
+EOT
+  }
+
 }
 
 resource "aws_sns_topic_policy" "allow_events" {

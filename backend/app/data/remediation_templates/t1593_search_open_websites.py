@@ -246,6 +246,25 @@ resource "aws_cloudwatch_event_target" "codecommit_sns" {
   dead_letter_config {
     arn = aws_sqs_queue.events_dlq.arn
   }
+  input_transformer {
+    input_paths = {
+      account = "$.account"
+      region  = "$.region"
+      time    = "$.time"
+      source  = "$.source"
+      detail  = "$.detail"
+    }
+
+    input_template = <<-EOT
+"Security Alert
+Time: <time>
+Account: <account>
+Region: <region>
+Source: <source>
+Action: Review event details and investigate"
+EOT
+  }
+
 }
 
 # EventBridge Rule for CodeArtifact package events
@@ -272,6 +291,25 @@ resource "aws_cloudwatch_event_target" "codeartifact_sns" {
   dead_letter_config {
     arn = aws_sqs_queue.events_dlq.arn
   }
+  input_transformer {
+    input_paths = {
+      account = "$.account"
+      region  = "$.region"
+      time    = "$.time"
+      source  = "$.source"
+      detail  = "$.detail"
+    }
+
+    input_template = <<-EOT
+"Security Alert
+Time: <time>
+Account: <account>
+Region: <region>
+Source: <source>
+Action: Review event details and investigate"
+EOT
+  }
+
 }
 
 # SNS Topic Policy
