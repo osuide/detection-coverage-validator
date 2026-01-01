@@ -174,6 +174,11 @@ async def create_scan(
     await db.flush()
     await db.refresh(scan)
 
+    # CRITICAL: Commit the transaction BEFORE starting background task
+    # The background task uses a separate database session, so it can only
+    # see the scan if it's been committed to the database.
+    await db.commit()
+
     # Start scan in background with its own database session
     # This prevents holding the request's DB connection during the long-running scan
     background_tasks.add_task(execute_scan_background, scan.id, auth.organization_id)
