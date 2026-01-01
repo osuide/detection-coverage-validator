@@ -7,19 +7,26 @@ using Workload Identity Federation (WIF) for authentication.
 Architecture:
     AWS ECS Task → IAM Role → WIF → GCP Service Account → Workspace APIs
 
-No service account keys required - uses short-lived credentials from AWS IAM.
+The implementation handles two challenges:
+1. ECS Fargate doesn't work with standard WIF credential_source (uses different metadata)
+2. Domain-wide delegation requires a `sub` claim which WIF doesn't natively support
+
+Solution: Custom AwsSecurityCredentialsSupplier + JWT signing for domain delegation.
+
+No service account keys required in production - uses short-lived credentials.
 """
 
 from functools import cached_property
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import structlog
-from google.auth import identity_pool, impersonated_credentials
+from google.oauth2 import credentials as oauth2_credentials
 from google.oauth2 import service_account
 from googleapiclient.discovery import build, Resource
 from googleapiclient.errors import HttpError
 
 from app.core.config import get_settings
+from app.services.ecs_wif_credentials import get_wif_delegated_credentials
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -92,65 +99,57 @@ class GoogleWorkspaceService:
         self._credentials = None
 
     @cached_property
-    def credentials(self) -> impersonated_credentials.Credentials:
+    def credentials(
+        self,
+    ) -> Union[oauth2_credentials.Credentials, service_account.Credentials]:
         """Get authenticated credentials with domain-wide delegation."""
         if self.use_wif:
             return self._get_wif_credentials()
         else:
             return self._get_service_account_credentials()
 
-    def _get_wif_credentials(self) -> impersonated_credentials.Credentials:
+    def _get_wif_credentials(self) -> oauth2_credentials.Credentials:
         """
-        Get credentials via Workload Identity Federation.
+        Get credentials via Workload Identity Federation with domain-wide delegation.
 
-        This works automatically when running on AWS (ECS, Lambda, EC2 with role).
-        The AWS SDK provides the identity token that WIF exchanges for GCP credentials.
+        This uses a custom implementation that:
+        1. Gets AWS credentials via boto3 (works on ECS Fargate)
+        2. Federates to GCP via WIF
+        3. Impersonates the target service account
+        4. Signs a JWT with `sub` claim for domain-wide delegation
+        5. Exchanges the JWT for an access token
+
+        Returns:
+            Credentials that can be used with Google Workspace APIs
         """
         try:
-            # WIF configuration from environment/settings
-            wif_config = {
-                "type": "external_account",
-                "audience": (
-                    f"//iam.googleapis.com/projects/{settings.workspace_gcp_project_number}"
-                    f"/locations/global/workloadIdentityPools/{settings.workspace_wif_pool_id}"
-                    f"/providers/{settings.workspace_wif_provider_id}"
-                ),
-                "subject_token_type": "urn:ietf:params:aws:token-type:aws4_request",
-                "token_url": "https://sts.googleapis.com/v1/token",
-                "credential_source": {
-                    "environment_id": "aws1",
-                    "regional_cred_verification_url": (
-                        "https://sts.{region}.amazonaws.com"
-                        "?Action=GetCallerIdentity&Version=2011-06-15"
-                    ),
-                },
-                "service_account_impersonation_url": (
-                    f"https://iamcredentials.googleapis.com/v1/projects/-"
-                    f"/serviceAccounts/{settings.workspace_service_account_email}"
-                    ":generateAccessToken"
-                ),
-            }
+            # Validate required settings
+            if not settings.workspace_gcp_project_number:
+                raise ValueError(
+                    "WORKSPACE_GCP_PROJECT_NUMBER must be set for WIF authentication"
+                )
+            if not settings.workspace_service_account_email:
+                raise ValueError(
+                    "WORKSPACE_SERVICE_ACCOUNT_EMAIL must be set for WIF authentication"
+                )
 
-            # Create WIF credentials
-            source_credentials = identity_pool.Credentials.from_info(wif_config)
-
-            # Create delegated credentials for Workspace APIs
-            # This uses domain-wide delegation to impersonate the admin user
-            delegated_credentials = impersonated_credentials.Credentials(
-                source_credentials=source_credentials,
-                target_principal=settings.workspace_service_account_email,
-                target_scopes=self.SCOPES,
-                delegates=[],
-                subject=self.delegated_user,
+            credentials = get_wif_delegated_credentials(
+                gcp_project_number=settings.workspace_gcp_project_number,
+                wif_pool_id=settings.workspace_wif_pool_id,
+                wif_provider_id=settings.workspace_wif_provider_id,
+                service_account_email=settings.workspace_service_account_email,
+                scopes=self.SCOPES,
+                delegated_user=self.delegated_user,
             )
 
             logger.info(
                 "workspace_wif_credentials_created",
                 delegated_user=self.delegated_user,
                 pool_id=settings.workspace_wif_pool_id,
+                provider_id=settings.workspace_wif_provider_id,
             )
 
-            return delegated_credentials
+            return credentials
 
         except Exception as e:
             logger.error(
