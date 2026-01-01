@@ -18,7 +18,7 @@ from app.core.database import get_db
 from app.core.security import verify_support_api_key
 from app.models.billing import AccountTier, Subscription
 from app.models.cloud_account import CloudAccount
-from app.models.coverage import Detection
+from app.models.detection import Detection
 from app.models.gap import CoverageGap
 from app.models.scan import Scan
 from app.models.user import Organization, OrganizationMember, User
