@@ -57,6 +57,7 @@ plan.out
 *.tfvars
 !example.tfvars
 !staging.tfvars
+!prod.tfvars
 .env.terraform
 
 # Testing

@@ -209,3 +209,66 @@ variable "enable_docs" {
   type        = bool
   default     = false
 }
+
+# ============================================================================
+# NAT Gateway Configuration (Production)
+# ============================================================================
+# Required for Secure by Design compliance - moves ECS to private subnets
+
+variable "enable_nat_gateway" {
+  description = "Enable NAT Gateway for private subnet internet access. Required when ECS runs in private subnets."
+  type        = bool
+  default     = false
+}
+
+variable "single_nat_gateway" {
+  description = "Use single NAT Gateway (cost-optimised for staging) vs multi-AZ (production HA). Multi-AZ deploys one NAT per AZ."
+  type        = bool
+  default     = true
+}
+
+# ============================================================================
+# RDS High Availability (Production)
+# ============================================================================
+
+variable "enable_multi_az_rds" {
+  description = "Enable Multi-AZ deployment for RDS. Provides automatic failover in production."
+  type        = bool
+  default     = false
+}
+
+# ============================================================================
+# Google Workspace Integration (WIF)
+# ============================================================================
+# Enables automated support, CRM, and operations via Google Workspace APIs
+# Uses Workload Identity Federation - no service account keys required
+
+variable "enable_workspace_wif" {
+  description = "Enable Google Workspace integration via Workload Identity Federation"
+  type        = bool
+  default     = false
+}
+
+variable "workspace_gcp_project_id" {
+  description = "GCP project ID for Workspace WIF (your internal GCP project)"
+  type        = string
+  default     = ""
+}
+
+variable "workspace_gcp_project_number" {
+  description = "GCP project number for Workspace WIF (numeric, not the project ID)"
+  type        = string
+  default     = ""
+}
+
+variable "workspace_admin_email" {
+  description = "Workspace admin email for domain-wide delegation impersonation"
+  type        = string
+  default     = "austin@a13e.com"
+}
+
+variable "workspace_service_account_email" {
+  description = "Existing GCP service account email for Workspace access (if empty, creates a new one)"
+  type        = string
+  default     = ""
+}

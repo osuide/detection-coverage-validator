@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.0"
@@ -47,6 +51,13 @@ provider "aws" {
       ManagedBy   = "terraform"
     }
   }
+}
+
+# Google Cloud provider (for Workspace WIF)
+# Only used when enable_workspace_wif = true
+provider "google" {
+  project = var.workspace_gcp_project_id
+  region  = "europe-west2"
 }
 
 # Data sources
@@ -114,8 +125,10 @@ locals {
 module "vpc" {
   source = "./modules/vpc"
 
-  environment = var.environment
-  vpc_cidr    = var.vpc_cidr
+  environment        = var.environment
+  vpc_cidr           = var.vpc_cidr
+  enable_nat_gateway = var.enable_nat_gateway
+  single_nat_gateway = var.single_nat_gateway
 }
 
 # ECR Repository (for backend Docker images)
@@ -134,6 +147,7 @@ module "database" {
   private_subnet_ids = module.vpc.private_subnet_ids
   db_instance_class  = var.db_instance_class
   db_name            = "dcv"
+  multi_az           = var.enable_multi_az_rds
 }
 
 # Redis (ElastiCache)
@@ -195,6 +209,7 @@ module "backend" {
   vpc_id                     = module.vpc.vpc_id
   public_subnet_ids          = module.vpc.public_subnet_ids
   private_subnet_ids         = module.vpc.private_subnet_ids
+  use_private_subnets        = var.enable_nat_gateway # When NAT Gateway is enabled, use private subnets
   database_url               = module.database.connection_string
   redis_url                  = module.cache.connection_string
   database_security_group_id = module.database.security_group_id
@@ -233,6 +248,14 @@ module "backend" {
 
   # Cookie domain for cross-subdomain auth
   cookie_domain = var.cookie_domain
+
+  # Google Workspace WIF configuration
+  workspace_wif_enabled           = var.enable_workspace_wif && var.workspace_gcp_project_id != ""
+  workspace_gcp_project_number    = var.workspace_gcp_project_number
+  workspace_wif_pool_id           = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? module.workspace_wif[0].workload_identity_pool_id : ""
+  workspace_wif_provider_id       = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? "aws-${var.environment}" : ""
+  workspace_service_account_email = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? module.workspace_wif[0].service_account_email : ""
+  workspace_admin_email           = var.workspace_admin_email
 }
 
 # Frontend (S3 + CloudFront)
@@ -391,4 +414,34 @@ module "codebuild" {
   redis_url                  = module.cache.connection_string
   secret_key                 = local.jwt_secret_key
   github_repo                = var.github_repo
+}
+
+# ============================================================================
+# Google Workspace Integration (WIF)
+# ============================================================================
+# Enables automated support, CRM, and operations via Google Workspace APIs.
+# Uses Workload Identity Federation - no service account keys required.
+#
+# After applying, you must manually configure domain-wide delegation:
+# 1. Go to admin.google.com → Security → API Controls → Domain-wide Delegation
+# 2. Add the service account Client ID with required OAuth scopes
+# See module output for detailed instructions.
+
+module "workspace_wif" {
+  count  = var.enable_workspace_wif && var.workspace_gcp_project_id != "" ? 1 : 0
+  source = "./modules/gcp-wif-workspace"
+
+  gcp_project_id                 = var.workspace_gcp_project_id
+  aws_account_id                 = data.aws_caller_identity.current.account_id
+  aws_region                     = var.aws_region
+  environment                    = var.environment
+  workspace_domain               = "a13e.com"
+  workspace_admin_email          = var.workspace_admin_email
+  existing_service_account_email = var.workspace_service_account_email
+
+  # Allow the backend ECS task role to federate
+  # Note: Role name must match exactly what's in backend module (ecs-task-role, not backend-task-role)
+  allowed_aws_roles = [
+    "a13e-${var.environment}-ecs-task-role"
+  ]
 }

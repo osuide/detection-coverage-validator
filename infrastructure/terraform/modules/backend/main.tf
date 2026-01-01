@@ -17,6 +17,12 @@ variable "private_subnet_ids" {
   type = list(string)
 }
 
+variable "use_private_subnets" {
+  description = "Deploy ECS tasks in private subnets (requires NAT Gateway for outbound internet)"
+  type        = bool
+  default     = false
+}
+
 variable "database_url" {
   type      = string
   sensitive = true
@@ -158,6 +164,43 @@ variable "github_client_secret" {
 }
 
 # Note: Microsoft SSO has been removed from the product
+
+# Google Workspace WIF Configuration
+variable "workspace_wif_enabled" {
+  type        = bool
+  description = "Enable Google Workspace integration via WIF"
+  default     = false
+}
+
+variable "workspace_gcp_project_number" {
+  type        = string
+  description = "GCP project number for Workspace WIF"
+  default     = ""
+}
+
+variable "workspace_wif_pool_id" {
+  type        = string
+  description = "Workload Identity Pool ID"
+  default     = ""
+}
+
+variable "workspace_wif_provider_id" {
+  type        = string
+  description = "Workload Identity Pool Provider ID"
+  default     = ""
+}
+
+variable "workspace_service_account_email" {
+  type        = string
+  description = "GCP service account email for Workspace access"
+  default     = ""
+}
+
+variable "workspace_admin_email" {
+  type        = string
+  description = "Workspace admin email for domain-wide delegation"
+  default     = ""
+}
 
 variable "allowed_ips" {
   type        = list(string)
@@ -652,7 +695,17 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "SES_ENABLED", value = "true" },
         { name = "SES_FROM_EMAIL", value = "noreply@a13e.com" },
         { name = "APP_URL", value = var.frontend_url }
-    ])
+      ],
+      # Google Workspace WIF configuration (only when enabled)
+      var.workspace_wif_enabled ? [
+        { name = "WORKSPACE_WIF_ENABLED", value = "true" },
+        { name = "WORKSPACE_GCP_PROJECT_NUMBER", value = var.workspace_gcp_project_number },
+        { name = "WORKSPACE_WIF_POOL_ID", value = var.workspace_wif_pool_id },
+        { name = "WORKSPACE_WIF_PROVIDER_ID", value = var.workspace_wif_provider_id },
+        { name = "WORKSPACE_SERVICE_ACCOUNT_EMAIL", value = var.workspace_service_account_email },
+        { name = "WORKSPACE_ADMIN_EMAIL", value = var.workspace_admin_email }
+      ] : []
+    )
 
     # Sensitive values loaded from Secrets Manager
     # ECS will inject these as environment variables at container startup
@@ -712,11 +765,13 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    # Using public subnets with public IPs to allow outbound internet access
-    # (required for Cognito OAuth token exchange - no VPC endpoint available)
-    subnets          = var.public_subnet_ids
+    # When use_private_subnets=true, ECS runs in private subnets with NAT Gateway
+    # (Secure by Design: no public IPs on application workloads)
+    # When use_private_subnets=false, ECS runs in public subnets with public IPs
+    # (Cost-optimised: no NAT Gateway required for staging)
+    subnets          = var.use_private_subnets ? var.private_subnet_ids : var.public_subnet_ids
     security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = true
+    assign_public_ip = var.use_private_subnets ? false : true
   }
 
   load_balancer {

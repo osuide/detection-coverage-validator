@@ -1,5 +1,5 @@
-# VPC Module with VPC Endpoints (no NAT Gateway)
-# Cost-optimized architecture using VPC endpoints for AWS services
+# VPC Module with optional NAT Gateway
+# Supports both cost-optimised (public subnets) and Secure by Design (private subnets) architectures
 
 variable "environment" {
   type = string
@@ -7,6 +7,18 @@ variable "environment" {
 
 variable "vpc_cidr" {
   type = string
+}
+
+variable "enable_nat_gateway" {
+  description = "Enable NAT Gateway for private subnet internet access"
+  type        = bool
+  default     = false
+}
+
+variable "single_nat_gateway" {
+  description = "Use single NAT Gateway (cost-optimised) vs multi-AZ (HA for production)"
+  type        = bool
+  default     = true
 }
 
 data "aws_availability_zones" "available" {
@@ -95,6 +107,47 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
+# =============================================================================
+# NAT Gateway (Optional - for Secure by Design production architecture)
+# =============================================================================
+# Enables ECS tasks in private subnets to access external APIs (Stripe, HIBP, etc.)
+# Multi-AZ deployment uses one NAT Gateway per AZ for high availability
+
+# Elastic IP for NAT Gateway
+resource "aws_eip" "nat" {
+  count  = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : length(aws_subnet.public)) : 0
+  domain = "vpc"
+
+  tags = {
+    Name = var.single_nat_gateway ? "a13e-${var.environment}-nat-eip" : "a13e-${var.environment}-nat-eip-${count.index + 1}"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+# NAT Gateway
+resource "aws_nat_gateway" "main" {
+  count         = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : length(aws_subnet.public)) : 0
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id     = aws_subnet.public[count.index].id
+
+  tags = {
+    Name = var.single_nat_gateway ? "a13e-${var.environment}-nat" : "a13e-${var.environment}-nat-${count.index + 1}"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+# Route to NAT Gateway for private subnets
+# When single_nat_gateway=true, all private subnets route through one NAT
+# When single_nat_gateway=false, each AZ has its own NAT for HA
+resource "aws_route" "private_nat" {
+  count                  = var.enable_nat_gateway ? 1 : 0
+  route_table_id         = aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.main[0].id
+}
+
 # Security group for VPC Endpoints - REMOVED
 # Previously used for interface VPC endpoints, no longer needed.
 # See comment block below for details on why endpoints were removed.
@@ -143,3 +196,13 @@ output "private_subnet_ids" {
 }
 
 # output "vpc_endpoints_security_group_id" removed - security group no longer exists
+
+output "nat_gateway_ids" {
+  description = "IDs of the NAT Gateways (empty if NAT Gateway not enabled)"
+  value       = var.enable_nat_gateway ? aws_nat_gateway.main[*].id : []
+}
+
+output "nat_public_ips" {
+  description = "Public IPs of NAT Gateways (useful for whitelisting with third-party services)"
+  value       = var.enable_nat_gateway ? aws_eip.nat[*].public_ip : []
+}

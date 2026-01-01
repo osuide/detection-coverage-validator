@@ -18,6 +18,12 @@ variable "db_name" {
   type = string
 }
 
+variable "multi_az" {
+  description = "Enable Multi-AZ deployment for high availability (automatic failover)"
+  type        = bool
+  default     = false
+}
+
 resource "random_password" "db_password" {
   length  = 32
   special = false
@@ -68,6 +74,9 @@ resource "aws_db_instance" "main" {
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.db.id]
+
+  # High Availability
+  multi_az = var.multi_az
 
   backup_retention_period = 7
   skip_final_snapshot     = var.environment != "prod"
