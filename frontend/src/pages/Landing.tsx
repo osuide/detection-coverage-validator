@@ -749,29 +749,32 @@ export default function Landing() {
             ))}
           </div>
 
-          {/* Testimonials Placeholder */}
-          <div className="text-center">
-            <h3 className="text-3xl font-bold text-white mb-8">Trusted by Security Teams</h3>
-            <div className="grid md:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-linear-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6">
-                  <div className="flex items-center space-x-1 mb-4">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <span key={star} className="text-yellow-500">★</span>
-                    ))}
-                  </div>
-                  <p className="text-gray-400 mb-4">
-                    "A13E's DCV helped us identify and close critical gaps in our detection coverage within days. Game changer for our security team."
-                  </p>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-cyan-500 rounded-full" />
-                    <div>
-                      <div className="text-white font-semibold">Security Leader</div>
-                      <div className="text-gray-500 text-sm">Fortune 500 Company</div>
-                    </div>
-                  </div>
+          {/* Built by Security Professionals */}
+          <div className="text-center max-w-4xl mx-auto">
+            <h3 className="text-3xl font-bold text-white mb-6">Built by Security Professionals, for Security Professionals</h3>
+            <div className="bg-linear-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-8">
+              <div className="flex justify-center mb-6">
+                <div className="w-16 h-16 bg-linear-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
+                  <Shield className="w-8 h-8 text-white" />
                 </div>
-              ))}
+              </div>
+              <p className="text-lg text-gray-300 mb-6">
+                A13E was founded by security practitioners who understand the challenges of maintaining comprehensive detection coverage across complex cloud environments. We built the tool we wished existed.
+              </p>
+              <div className="grid md:grid-cols-3 gap-6 text-left">
+                <div className="p-4">
+                  <div className="text-blue-400 font-semibold mb-2">Security-First Architecture</div>
+                  <p className="text-gray-400 text-sm">Every design decision prioritises the security of your data. We practise what we preach.</p>
+                </div>
+                <div className="p-4">
+                  <div className="text-blue-400 font-semibold mb-2">Practitioner-Driven Development</div>
+                  <p className="text-gray-400 text-sm">Features are built based on real-world security operations experience, not theoretical requirements.</p>
+                </div>
+                <div className="p-4">
+                  <div className="text-blue-400 font-semibold mb-2">Transparent & Accountable</div>
+                  <p className="text-gray-400 text-sm">We believe in honest communication about capabilities and limitations. No marketing fluff.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
