@@ -348,7 +348,7 @@ async def list_threat_groups(
 async def list_campaigns(
     search: Optional[str] = Query(None, description="Search by name or external ID"),
     sort_by: str = Query("last_seen", description="Field to sort by"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sort order"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sort order"),
     skip: int = Query(0, ge=0, description="Number of items to skip"),
     limit: int = Query(50, le=100, description="Maximum number of items"),
     admin: AdminUser = Depends(require_permission("settings:read")),

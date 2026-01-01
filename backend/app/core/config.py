@@ -51,7 +51,8 @@ class Settings(BaseSettings):
     hibp_min_breach_count: int = 1  # Minimum breach count to reject password
     # Fail-closed mode: if True, reject password when HIBP API is unavailable (recommended for prod)
     # If False, allow password when API fails (fail-open, less secure but more available)
-    hibp_fail_closed: bool = False  # Set to True in production for maximum security
+    # Security: Enabled by default for production safety - override with HIBP_FAIL_CLOSED=false if needed
+    hibp_fail_closed: bool = True
 
     # Fraud Prevention
     # Controls email quality validation (disposable email blocking, MX record check)
