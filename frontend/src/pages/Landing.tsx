@@ -841,15 +841,15 @@ export default function Landing() {
             <div>
               <h4 className="text-white font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Privacy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Security</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Compliance</a></li>
+                <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link></li>
+                <li><Link to="/terms" className="hover:text-white transition-colors">Terms</Link></li>
+                <li><Link to="/security" className="hover:text-white transition-colors">Security</Link></li>
+                <li><Link to="/compliance-info" className="hover:text-white transition-colors">Compliance</Link></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-slate-800 mt-8 pt-8 text-center text-gray-500 text-sm">
-            &copy; 2025 A13E. All rights reserved. DCV is a product of A13E.
+            &copy; {new Date().getFullYear()} A13E. All rights reserved. DCV is a product of A13E.
           </div>
         </div>
       </footer>
