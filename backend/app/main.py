@@ -7,7 +7,10 @@ from contextlib import asynccontextmanager
 
 import uuid
 
+from pathlib import Path
+
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -464,13 +467,22 @@ app = FastAPI(
     openapi_url=openapi_url,
 )
 
+# Mount static files for self-hosted ReDoc (CSP-compliant)
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
 
 # Custom ReDoc endpoint with dark theme to match app styling
 if settings.environment in ("development", "staging"):
 
     @app.get("/redoc", include_in_schema=False)
     async def custom_redoc_html() -> HTMLResponse:
-        """Serve ReDoc API documentation with dark theme."""
+        """Serve ReDoc API documentation with dark theme.
+
+        Uses self-hosted ReDoc bundle for strict CSP compliance.
+        No external CDN dependencies.
+        """
         return HTMLResponse(
             """
 <!DOCTYPE html>
@@ -479,7 +491,6 @@ if settings.environment in ("development", "staging"):
     <title>A13E API Reference</title>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -513,9 +524,9 @@ if settings.environment in ("development", "staging"):
             },
             "typography": {
                 "fontSize": "15px",
-                "fontFamily": "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-                "headings": { "fontFamily": "Inter, -apple-system, BlinkMacSystemFont, sans-serif" },
-                "code": { "fontFamily": "JetBrains Mono, monospace", "fontSize": "13px", "backgroundColor": "#1e293b" }
+                "fontFamily": "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif",
+                "headings": { "fontFamily": "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" },
+                "code": { "fontFamily": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace", "fontSize": "13px", "backgroundColor": "#1e293b" }
             },
             "sidebar": {
                 "backgroundColor": "#0f172a",
@@ -534,7 +545,7 @@ if settings.environment in ("development", "staging"):
         hide-download-button="false"
         native-scrollbars="true"
     ></redoc>
-    <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+    <script src="/static/docs/redoc.standalone.js"></script>
 </body>
 </html>
             """

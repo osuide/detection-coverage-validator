@@ -86,20 +86,22 @@ exports.handler = async (event) => {
   const response = event.Records[0].cf.response;
   const headers = response.headers;
 
-  // Build Content Security Policy
-  // SECURITY NOTE: 'unsafe-inline' is required for:
-  // - script-src: Stripe.js requires inline event handlers for PCI compliance
-  // - style-src: Tailwind CSS and React inline styles
-  // TODO: Migrate to nonce-based CSP when Stripe Elements supports it
-  // See: https://stripe.com/docs/security/guide#content-security-policy
+  // Build Content Security Policy - STRICT
+  // All JavaScript is bundled via Vite - no external CDNs needed
+  // Payment: Uses Stripe Checkout redirect (not embedded Stripe.js)
+  // Fonts: System fonts only (Inter with system-ui fallbacks)
+  // SECURITY NOTE: 'unsafe-inline' for style-src is required for:
+  // - Tailwind CSS dynamically generated classes
+  // - React inline styles
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://js.stripe.com https://cdn.redocly.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
-    "img-src 'self' data: blob: https:",
-    "connect-src 'self' https://${var.api_domain} https://api.stripe.com",
-    "frame-src https://js.stripe.com",
-    "font-src 'self' data: https://fonts.gstatic.com",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "connect-src 'self' https://${var.api_domain}",
+    "font-src 'self'",
+    "frame-src 'none'",
+    "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",

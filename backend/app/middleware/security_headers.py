@@ -2,6 +2,12 @@
 
 This middleware adds security headers to all API responses to prevent
 common web vulnerabilities like clickjacking, XSS, and MIME-sniffing.
+
+CSP Strategy:
+- /redoc: Self-hosted ReDoc bundle, strictest feasible policy
+- /docs: FastAPI's Swagger UI uses CDN, slightly relaxed for development
+- /openapi.json: Pure JSON, strictest policy
+- All other endpoints: Strictest policy (default-src 'none')
 """
 
 from typing import Any
@@ -11,20 +17,43 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 
-# CSP for API documentation pages (ReDoc, Swagger)
-# Allows external resources needed for docs rendering
-DOCS_CSP = (
+# === CSP Policies (ordered from most to least restrictive) ===
+
+# Strictest CSP for API endpoints - they return JSON, not HTML
+# No resources should ever be loaded in context of API responses
+API_CSP = "default-src 'none'; " "frame-ancestors 'none'"
+
+# Strict CSP for self-hosted ReDoc documentation
+# Uses self-hosted redoc.standalone.js - no external CDN dependencies
+# Only allows: self-hosted scripts, inline styles (ReDoc requirement), data: images
+REDOC_CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://cdn.redoc.ly https://cdn.jsdelivr.net; "
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-    "font-src 'self' https://fonts.gstatic.com; "
-    "img-src 'self' data: https://cdn.redoc.ly; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; "
+    "font-src 'self'; "
     "connect-src 'self'; "
-    "frame-ancestors 'none'"
+    "frame-ancestors 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "object-src 'none'"
 )
 
-# Restrictive CSP for API endpoints
-API_CSP = "default-src 'none'; frame-ancestors 'none'"
+# CSP for Swagger UI (/docs) - requires CDN access for FastAPI's built-in UI
+# Less restrictive due to CDN dependencies, but still locked down
+# Consider self-hosting Swagger UI for stricter CSP in future
+SWAGGER_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "img-src 'self' data: https://cdn.jsdelivr.net; "
+    "font-src 'self'; "
+    "connect-src 'self'; "
+    "frame-ancestors 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "object-src 'none'"
+)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -57,11 +86,19 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "max-age=31536000; includeSubDomains; preload"
         )
 
-        # Content Security Policy - use relaxed policy for docs pages
+        # Content Security Policy - apply appropriate policy per endpoint type
         path = request.url.path
-        if path in ("/redoc", "/docs", "/openapi.json"):
-            response.headers["Content-Security-Policy"] = DOCS_CSP
+        if path == "/redoc":
+            # Self-hosted ReDoc - strict CSP, no external dependencies
+            response.headers["Content-Security-Policy"] = REDOC_CSP
+        elif path == "/docs":
+            # Swagger UI - needs CDN access for FastAPI's built-in UI
+            response.headers["Content-Security-Policy"] = SWAGGER_CSP
+        elif path.startswith("/static/"):
+            # Static files - use ReDoc CSP (same origin, no external deps)
+            response.headers["Content-Security-Policy"] = REDOC_CSP
         else:
+            # All API endpoints and /openapi.json - strictest policy
             response.headers["Content-Security-Policy"] = API_CSP
 
         # Referrer policy - only send origin for cross-origin requests
