@@ -11,6 +11,22 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 
+# CSP for API documentation pages (ReDoc, Swagger)
+# Allows external resources needed for docs rendering
+DOCS_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.redoc.ly https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data: https://cdn.redoc.ly; "
+    "connect-src 'self'; "
+    "frame-ancestors 'none'"
+)
+
+# Restrictive CSP for API endpoints
+API_CSP = "default-src 'none'; frame-ancestors 'none'"
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses.
 
@@ -41,11 +57,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "max-age=31536000; includeSubDomains; preload"
         )
 
-        # Content Security Policy for API - very restrictive
-        # APIs should not load any external resources
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'none'; frame-ancestors 'none'"
-        )
+        # Content Security Policy - use relaxed policy for docs pages
+        path = request.url.path
+        if path in ("/redoc", "/docs", "/openapi.json"):
+            response.headers["Content-Security-Policy"] = DOCS_CSP
+        else:
+            response.headers["Content-Security-Policy"] = API_CSP
 
         # Referrer policy - only send origin for cross-origin requests
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
