@@ -66,7 +66,8 @@ jobs:
           TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
           TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
         # Use -parallelism=1 to prevent Cognito concurrent modification errors
-        run: terraform plan -parallelism=1 -var-file="${{ github.event.inputs.environment || 'staging' }}.tfvars" -out=tfplan
+        # Skip WIF module in CI (managed locally with GCP credentials)
+        run: terraform plan -parallelism=1 -var-file="${{ github.event.inputs.environment || 'staging' }}.tfvars" -var="enable_workspace_wif=false" -out=tfplan
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
@@ -79,6 +80,7 @@ jobs:
           TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
           TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
         # Use -parallelism=1 to prevent Cognito concurrent modification errors
+        # Note: tfplan already has enable_workspace_wif=false baked in from plan step
         run: terraform apply -parallelism=1 -auto-approve tfplan
 
       - name: Get Terraform Outputs
