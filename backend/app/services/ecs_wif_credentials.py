@@ -29,10 +29,11 @@ References:
 import base64
 import os
 import time
-from typing import Optional
+from typing import Any, Optional
 
 import boto3
 import google.auth
+import google.auth.transport
 import google.oauth2.credentials
 import requests
 import structlog
@@ -54,8 +55,8 @@ class EcsAwsSecurityCredentialsSupplier(aws.AwsSecurityCredentialsSupplier):
 
     def get_aws_security_credentials(
         self,
-        context,  # SupplierContext - contains audience and subject token type
-        request,  # google.auth.transport.Request
+        context: Any,  # SupplierContext - contains audience and subject token type
+        request: google.auth.transport.Request,
     ) -> aws.AwsSecurityCredentials:
         """
         Fetch AWS security credentials via boto3.
@@ -95,8 +96,8 @@ class EcsAwsSecurityCredentialsSupplier(aws.AwsSecurityCredentialsSupplier):
 
     def get_aws_region(
         self,
-        context,  # SupplierContext
-        request,  # google.auth.transport.Request
+        context: Any,  # SupplierContext
+        request: google.auth.transport.Request,
     ) -> str:
         """
         Get the AWS region from environment variables.
