@@ -286,7 +286,7 @@ curl -X POST -H "X-API-Key: dcv_live_xxx" \\
     sanitised["info"]["contact"] = {
         "name": "A13E Support",
         "email": "support@a13e.com",
-        "url": "https://a13e.com",
+        "url": "https://app.a13e.com",
     }
     sanitised["info"]["license"] = {
         "name": "Proprietary",
