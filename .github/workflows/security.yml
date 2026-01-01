@@ -100,20 +100,38 @@ jobs:
           name: pip-audit-results
           path: backend/pip-audit-results.json
 
-  # Terraform security scanning with tfsec
+  # Terraform security scanning with Trivy (replaced tfsec)
+  # Note: tfsec is deprecated and doesn't support Terraform 1.5+ check blocks
   tfsec:
     name: tfsec (Terraform)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run tfsec
-        uses: aquasecurity/tfsec-action@v1.0.3
+      - name: Run Trivy IaC scanner
+        uses: aquasecurity/trivy-action@master
         with:
-          working_directory: ./infrastructure/terraform
-          soft_fail: true
-          format: json
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          scan-type: 'config'
+          scan-ref: './infrastructure/terraform'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy IaC scanner (JSON output)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: './infrastructure/terraform'
+          format: 'json'
+          output: 'trivy-iac-results.json'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy IaC results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-iac-results
+          path: trivy-iac-results.json
 
   # Container image scanning with Trivy
   trivy:
