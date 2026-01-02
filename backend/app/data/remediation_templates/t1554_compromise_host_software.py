@@ -454,7 +454,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Log-based metric for binary modifications
@@ -489,7 +488,6 @@ resource "google_monitoring_alert_policy" "binary_alert" {
   project      = var.project_id
   display_name = "System Binary Modified"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "Binary modification detected"
@@ -585,7 +583,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Cloud Scheduler for periodic inventory

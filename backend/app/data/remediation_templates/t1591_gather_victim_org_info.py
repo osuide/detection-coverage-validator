@@ -373,7 +373,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log-based metric for public bucket enumeration
@@ -488,7 +487,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log-based metric for directory enumeration

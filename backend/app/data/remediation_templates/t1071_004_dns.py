@@ -1689,7 +1689,6 @@ resource "google_monitoring_alert_policy" "dns_blocks" {
   project      = var.project_id
   display_name = "DNS Response Policy Blocks Detected"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "Malicious DNS queries blocked"
@@ -1928,7 +1927,6 @@ resource "google_monitoring_alert_policy" "suspicious_types" {
   project      = var.project_id
   display_name = "DNS Tunnelling Pattern Detected - Suspicious Query Types"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "High volume of suspicious DNS query types"
@@ -1966,7 +1964,6 @@ resource "google_monitoring_alert_policy" "long_queries" {
   project      = var.project_id
   display_name = "DNS Tunnelling Pattern Detected - Long Queries"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "Long DNS query names detected"
@@ -2004,7 +2001,6 @@ resource "google_monitoring_alert_policy" "high_entropy" {
   project      = var.project_id
   display_name = "DNS High-Entropy Domains Detected (DGA/C2)"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "High-entropy domain queries detected"
@@ -2273,7 +2269,6 @@ resource "google_monitoring_alert_policy" "scc_dns_threats" {
   project      = var.project_id
   display_name = "SCC DNS Malware Detection"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "DNS-based malware or C2 detected"

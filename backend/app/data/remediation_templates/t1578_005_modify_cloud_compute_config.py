@@ -383,7 +383,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Create log metric for quota changes
@@ -399,7 +398,6 @@ resource "google_logging_metric" "quota_changes" {
     metric_kind = "DELTA"
     value_type  = "INT64"
   }
-  project = var.project_id
 }
 
 # Step 3: Create alert policy for quota modifications
@@ -423,7 +421,6 @@ resource "google_monitoring_alert_policy" "quota_modification" {
       period = "300s"
     }
   }
-  project = var.project_id
 }""",
                 alert_severity="high",
                 alert_title="GCP Quota Modification Detected",
@@ -484,7 +481,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Create log metric for policy changes
@@ -499,7 +495,6 @@ resource "google_logging_metric" "compute_policy_changes" {
     metric_kind = "DELTA"
     value_type  = "INT64"
   }
-  project = var.project_id
 }
 
 # Step 3: Create alert policy
@@ -523,7 +518,6 @@ resource "google_monitoring_alert_policy" "compute_policy_alert" {
       period = "300s"
     }
   }
-  project = var.project_id
 }""",
                 alert_severity="high",
                 alert_title="GCP Compute Policy Modified",

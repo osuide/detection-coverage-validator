@@ -472,7 +472,6 @@ resource "google_monitoring_notification_channel" "email_alerts" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log metric for log enumeration API calls
@@ -593,7 +592,6 @@ resource "google_monitoring_notification_channel" "vm_log_access_alerts" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log metric for system log file access

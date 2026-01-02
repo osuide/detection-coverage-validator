@@ -635,7 +635,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 resource "google_logging_metric" "snapshot_delete" {
@@ -652,7 +651,6 @@ resource "google_logging_metric" "snapshot_delete" {
     unit        = "1"
   }
 
-  project = var.project_id
 }
 
 resource "google_monitoring_alert_policy" "snapshot_delete" {
@@ -679,7 +677,6 @@ resource "google_monitoring_alert_policy" "snapshot_delete" {
     }
   }
 
-  project = var.project_id
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Snapshot/Backup Deletion",
@@ -738,7 +735,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 resource "google_logging_metric" "backup_policy_changes" {
@@ -758,7 +754,6 @@ resource "google_logging_metric" "backup_policy_changes" {
     unit        = "1"
   }
 
-  project = var.project_id
 }
 
 resource "google_monitoring_alert_policy" "backup_policy_changes" {
@@ -785,7 +780,6 @@ resource "google_monitoring_alert_policy" "backup_policy_changes" {
     }
   }
 
-  project = var.project_id
 }""",
                 alert_severity="high",
                 alert_title="GCP: Backup Policy Modified",

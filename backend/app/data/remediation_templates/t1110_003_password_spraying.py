@@ -376,7 +376,6 @@ resource "google_monitoring_notification_channel" "security_email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Create log-based metric for failed authentication
@@ -403,7 +402,6 @@ resource "google_logging_metric" "failed_auth" {
     "principal_email" = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
   }
 
-  project = var.project_id
 }
 
 # Step 3: Create alert policy for password spraying
@@ -431,7 +429,6 @@ resource "google_monitoring_alert_policy" "password_spraying" {
       period = "300s"
     }
   }
-  project = var.project_id
 }""",
                 alert_severity="high",
                 alert_title="GCP: Password Spraying Attack Detected",
@@ -492,7 +489,6 @@ resource "google_monitoring_notification_channel" "workspace_alerts" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Create log-based metric for Workspace login failures
@@ -510,7 +506,6 @@ resource "google_logging_metric" "workspace_login_failures" {
     value_type  = "INT64"
   }
 
-  project = var.project_id
 }
 
 # Step 3: Create alert policy for Workspace spraying
@@ -538,7 +533,6 @@ resource "google_monitoring_alert_policy" "workspace_spraying" {
       period = "300s"
     }
   }
-  project = var.project_id
 }""",
                 alert_severity="high",
                 alert_title="GCP: Workspace Password Spraying",

@@ -579,7 +579,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Create log-based metric for lifecycle changes
@@ -595,7 +594,6 @@ resource "google_logging_metric" "lifecycle_policy" {
     metric_kind = "DELTA"
     value_type  = "INT64"
   }
-  project = var.project_id
 }
 
 # Step 3: Create alert policy for lifecycle modifications
@@ -619,7 +617,6 @@ resource "google_monitoring_alert_policy" "lifecycle_policy" {
       period = "300s"
     }
   }
-  project = var.project_id
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Storage Lifecycle Policy Modification",
@@ -682,7 +679,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Create log-based metric for object deletions
@@ -698,7 +694,6 @@ resource "google_logging_metric" "mass_deletion" {
     metric_kind = "DELTA"
     value_type  = "INT64"
   }
-  project = var.project_id
 }
 
 # Step 3: Create alert policy for high deletion rate
@@ -726,7 +721,6 @@ resource "google_monitoring_alert_policy" "mass_deletion" {
       period = "300s"
     }
   }
-  project = var.project_id
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Mass Storage Object Deletion",

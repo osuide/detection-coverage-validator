@@ -465,7 +465,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Create log-based metric for email protocol traffic
@@ -527,7 +526,6 @@ resource "google_monitoring_alert_policy" "email_protocol" {
     }
   }
 
-  project = var.project_id
 }""",
                 alert_severity="high",
                 alert_title="GCP: Unauthorised Email Protocol Traffic",
@@ -597,7 +595,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 3: Create notification config for email protocol findings

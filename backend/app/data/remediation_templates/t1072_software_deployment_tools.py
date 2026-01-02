@@ -395,7 +395,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log metric for Deployment Manager operations
@@ -422,7 +421,6 @@ resource "google_logging_metric" "deployment_manager_ops" {
     "principal" = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
   }
 
-  project = var.project_id
 }
 
 # Alert policy for suspicious deployments
@@ -430,7 +428,6 @@ resource "google_monitoring_alert_policy" "deployment_manager_activity" {
   project      = var.project_id
   display_name = "Suspicious Deployment Manager Activity"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "High deployment frequency"
@@ -514,7 +511,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log metric for startup script modifications
@@ -532,7 +528,6 @@ resource "google_logging_metric" "startup_script_mods" {
     value_type  = "INT64"
   }
 
-  project = var.project_id
 }
 
 # Alert policy for startup script changes
@@ -540,7 +535,6 @@ resource "google_monitoring_alert_policy" "startup_script_changes" {
   project      = var.project_id
   display_name = "Startup Script Modifications Detected"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "Startup script modified"

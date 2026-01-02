@@ -554,7 +554,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log-based metric for startup script modifications
@@ -571,7 +570,6 @@ resource "google_logging_metric" "startup_script_modification" {
     value_type  = "INT64"
   }
 
-  project = var.project_id
 }
 
 # Alert policy for startup script modifications
@@ -599,7 +597,6 @@ resource "google_monitoring_alert_policy" "startup_script_alert" {
     }
   }
 
-  project = var.project_id
 }
 
 output "metric_name" {
@@ -663,7 +660,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log-based metric for Cloud Run service deployments
@@ -679,7 +675,6 @@ resource "google_logging_metric" "cloud_run_deployment" {
     value_type  = "INT64"
   }
 
-  project = var.project_id
 }
 
 # Alert policy for Cloud Run deployments
@@ -707,7 +702,6 @@ resource "google_monitoring_alert_policy" "cloud_run_alert" {
     }
   }
 
-  project = var.project_id
 }
 
 output "metric_name" {

@@ -413,7 +413,6 @@ resource "google_monitoring_notification_channel" "email" {
   display_name = "DDoS Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
-  project      = var.project_id
 }
 
 # Step 2: Create log-based metric for rate-based bans
@@ -436,7 +435,6 @@ resource "google_logging_metric" "armor_rate_bans" {
   label_extractors = {
     "client_ip" = "EXTRACT(jsonPayload.remoteIp)"
   }
-  project = var.project_id
 }
 
 # Step 3: Create alert policy for DDoS detection
@@ -464,7 +462,6 @@ resource "google_monitoring_alert_policy" "ddos_detection" {
       period = "300s"
     }
   }
-  project = var.project_id
 }""",
                 alert_severity="critical",
                 alert_title="GCP: DDoS Attack Detected",
@@ -523,7 +520,6 @@ resource "google_monitoring_notification_channel" "email" {
   display_name = "Network Flood Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
-  project      = var.project_id
 }
 
 # Step 2: Create log-based metric for high traffic volume
@@ -574,7 +570,6 @@ resource "google_monitoring_alert_policy" "network_flood" {
       period = "300s"
     }
   }
-  project = var.project_id
 }""",
                 alert_severity="high",
                 alert_title="GCP: Network Flood Detected",

@@ -587,7 +587,6 @@ resource "google_monitoring_notification_channel" "email" {
   display_name = "DDoS Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
-  project      = var.project_id
 }
 
 # Log-based metric for DDoS blocks
@@ -695,7 +694,6 @@ resource "google_monitoring_notification_channel" "email" {
   display_name = "Network Flood Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
-  project      = var.project_id
 }
 
 # Log-based metric for high traffic volume

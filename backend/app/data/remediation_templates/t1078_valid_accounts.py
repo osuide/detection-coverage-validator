@@ -1307,7 +1307,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Log-based metric for login activity
@@ -1339,7 +1338,6 @@ resource "google_monitoring_alert_policy" "login_anomaly" {
   project      = var.project_id
   display_name = "T1078: Suspicious Login Activity"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "High volume login attempts"
@@ -1433,7 +1431,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Log-based metric for service account key operations
@@ -1471,7 +1468,6 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
   project      = var.project_id
   display_name = "T1078: Service Account Key Operations"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "Service account key created or deleted"
@@ -2132,7 +2128,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Log sink to BigQuery for analysis
@@ -2861,7 +2856,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Log-based metric for workload identity operations
@@ -2910,7 +2904,6 @@ resource "google_monitoring_alert_policy" "workload_identity_abuse" {
   project      = var.project_id
   display_name = "T1078: Workload Identity Federation Abuse"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "Unusual workload identity federation activity"

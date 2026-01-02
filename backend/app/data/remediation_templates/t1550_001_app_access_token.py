@@ -1849,7 +1849,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Step 2: Log-based metric for OAuth consent grants
@@ -1891,7 +1890,6 @@ resource "google_monitoring_alert_policy" "oauth_consent_attack" {
   project      = var.project_id
   display_name = "T1550.001: OAuth Consent Grant Attack"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "Suspicious OAuth consent activity"

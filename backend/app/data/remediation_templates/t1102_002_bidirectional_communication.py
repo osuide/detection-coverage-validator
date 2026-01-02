@@ -477,7 +477,6 @@ resource "google_monitoring_notification_channel" "storage_c2_email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log-based metric for suspicious Cloud Storage access
@@ -505,7 +504,6 @@ resource "google_logging_metric" "storage_c2_access" {
     "principal_email" = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
   }
 
-  project = var.project_id
 }
 
 # Alert policy for high-volume Cloud Storage access
@@ -513,7 +511,6 @@ resource "google_monitoring_alert_policy" "storage_c2_alerts" {
   project      = var.project_id
   display_name = "Cloud Storage C2 Activity"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "High volume Cloud Storage API calls"
@@ -599,7 +596,6 @@ resource "google_monitoring_notification_channel" "dns_c2_email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log-based metric for DNS queries to web service domains
@@ -632,7 +628,6 @@ resource "google_logging_metric" "dns_web_service_queries" {
     "query_name" = "EXTRACT(jsonPayload.queryName)"
   }
 
-  project = var.project_id
 }
 
 # Alert policy for suspicious DNS activity
@@ -640,7 +635,6 @@ resource "google_monitoring_alert_policy" "dns_web_service_c2" {
   project      = var.project_id
   display_name = "DNS Queries to Web Service C2 Domains"
   combiner     = "OR"
-  project      = var.project_id
 
   conditions {
     display_name = "High volume DNS queries to web services"

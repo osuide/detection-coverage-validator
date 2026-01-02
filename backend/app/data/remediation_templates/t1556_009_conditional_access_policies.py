@@ -409,7 +409,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log-based metric for IAM condition changes
@@ -435,7 +434,6 @@ resource "google_logging_metric" "iam_condition_changes" {
     "principal" = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
   }
 
-  project = var.project_id
 }
 
 # Alert policy for IAM condition modifications
@@ -465,7 +463,6 @@ resource "google_monitoring_alert_policy" "iam_condition_alerts" {
     auto_close = "604800s"  # 7 days
   }
 
-  project = var.project_id
 }""",
                 alert_severity="high",
                 alert_title="GCP IAM Condition Modification Detected",
@@ -530,7 +527,6 @@ resource "google_monitoring_notification_channel" "email" {
   labels = {
     email_address = var.alert_email
   }
-  project = var.project_id
 }
 
 # Log-based metric for CAA policy changes
@@ -562,7 +558,6 @@ resource "google_logging_metric" "caa_policy_changes" {
     "principal" = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
   }
 
-  project = var.project_id
 }
 
 # Alert policy for CAA modifications
@@ -595,7 +590,6 @@ resource "google_monitoring_alert_policy" "caa_modifications" {
     }
   }
 
-  project = var.project_id
 }""",
                 alert_severity="critical",
                 alert_title="GCP Context-Aware Access Policy Modified",
