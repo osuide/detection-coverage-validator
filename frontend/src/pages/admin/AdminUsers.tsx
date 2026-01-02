@@ -14,8 +14,10 @@ import {
   AlertCircle,
   UserX,
   UserCheck,
+  Filter,
 } from 'lucide-react';
 import { useAdminAuthStore, adminApi } from '../../stores/adminAuthStore';
+import SuspendUserModal from '../../components/admin/SuspendUserModal';
 
 interface User {
   id: string;
@@ -50,6 +52,9 @@ export default function AdminUsers() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [suspendedOnly, setSuspendedOnly] = useState(false);
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [userToSuspend, setUserToSuspend] = useState<User | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -68,6 +73,9 @@ export default function AdminUsers() {
       if (searchQuery) {
         params.append('search', searchQuery);
       }
+      if (suspendedOnly) {
+        params.append('suspended_only', 'true');
+      }
 
       const response = await adminApi.get(`/users?${params}`);
       const data: UsersResponse = response.data;
@@ -85,7 +93,7 @@ export default function AdminUsers() {
     if (isAuthenticated) {
       fetchUsers();
     }
-  }, [page, isAuthenticated]);
+  }, [page, isAuthenticated, suspendedOnly]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,15 +101,43 @@ export default function AdminUsers() {
     fetchUsers();
   };
 
-  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
+  const handleFilterToggle = () => {
+    setSuspendedOnly(!suspendedOnly);
+    setPage(1);
+  };
+
+  const handleSuspendClick = (user: User) => {
+    setUserToSuspend(user);
+    setShowSuspendModal(true);
+  };
+
+  const handleSuspendConfirm = async (reason: string) => {
+    if (!userToSuspend) return;
+
+    setActionLoading(userToSuspend.id);
+    try {
+      await adminApi.post(`/users/${userToSuspend.id}/suspend`, { reason });
+      setUsers(users.map(u =>
+        u.id === userToSuspend.id ? { ...u, is_active: false } : u
+      ));
+      setShowSuspendModal(false);
+      setUserToSuspend(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to suspend user');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleUnsuspend = async (userId: string) => {
     setActionLoading(userId);
     try {
-      await adminApi.put(`/users/${userId}/status`, { is_active: !currentStatus });
+      await adminApi.post(`/users/${userId}/unsuspend`);
       setUsers(users.map(u =>
-        u.id === userId ? { ...u, is_active: !currentStatus } : u
+        u.id === userId ? { ...u, is_active: true } : u
       ));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update user');
+      setError(err instanceof Error ? err.message : 'Failed to reactivate user');
     } finally {
       setActionLoading(null);
     }
@@ -151,9 +187,9 @@ export default function AdminUsers() {
           </div>
         )}
 
-        {/* Search */}
+        {/* Search and Filter */}
         <div className="mb-6">
-          <form onSubmit={handleSearch} className="flex gap-4">
+          <form onSubmit={handleSearch} className="flex gap-4 items-center">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input
@@ -170,6 +206,20 @@ export default function AdminUsers() {
             >
               Search
             </button>
+            <div className="border-l border-gray-700 pl-4">
+              <button
+                type="button"
+                onClick={handleFilterToggle}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  suspendedOnly
+                    ? 'bg-red-600 text-white'
+                    : 'bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600'
+                }`}
+              >
+                <Filter className="w-4 h-4" />
+                Suspended Only
+              </button>
+            </div>
           </form>
         </div>
 
@@ -291,29 +341,37 @@ export default function AdminUsers() {
                       {formatDate(user.created_at)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => toggleUserStatus(user.id, user.is_active)}
-                        disabled={actionLoading === user.id}
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                          user.is_active
-                            ? 'bg-red-900/50 text-red-400 hover:bg-red-900'
-                            : 'bg-green-900/50 text-green-400 hover:bg-green-900'
-                        } disabled:opacity-50`}
-                      >
-                        {actionLoading === user.id ? (
-                          <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
-                        ) : user.is_active ? (
-                          <>
-                            <UserX className="w-4 h-4" />
-                            Suspend
-                          </>
-                        ) : (
-                          <>
-                            <UserCheck className="w-4 h-4" />
-                            Activate
-                          </>
-                        )}
-                      </button>
+                      {user.is_active ? (
+                        <button
+                          onClick={() => handleSuspendClick(user)}
+                          disabled={actionLoading === user.id}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-red-900/50 text-red-400 hover:bg-red-900 disabled:opacity-50"
+                        >
+                          {actionLoading === user.id ? (
+                            <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                          ) : (
+                            <>
+                              <UserX className="w-4 h-4" />
+                              Suspend
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleUnsuspend(user.id)}
+                          disabled={actionLoading === user.id}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-green-900/50 text-green-400 hover:bg-green-900 disabled:opacity-50"
+                        >
+                          {actionLoading === user.id ? (
+                            <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                          ) : (
+                            <>
+                              <UserCheck className="w-4 h-4" />
+                              Reactivate
+                            </>
+                          )}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -345,6 +403,18 @@ export default function AdminUsers() {
           </div>
         )}
       </main>
+
+      {/* Suspend User Modal */}
+      <SuspendUserModal
+        user={userToSuspend}
+        isOpen={showSuspendModal}
+        onClose={() => {
+          setShowSuspendModal(false);
+          setUserToSuspend(null);
+        }}
+        onConfirm={handleSuspendConfirm}
+        isLoading={actionLoading === userToSuspend?.id}
+      />
     </div>
   );
 }

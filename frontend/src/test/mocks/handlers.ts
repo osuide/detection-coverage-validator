@@ -95,8 +95,36 @@ export const mockScan = {
   created_at: '2024-01-15T10:00:00Z',
 }
 
-// API base URL
+// API base URLs
 const API_BASE = '/api/v1'
+const ADMIN_API_BASE = '/api/v1/admin'
+
+// Mock admin user data
+export const mockAdminUser = {
+  id: 'admin-user-123',
+  email: 'admin-user@example.com',
+  full_name: 'Admin Test User',
+  is_active: true,
+  email_verified: true,
+  created_at: '2024-01-01T00:00:00Z',
+  last_login_at: '2024-01-15T10:00:00Z',
+  organizations: [
+    { id: 'org-123', name: 'Test Org', role: 'owner' },
+  ],
+}
+
+export const mockSuspendedUser = {
+  id: 'suspended-user-123',
+  email: 'suspended@example.com',
+  full_name: 'Suspended User',
+  is_active: false,
+  email_verified: true,
+  created_at: '2024-01-01T00:00:00Z',
+  last_login_at: '2024-01-10T10:00:00Z',
+  organizations: [
+    { id: 'org-456', name: 'Other Org', role: 'member' },
+  ],
+}
 
 export const handlers = [
   // Auth endpoints
@@ -416,6 +444,90 @@ export const handlers = [
       gap_id: 'gap-123',
       technique_id: params.techniqueId as string,
       status: 'acknowledged',
+    })
+  }),
+
+  // Admin User Management endpoints
+  http.get(`${ADMIN_API_BASE}/users`, ({ request }) => {
+    const url = new URL(request.url)
+    const suspendedOnly = url.searchParams.get('suspended_only') === 'true'
+    const search = url.searchParams.get('search')?.toLowerCase()
+
+    let users = [mockAdminUser, mockSuspendedUser]
+
+    // Filter by suspended_only
+    if (suspendedOnly) {
+      users = users.filter(u => !u.is_active)
+    }
+
+    // Filter by search
+    if (search) {
+      users = users.filter(u =>
+        u.email.toLowerCase().includes(search) ||
+        u.full_name.toLowerCase().includes(search)
+      )
+    }
+
+    return HttpResponse.json({
+      users,
+      total: users.length,
+      page: 1,
+      per_page: 20,
+    })
+  }),
+
+  http.get(`${ADMIN_API_BASE}/users/:id`, ({ params }) => {
+    const userId = params.id as string
+    if (userId === 'admin-user-123') {
+      return HttpResponse.json(mockAdminUser)
+    }
+    if (userId === 'suspended-user-123') {
+      return HttpResponse.json(mockSuspendedUser)
+    }
+    return HttpResponse.json(
+      { detail: 'User not found' },
+      { status: 404 }
+    )
+  }),
+
+  http.post(`${ADMIN_API_BASE}/users/:id/suspend`, async ({ params, request }) => {
+    const userId = params.id as string
+    const body = await request.json() as { reason: string }
+
+    if (!body.reason || body.reason.length < 10) {
+      return HttpResponse.json(
+        { detail: 'Reason must be at least 10 characters' },
+        { status: 400 }
+      )
+    }
+
+    if (userId === 'suspended-user-123') {
+      return HttpResponse.json(
+        { detail: 'User is already suspended' },
+        { status: 400 }
+      )
+    }
+
+    return HttpResponse.json({ message: 'User suspended successfully' })
+  }),
+
+  http.post(`${ADMIN_API_BASE}/users/:id/unsuspend`, ({ params }) => {
+    const userId = params.id as string
+
+    if (userId === 'admin-user-123') {
+      return HttpResponse.json(
+        { detail: 'User is not suspended' },
+        { status: 400 }
+      )
+    }
+
+    return HttpResponse.json({ message: 'User reactivated successfully' })
+  }),
+
+  http.put(`${ADMIN_API_BASE}/users/:id/status`, async ({ request }) => {
+    const body = await request.json() as { is_active: boolean }
+    return HttpResponse.json({
+      message: body.is_active ? 'User activated successfully' : 'User suspended successfully',
     })
   }),
 ]
