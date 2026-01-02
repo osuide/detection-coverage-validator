@@ -120,7 +120,7 @@ resource "aws_cloudwatch_event_target" "sns" {
   # Retry policy: 8 attempts over 1 hour
   retry_policy {
     maximum_retry_attempts = 8
-    maximum_event_age      = 3600
+    maximum_event_age_in_seconds      = 3600
   }
 
   # Dead letter queue for failed deliveries

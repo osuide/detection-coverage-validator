@@ -255,7 +255,7 @@ resource "aws_cloudwatch_event_target" "sns" {
 
   retry_policy {
     maximum_retry_attempts = 8
-    maximum_event_age      = 3600
+    maximum_event_age_in_seconds      = 3600
   }
 
   dead_letter_config {
@@ -670,7 +670,7 @@ resource "aws_cloudwatch_event_target" "sns" {
 
   retry_policy {
     maximum_retry_attempts = 8
-    maximum_event_age      = 3600
+    maximum_event_age_in_seconds      = 3600
   }
 
   dead_letter_config {

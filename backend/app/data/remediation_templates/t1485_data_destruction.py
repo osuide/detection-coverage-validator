@@ -508,12 +508,13 @@ resource "aws_cloudwatch_event_rule" "rds_delete" {
 }
 
 resource "aws_cloudwatch_event_target" "sns" {
-  rule = aws_cloudwatch_event_rule.rds_delete.name
-  arn  = aws_sns_topic.alerts.arn
+  rule      = aws_cloudwatch_event_rule.rds_delete.name
+  target_id = "rds-deletion-alerts"
+  arn       = aws_sns_topic.alerts.arn
 
   retry_policy {
-    maximum_retry_attempts = 8
-    maximum_event_age      = 3600
+    maximum_retry_attempts       = 8
+    maximum_event_age_in_seconds = 3600
   }
 
   dead_letter_config {
