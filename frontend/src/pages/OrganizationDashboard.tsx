@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Building2,
-  ChevronLeft,
   RefreshCw,
   BarChart3,
   Users,
@@ -15,6 +14,7 @@ import {
   cloudOrganizationsApi,
   orgCoverageApi,
 } from '../services/organizationsApi'
+import { PageHeader } from '../components/navigation'
 
 export default function OrganizationDashboard() {
   const { orgId } = useParams<{ orgId: string }>()
@@ -82,32 +82,10 @@ export default function OrganizationDashboard() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-8">
-        <Link
-          to="/organizations"
-          className="text-gray-400 hover:text-white flex items-center mb-4"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to Organisations
-        </Link>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className={`p-3 rounded-lg ${providerColor}`}>
-              <Building2 className="h-8 w-8" />
-            </div>
-            <div className="ml-4">
-              <h1 className="text-2xl font-bold text-white">
-                {organization.name}
-              </h1>
-              <p className="text-gray-400">
-                {organization.provider.toUpperCase()} Organisation{' '}
-                {organization.cloud_org_id}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
+      <PageHeader
+        back={{ label: "Organisations", fallback: "/organizations" }}
+        actions={
+          <>
             <button
               onClick={() => calculateCoverageMutation.mutate()}
               disabled={calculateCoverageMutation.isPending}
@@ -127,9 +105,25 @@ export default function OrganizationDashboard() {
               <Users className="h-4 w-4 mr-2" />
               Manage Accounts
             </Link>
+          </>
+        }
+      >
+        {/* Organisation Title with Icon */}
+        <div className="flex items-center mt-4">
+          <div className={`p-3 rounded-lg ${providerColor}`}>
+            <Building2 className="h-8 w-8" />
+          </div>
+          <div className="ml-4">
+            <h1 className="text-2xl font-bold text-white">
+              {organization.name}
+            </h1>
+            <p className="text-gray-400">
+              {organization.provider.toUpperCase()} Organisation{' '}
+              {organization.cloud_org_id}
+            </p>
           </div>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-6 mb-8">

@@ -7,7 +7,7 @@
 
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { History, ArrowLeft } from 'lucide-react'
+import { History } from 'lucide-react'
 import { Link } from 'react-router'
 import { evaluationHistoryApi } from '../services/api'
 import { useSelectedAccount } from '../hooks/useSelectedAccount'
@@ -16,6 +16,7 @@ import {
   ComplianceAlertsList,
   AccountComplianceSummary,
 } from '../components/evaluation-history'
+import { PageHeader } from '../components/navigation'
 
 export default function ComplianceHistory() {
   const { selectedAccount, isLoading: accountsLoading, hasAccounts } = useSelectedAccount()
@@ -99,46 +100,40 @@ export default function ComplianceHistory() {
   // Error state
   if (hasErrors && !summaryLoading && !trendsLoading && !alertsLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh]">
-        <History className="h-16 w-16 text-gray-600 mb-4" />
-        <h2 className="text-xl font-semibold text-white mb-2">No History Data Available</h2>
-        <p className="text-gray-400 mb-4 text-center max-w-md">
-          Compliance history data is generated after scans are completed.
-          Run a scan to start tracking your detection health over time.
-        </p>
-        <Link
-          to="/compliance"
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Compliance
-        </Link>
+      <div>
+        <PageHeader back={{ label: "Compliance", fallback: "/compliance" }} />
+        <div className="flex flex-col items-center justify-center h-[50vh]">
+          <History className="h-16 w-16 text-gray-600 mb-4" />
+          <h2 className="text-xl font-semibold text-white mb-2">No History Data Available</h2>
+          <p className="text-gray-400 mb-4 text-center max-w-md">
+            Compliance history data is generated after scans are completed.
+            Run a scan to start tracking your detection health over time.
+          </p>
+          <Link
+            to="/compliance"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go to Compliance
+          </Link>
+        </div>
       </div>
     )
   }
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Link
-            to="/dashboard"
-            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Compliance History</h1>
-            <p className="text-gray-400">
-              Track detection health and compliance changes over time
-              {selectedAccount && (
-                <span className="text-gray-500"> for {selectedAccount.name}</span>
-              )}
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Compliance History"
+        description={
+          <>
+            Track detection health and compliance changes over time
+            {selectedAccount && (
+              <span className="text-gray-500"> for {selectedAccount.name}</span>
+            )}
+          </>
+        }
+        back={{ label: "Compliance", fallback: "/compliance" }}
+      />
 
       {/* Summary and Trend Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

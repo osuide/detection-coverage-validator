@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import { useParams, Link } from 'react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  ChevronLeft,
   Cloud,
   CheckCircle2,
   AlertTriangle,
@@ -16,6 +15,7 @@ import {
   cloudOrganizationsApi,
   CloudOrganizationMember,
 } from '../services/organizationsApi'
+import { PageHeader } from '../components/navigation'
 
 export default function OrganizationMembers() {
   const { orgId } = useParams<{ orgId: string }>()
@@ -119,44 +119,28 @@ export default function OrganizationMembers() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-8">
-        <Link
-          to={`/organizations/${orgId}`}
-          className="text-gray-400 hover:text-white flex items-center mb-4"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to {organization.name}
-        </Link>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white">
-              Member Accounts
-            </h1>
-            <p className="text-gray-400">
-              {connectedCount} connected, {discoveredCount} available to connect
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            {selectedMembers.size > 0 && (
-              <button
-                onClick={handleConnect}
-                disabled={connectMutation.isPending}
-                className="btn-primary flex items-center"
-              >
-                {connectMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Link2 className="h-4 w-4 mr-2" />
-                )}
-                Connect {selectedMembers.size} Account
-                {selectedMembers.size > 1 ? 's' : ''}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Member Accounts"
+        description={`${connectedCount} connected, ${discoveredCount} available to connect`}
+        back={{ label: organization.name, fallback: `/organizations/${orgId}` }}
+        actions={
+          selectedMembers.size > 0 && (
+            <button
+              onClick={handleConnect}
+              disabled={connectMutation.isPending}
+              className="btn-primary flex items-center"
+            >
+              {connectMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Link2 className="h-4 w-4 mr-2" />
+              )}
+              Connect {selectedMembers.size} Account
+              {selectedMembers.size > 1 ? 's' : ''}
+            </button>
+          )
+        }
+      />
 
       {/* Search and Actions */}
       <div className="card mb-6">

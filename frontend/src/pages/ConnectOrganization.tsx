@@ -11,6 +11,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { cloudOrganizationsApi } from '../services/organizationsApi'
+import { PageHeader } from '../components/navigation'
 
 type Provider = 'aws' | 'gcp' | null
 type Step = 'provider' | 'credentials' | 'discovering' | 'complete'
@@ -100,21 +101,11 @@ export default function ConnectOrganization() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="mb-8">
-        <button
-          onClick={() => navigate('/organizations')}
-          className="text-gray-400 hover:text-white flex items-center mb-4"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to Organisations
-        </button>
-        <h1 className="text-2xl font-bold text-white">
-          Connect Cloud Organisation
-        </h1>
-        <p className="text-gray-400">
-          Connect your AWS or GCP organisation to discover all accounts
-        </p>
-      </div>
+      <PageHeader
+        title="Connect Cloud Organisation"
+        description="Connect your AWS or GCP organisation to discover all accounts"
+        back={{ label: "Organisations", fallback: "/organizations" }}
+      />
 
       {/* Progress Steps */}
       <div className="flex items-center mb-8">
