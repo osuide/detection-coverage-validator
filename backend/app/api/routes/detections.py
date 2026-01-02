@@ -376,24 +376,31 @@ async def get_detection_mappings(
     )
     mappings = mappings_result.all()
 
+    # Deduplicate by technique_id, keeping highest confidence (already sorted)
+    seen_techniques: set[str] = set()
+    unique_mappings = []
+    for m, t in mappings:
+        if t.technique_id not in seen_techniques:
+            seen_techniques.add(t.technique_id)
+            unique_mappings.append(
+                {
+                    "id": str(m.id),
+                    "technique_id": t.technique_id,
+                    "technique_name": t.name,
+                    "confidence": round(m.confidence, 2),
+                    "mapping_source": (
+                        m.mapping_source.value if m.mapping_source else "unknown"
+                    ),
+                    "rationale": m.rationale,
+                    "matched_indicators": m.matched_indicators,
+                    "created_at": m.created_at.isoformat() if m.created_at else None,
+                }
+            )
+
     return {
         "detection_id": str(detection_id),
         "detection_name": detection.name,
-        "mappings": [
-            {
-                "id": str(m.id),
-                "technique_id": t.technique_id,
-                "technique_name": t.name,
-                "confidence": round(m.confidence, 2),
-                "mapping_source": (
-                    m.mapping_source.value if m.mapping_source else "unknown"
-                ),
-                "rationale": m.rationale,
-                "matched_indicators": m.matched_indicators,
-                "created_at": m.created_at.isoformat() if m.created_at else None,
-            }
-            for m, t in mappings
-        ],
+        "mappings": unique_mappings,
     }
 
 

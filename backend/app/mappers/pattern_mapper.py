@@ -111,6 +111,16 @@ class PatternMapper:
                     )
                 )
 
+        # Deduplicate by technique_id, keeping highest confidence
+        seen: dict[str, MappingResult] = {}
+        for r in results:
+            if (
+                r.technique_id not in seen
+                or r.confidence > seen[r.technique_id].confidence
+            ):
+                seen[r.technique_id] = r
+        results = list(seen.values())
+
         # Sort by confidence descending
         results.sort(key=lambda x: x.confidence, reverse=True)
 
