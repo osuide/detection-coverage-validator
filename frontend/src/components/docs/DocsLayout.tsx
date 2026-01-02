@@ -9,7 +9,7 @@ import {
   ArrowLeft,
   Menu,
   X,
-  Mail,
+  MessageSquare,
   ExternalLink,
   Key,
 } from 'lucide-react';
@@ -173,13 +173,13 @@ export function DocsLayout({ children }: DocsLayoutProps) {
               </div>
               <ul className="space-y-0.5">
                 <li>
-                  <a
-                    href="mailto:support@a13e.com"
+                  <Link
+                    to="/dashboard?support=open"
                     className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-slate-400 hover:bg-slate-800/70 hover:text-white rounded-lg transition-colors"
                   >
-                    <Mail className="h-4 w-4 opacity-70" />
+                    <MessageSquare className="h-4 w-4 opacity-70" />
                     Contact Support
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <a

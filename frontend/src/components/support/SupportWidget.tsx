@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router'
 import {
   MessageSquare,
   X,
@@ -31,6 +32,7 @@ function getDocsUrl(): string {
 
 export default function SupportWidget() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [isOpen, setIsOpen] = useState(false)
   const [mode, setMode] = useState<'menu' | 'ticket' | 'success'>('menu')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -43,6 +45,16 @@ export default function SupportWidget() {
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('technical')
   const [cloudProvider, setCloudProvider] = useState<string>('')
+
+  // Auto-open widget if ?support=open is in URL
+  useEffect(() => {
+    if (searchParams.get('support') === 'open') {
+      setIsOpen(true)
+      // Remove the param from URL to prevent re-opening on refresh
+      searchParams.delete('support')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     if (isOpen && !context) {

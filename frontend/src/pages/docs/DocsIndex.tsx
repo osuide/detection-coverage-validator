@@ -133,13 +133,13 @@ export function DocsIndex() {
         <p className="text-gray-400 mb-6">
           Can't find what you're looking for? Our support team is here to help.
         </p>
-        <a
-          href="mailto:support@a13e.com"
+        <Link
+          to="/dashboard?support=open"
           className="inline-flex items-center gap-2 text-blue-400 font-medium hover:text-blue-300 transition-colors"
         >
           Contact Support
           <ArrowRight className="h-4 w-4" />
-        </a>
+        </Link>
       </div>
     </DocsLayout>
   );

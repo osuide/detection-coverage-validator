@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { ArrowLeft, Mail, MessageSquare, FileText } from 'lucide-react'
+import { ArrowLeft, MessageSquare, FileText, Headphones } from 'lucide-react'
 import A13ELogo from '../components/A13ELogo'
 
 export default function Support() {
@@ -32,21 +32,21 @@ export default function Support() {
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Email Support */}
+            {/* In-App Support */}
             <div className="p-6 bg-slate-800/50 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors">
               <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center mb-4">
-                <Mail className="h-6 w-6 text-blue-400" />
+                <Headphones className="h-6 w-6 text-blue-400" />
               </div>
-              <h2 className="text-xl font-semibold text-white mb-2">Email Support</h2>
+              <h2 className="text-xl font-semibold text-white mb-2">Contact Support</h2>
               <p className="text-gray-400 mb-4">
-                Get in touch with our support team.
+                Get help directly from our support team via the in-app widget.
               </p>
-              <a
-                href="mailto:support@a13e.com"
+              <Link
+                to="/dashboard?support=open"
                 className="text-blue-400 hover:text-blue-300 font-medium"
               >
-                support@a13e.com
-              </a>
+                Open Support Widget →
+              </Link>
             </div>
 
             {/* Documentation */}
