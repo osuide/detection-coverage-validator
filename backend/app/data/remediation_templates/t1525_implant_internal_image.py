@@ -565,7 +565,9 @@ resource "google_monitoring_alert_policy" "image_push" {
                 "permissions. Custom VM images can contain implanted backdoors similar "
                 "to container images."
             ),
-            detection_type=DetectionType.GCP_LOG_METRIC,
+            detection_type=DetectionType.CLOUD_LOGGING_QUERY,
+            aws_service="n/a",
+            gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""-- Detect GCE custom image creation and sharing

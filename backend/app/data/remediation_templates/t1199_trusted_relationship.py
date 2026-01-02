@@ -770,7 +770,9 @@ resource "google_monitoring_alert_policy" "marketplace_activity" {
                 "cross-project service account impersonation, or domain-wide delegation. "
                 "These are the primary vectors for trusted relationship abuse in GCP."
             ),
-            detection_type=DetectionType.GCP_LOG_METRIC,
+            detection_type=DetectionType.CLOUD_LOGGING_QUERY,
+            aws_service="n/a",
+            gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""-- Detect external identity access and cross-project impersonation

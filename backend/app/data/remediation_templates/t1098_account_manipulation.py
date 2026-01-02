@@ -819,7 +819,9 @@ Resources:
                 "Monitors SetIamPolicy calls that add Owner, Editor, or sensitive roles "
                 "to projects, folders, and organisations."
             ),
-            detection_type=DetectionType.GCP_LOG_METRIC,
+            detection_type=DetectionType.CLOUD_LOGGING_QUERY,
+            aws_service="n/a",
+            gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""protoPayload.methodName=~"SetIamPolicy"
@@ -969,7 +971,9 @@ resource "google_monitoring_alert_policy" "iam_policy_alert" {
                 "Detect creation of service account keys which provide persistent "
                 "credential access. Key creation is a common persistence mechanism."
             ),
-            detection_type=DetectionType.GCP_LOG_METRIC,
+            detection_type=DetectionType.CLOUD_LOGGING_QUERY,
+            aws_service="n/a",
+            gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""protoPayload.methodName="google.iam.admin.v1.CreateServiceAccountKey"
@@ -1117,7 +1121,9 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
                 "impersonation (iam.serviceAccounts.actAs, getAccessToken, signBlob). "
                 "These permissions enable privilege escalation."
             ),
-            detection_type=DetectionType.GCP_LOG_METRIC,
+            detection_type=DetectionType.CLOUD_LOGGING_QUERY,
+            aws_service="n/a",
+            gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""protoPayload.methodName="SetIamPolicy"
