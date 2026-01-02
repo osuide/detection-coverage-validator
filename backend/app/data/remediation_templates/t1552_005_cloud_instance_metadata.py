@@ -457,20 +457,37 @@ resource "aws_sns_topic_policy" "allow_events" {
             estimated_monthly_cost="$1-5",
             prerequisites=["AWS Config enabled"],
         ),
-        # Strategy 3: GCP - Metadata server access monitoring
+        # Strategy 3: GCP - Service Account Token Exfiltration Detection
+        # NOTE: GCP metadata server access (169.254.169.254) is NOT logged in Cloud Audit Logs
+        # because it's internal instance traffic. Detection must focus on CONSEQUENCES of theft.
         DetectionStrategy(
-            strategy_id="t1552005-gcp-metadata",
-            name="GCP Metadata Server Access Detection",
-            description="Monitor for unusual access to GCP metadata server.",
+            strategy_id="t1552005-gcp-token-exfil",
+            name="GCP Service Account Token Exfiltration Detection",
+            description=(
+                "Detect when service account credentials stolen via metadata server are used "
+                "from unusual locations. Since metadata server access itself is NOT logged, "
+                "we detect the consequences: token usage from external IPs or unusual patterns."
+            ),
             detection_type=DetectionType.CLOUD_LOGGING_QUERY,
             aws_service="n/a",
             gcp_service="cloud_logging",
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
-                gcp_logging_query='''resource.type="gce_instance"
-protoPayload.methodName="compute.instances.getSerialPortOutput"
-OR protoPayload.requestMetadata.callerSuppliedUserAgent=~".*metadata.*"''',
-                gcp_terraform_template="""# GCP: Detect metadata server abuse
+                gcp_logging_query="""-- Detect service account token usage from unusual locations
+-- Metadata server access is NOT logged; detect consequences instead
+-- 1. SA activity from public IPs (token may have been exfiltrated)
+protoPayload.authenticationInfo.principalEmail=~".*@.*\\.iam\\.gserviceaccount\\.com$"
+protoPayload.requestMetadata.callerIp!~"^(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.|private|gce-internal-ip)"
+severity>=NOTICE
+
+-- For detecting SA creating key for itself (highly unusual, indicates compromise)
+-- OR (
+--   protoPayload.methodName="google.iam.admin.v1.CreateServiceAccountKey"
+--   protoPayload.authenticationInfo.principalEmail=protoPayload.request.name
+-- )""",
+                gcp_terraform_template="""# GCP: Detect service account token exfiltration
+# NOTE: Metadata server (169.254.169.254) access is NOT logged in Cloud Audit Logs
+# This detection focuses on CONSEQUENCES of credential theft
 
 variable "project_id" {
   type = string
@@ -481,48 +498,116 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email_s1" {
+resource "google_monitoring_notification_channel" "imds_exfil" {
   project      = var.project_id
-  display_name = "Security Alerts"
+  display_name = "IMDS Exfiltration Alerts - T1552.005"
   type         = "email"
   labels = {
     email_address = var.alert_email
   }
 }
 
-# Step 2: Log-based metric for metadata access
-resource "google_logging_metric" "metadata_access" {
+# Step 2: Log-based metric for SA activity from external IPs
+# When a token is stolen via metadata server and used externally,
+# the callerIp will be the external IP, not internal or "private"
+resource "google_logging_metric" "sa_external_usage" {
   project = var.project_id
-  name   = "suspicious-metadata-access"
-  filter = <<-EOT
-    resource.type="gce_instance"
-    protoPayload.methodName=~"compute.instances.get.*"
-    severity>=WARNING
+  name    = "t1552005-sa-external-ip-usage"
+  filter  = <<-EOT
+    protoPayload.authenticationInfo.principalEmail=~".*@.*\\.iam\\.gserviceaccount\\.com$"
+    protoPayload.requestMetadata.callerIp!~"^(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.|private|gce-internal-ip)"
+    severity>=NOTICE
   EOT
 
   metric_descriptor {
     metric_kind = "DELTA"
     value_type  = "INT64"
-  }
-}
-
-# Step 3: Alert policy
-resource "google_monitoring_alert_policy" "metadata_alert" {
-  project      = var.project_id
-  display_name = "Suspicious Metadata Access"
-  combiner     = "OR"
-
-  conditions {
-    display_name = "High volume of metadata queries"
-    condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.metadata_access.name}\""
-      duration        = "300s"
-      comparison      = "COMPARISON_GT"
-      threshold_value = 50
+    labels {
+      key         = "principal"
+      value_type  = "STRING"
+      description = "Service account email"
+    }
+    labels {
+      key         = "caller_ip"
+      value_type  = "STRING"
+      description = "External caller IP"
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email_s1.id]
+  label_extractors = {
+    "principal"  = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
+    "caller_ip"  = "EXTRACT(protoPayload.requestMetadata.callerIp)"
+  }
+}
+
+# Step 3: Log-based metric for SA self-key-creation (highly unusual)
+resource "google_logging_metric" "sa_self_key_creation" {
+  project = var.project_id
+  name    = "t1552005-sa-self-key-creation"
+  filter  = <<-EOT
+    protoPayload.methodName="google.iam.admin.v1.CreateServiceAccountKey"
+    protoPayload.authenticationInfo.principalEmail=~".*@.*\\.iam\\.gserviceaccount\\.com$"
+    severity>=NOTICE
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    labels {
+      key         = "principal"
+      value_type  = "STRING"
+      description = "Service account creating the key"
+    }
+  }
+
+  label_extractors = {
+    "principal" = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
+  }
+}
+
+# Step 4: Alert policy for external SA usage
+resource "google_monitoring_alert_policy" "sa_external_usage" {
+  project      = var.project_id
+  display_name = "T1552.005: Service Account Used from External IP"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "SA activity from non-GCP IP (potential token theft)"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.sa_external_usage.name}\""
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.imds_exfil.id]
+
+  documentation {
+    content   = <<-EOT
+      ## Service Account Token Potentially Exfiltrated (T1552.005)
+
+      A service account made API calls from an external IP address.
+      This may indicate the token was stolen via metadata server (IMDS) access.
+
+      ### Investigation Steps
+      1. Identify the source IP and geolocate it
+      2. Check if the SA is attached to a GCE instance
+      3. Review instance for SSRF vulnerabilities
+      4. List all API calls made by this SA from this IP
+
+      ### Immediate Actions
+      1. Rotate the service account key
+      2. Review and restrict SA permissions
+      3. Check for lateral movement or data exfiltration
+    EOT
+    mime_type = "text/markdown"
+  }
 
   alert_strategy {
     auto_close = "1800s"
@@ -532,38 +617,104 @@ resource "google_monitoring_alert_policy" "metadata_alert" {
   }
 }
 
-# Step 4: Enforce metadata concealment (prevention)
-# Add this to GCE instance configs:
-# metadata = {
-#   enable-oslogin = "TRUE"
-# }
-# shielded_instance_config {
-#   enable_secure_boot = true
-# }""",
-                alert_severity="high",
-                alert_title="GCP: Suspicious Metadata Access",
-                alert_description_template="Unusual metadata server access pattern detected on GCE instances.",
+# Step 5: Alert policy for SA self-key-creation
+resource "google_monitoring_alert_policy" "sa_self_key" {
+  project      = var.project_id
+  display_name = "T1552.005: SA Creating Key for Itself (Persistence)"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Service account created key for itself"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.sa_self_key_creation.name}\""
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.imds_exfil.id]
+
+  documentation {
+    content   = <<-EOT
+      ## Service Account Self-Key Creation (T1552.005 + T1098)
+
+      A service account created an API key for itself.
+      This is HIGHLY UNUSUAL - normally keys are created by admins.
+      This indicates the SA is compromised and attacker is establishing persistence.
+
+      ### Investigation Steps
+      1. Identify when the SA was compromised
+      2. Check for prior SSRF or metadata access
+      3. List all keys for this SA and their creation times
+      4. Review all activity from this SA
+
+      ### Immediate Actions
+      1. Delete ALL keys for this service account
+      2. Disable the service account temporarily
+      3. Rotate credentials for any accessed resources
+      4. Review instance security configurations
+    EOT
+    mime_type = "text/markdown"
+  }
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+}
+
+# Step 6: VPC Service Controls recommendation (prevention)
+# Implement IP-based access policies to block token use from untrusted IPs
+# See: https://cloud.google.com/vpc-service-controls/docs/overview""",
+                alert_severity="critical",
+                alert_title="GCP: Service Account Token Exfiltration Detected",
+                alert_description_template=(
+                    "Service account {principal} made API calls from external IP {caller_ip}. "
+                    "This may indicate credentials stolen via metadata server (IMDS) access."
+                ),
                 investigation_steps=[
-                    "Check Cloud Audit Logs for metadata API calls",
-                    "Review which service accounts accessed metadata",
-                    "Look for SSRF patterns in application logs",
-                    "Verify instance security configurations",
+                    "Identify the external IP and geolocate it",
+                    "Check if the SA is attached to a GCE instance",
+                    "Review the instance for SSRF vulnerabilities",
+                    "List all API calls made by this SA from this IP",
+                    "Check for data exfiltration or privilege escalation",
                 ],
                 containment_actions=[
-                    "Enable metadata concealment on instances",
-                    "Rotate service account keys",
+                    "Rotate the service account key immediately",
                     "Review and restrict service account permissions",
-                    "Enable OS Login for instance access",
+                    "Enable VPC Service Controls with IP restrictions",
+                    "Check for lateral movement using delegation chain",
+                    "Disable service account if compromise confirmed",
                 ],
             ),
-            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
-            false_positive_tuning="Baseline normal metadata access patterns",
-            detection_coverage="70% - depends on logging configuration",
-            evasion_considerations="Direct metadata access may not log",
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "Whitelist known external IPs for hybrid/on-prem services. "
+                "Exclude SAs legitimately used from CI/CD systems."
+            ),
+            detection_coverage=(
+                "85% - detects token usage from external IPs. Cannot detect "
+                "usage from within GCP (attacker lateral movement)."
+            ),
+            evasion_considerations=(
+                "Attacker using token from within GCP shows as 'private' or "
+                "'gce-internal-ip'. Combine with SCC Premium for better coverage."
+            ),
             implementation_effort=EffortLevel.MEDIUM,
             implementation_time="1-2 hours",
             estimated_monthly_cost="$10-20",
-            prerequisites=["Cloud Audit Logs enabled"],
+            prerequisites=[
+                "Cloud Audit Logs enabled (Data Access logs for IAM)",
+                "VPC Service Controls recommended for prevention",
+            ],
         ),
         # Strategy 4: AWS - VPC Flow Logs IMDS detection
         DetectionStrategy(
@@ -702,7 +853,7 @@ resource "aws_cloudwatch_metric_alarm" "imds_access" {
     recommended_order=[
         "t1552005-aws-guardduty",
         "t1552005-aws-imdsv2",
-        "t1552005-gcp-metadata",
+        "t1552005-gcp-token-exfil",
         "t1552005-aws-flowlogs",
     ],
     total_effort_hours=4.5,

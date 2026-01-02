@@ -12,6 +12,7 @@ from .template_loader import (
     DetectionType,
     EffortLevel,
     FalsePositiveRate,
+    CloudProvider,
 )
 
 TEMPLATE = RemediationTemplate(
@@ -809,9 +810,458 @@ Resources:
             estimated_monthly_cost="$10-20",
             prerequisites=["CloudTrail enabled", "CloudTrail logs in CloudWatch"],
         ),
+        # Strategy 5: GCP IAM Policy Changes
+        DetectionStrategy(
+            strategy_id="t1098-gcp-iam-changes",
+            name="GCP IAM Policy Change Detection",
+            description=(
+                "Detect IAM policy changes that grant elevated permissions in GCP. "
+                "Monitors SetIamPolicy calls that add Owner, Editor, or sensitive roles "
+                "to projects, folders, and organisations."
+            ),
+            detection_type=DetectionType.GCP_LOG_METRIC,
+            cloud_provider=CloudProvider.GCP,
+            implementation=DetectionImplementation(
+                gcp_logging_query="""protoPayload.methodName=~"SetIamPolicy"
+protoPayload.serviceName="cloudresourcemanager.googleapis.com"
+protoPayload.request.policy.bindings.role=~"(roles/owner|roles/editor|roles/iam.securityAdmin|roles/resourcemanager.organizationAdmin)"
+severity>=NOTICE""",
+                terraform_template="""# GCP IAM Policy Change Detection for T1098
+# Detects SetIamPolicy calls that grant elevated permissions
+
+variable "project_id" {
+  type        = string
+  description = "GCP project ID"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email address for security alerts"
+}
+
+# Notification channel for alerts
+resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
+  display_name = "T1098 Account Manipulation Alerts"
+  type         = "email"
+  labels = {
+    email_address = var.alert_email
+  }
+}
+
+# Log-based metric for IAM policy changes
+resource "google_logging_metric" "iam_policy_changes" {
+  project     = var.project_id
+  name        = "t1098-iam-policy-changes"
+  description = "Detects SetIamPolicy calls granting elevated permissions"
+  filter      = <<-EOT
+    protoPayload.methodName=~"SetIamPolicy"
+    protoPayload.serviceName="cloudresourcemanager.googleapis.com"
+    protoPayload.request.policy.bindings.role=~"(roles/owner|roles/editor|roles/iam.securityAdmin|roles/resourcemanager.organizationAdmin)"
+    severity>=NOTICE
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    labels {
+      key         = "actor"
+      value_type  = "STRING"
+      description = "Principal making the change"
+    }
+    labels {
+      key         = "role"
+      value_type  = "STRING"
+      description = "Role being granted"
+    }
+  }
+
+  label_extractors = {
+    "actor" = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
+    "role"  = "EXTRACT(protoPayload.request.policy.bindings.role)"
+  }
+}
+
+# Alert policy for IAM changes
+resource "google_monitoring_alert_policy" "iam_policy_alert" {
+  project      = var.project_id
+  display_name = "T1098: Elevated IAM Permissions Granted"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "IAM Policy Change Detected"
+
+    condition_threshold {
+      filter          = "metric.type=\\"logging.googleapis.com/user/${google_logging_metric.iam_policy_changes.name}\\" AND resource.type=\\"global\\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
+  documentation {
+    content   = "Elevated IAM permissions were granted via SetIamPolicy. Actor: $${metric.labels.actor}, Role: $${metric.labels.role}. Investigate immediately for potential account manipulation (MITRE T1098)."
+    mime_type = "text/markdown"
+  }
+}""",
+                alert_severity="high",
+                alert_title="GCP: Elevated IAM Permissions Granted",
+                alert_description_template=(
+                    "SetIamPolicy was used to grant elevated permissions ({role}) "
+                    "by {actor}. This may indicate privilege escalation or account manipulation."
+                ),
+                investigation_steps=[
+                    "Identify the resource where permissions were changed",
+                    "Review the IAM binding changes in Cloud Audit Logs",
+                    "Determine if the actor is authorised to make such changes",
+                    "Check if the change follows change management procedures",
+                    "Review the source IP and user agent of the request",
+                    "Investigate what the newly-privileged identity has done since",
+                ],
+                containment_actions=[
+                    "Revert the IAM policy change immediately",
+                    "Disable or restrict the actor's permissions",
+                    "Review all resources the new principal has accessed",
+                    "Implement IAM Recommender to identify over-privileged accounts",
+                    "Enable Organisation Policy constraints for IAM",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "Whitelist Terraform/Deployment service accounts; "
+                "exclude changes during scheduled maintenance windows"
+            ),
+            detection_coverage="90% - detects direct privilege escalation via IAM",
+            evasion_considerations=(
+                "Attackers may grant less obvious roles like custom roles; "
+                "monitor all SetIamPolicy calls, not just privileged roles"
+            ),
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost="$5-15 (Cloud Monitoring)",
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Admin Activity logs (enabled by default)",
+            ],
+        ),
+        # Strategy 6: GCP Service Account Key Creation
+        DetectionStrategy(
+            strategy_id="t1098-gcp-sa-key",
+            name="GCP Service Account Key Creation Monitoring",
+            description=(
+                "Detect creation of service account keys which provide persistent "
+                "credential access. Key creation is a common persistence mechanism."
+            ),
+            detection_type=DetectionType.GCP_LOG_METRIC,
+            cloud_provider=CloudProvider.GCP,
+            implementation=DetectionImplementation(
+                gcp_logging_query="""protoPayload.methodName="google.iam.admin.v1.CreateServiceAccountKey"
+protoPayload.serviceName="iam.googleapis.com"
+severity>=NOTICE""",
+                terraform_template="""# GCP Service Account Key Creation Detection for T1098
+# Detects when service account keys are created (persistence mechanism)
+
+variable "project_id" {
+  type        = string
+  description = "GCP project ID"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email address for security alerts"
+}
+
+# Notification channel
+resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
+  display_name = "T1098 SA Key Creation Alerts"
+  type         = "email"
+  labels = {
+    email_address = var.alert_email
+  }
+}
+
+# Log-based metric for SA key creation
+resource "google_logging_metric" "sa_key_creation" {
+  project     = var.project_id
+  name        = "t1098-sa-key-creation"
+  description = "Detects service account key creation"
+  filter      = <<-EOT
+    protoPayload.methodName="google.iam.admin.v1.CreateServiceAccountKey"
+    protoPayload.serviceName="iam.googleapis.com"
+    severity>=NOTICE
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    labels {
+      key         = "actor"
+      value_type  = "STRING"
+      description = "Principal creating the key"
+    }
+    labels {
+      key         = "service_account"
+      value_type  = "STRING"
+      description = "Service account for which key was created"
+    }
+  }
+
+  label_extractors = {
+    "actor"           = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
+    "service_account" = "EXTRACT(protoPayload.request.name)"
+  }
+}
+
+# Alert policy
+resource "google_monitoring_alert_policy" "sa_key_alert" {
+  project      = var.project_id
+  display_name = "T1098: Service Account Key Created"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "SA Key Creation Detected"
+
+    condition_threshold {
+      filter          = "metric.type=\\"logging.googleapis.com/user/${google_logging_metric.sa_key_creation.name}\\" AND resource.type=\\"global\\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
+  documentation {
+    content   = "A service account key was created by $${metric.labels.actor} for $${metric.labels.service_account}. Service account keys provide persistent access and should be avoided in favour of Workload Identity. Investigate for potential account manipulation (MITRE T1098)."
+    mime_type = "text/markdown"
+  }
+}""",
+                alert_severity="high",
+                alert_title="GCP: Service Account Key Created",
+                alert_description_template=(
+                    "Service account key created by {actor} for {service_account}. "
+                    "Keys provide persistent access and are a common persistence mechanism."
+                ),
+                investigation_steps=[
+                    "Identify the service account and its permissions",
+                    "Determine if the actor is authorised to create keys",
+                    "Check if the SA key creation follows security policies",
+                    "Review the service account's IAM bindings",
+                    "Check for any API usage from the new key",
+                ],
+                containment_actions=[
+                    "Delete the service account key immediately",
+                    "Review the service account's permissions",
+                    "Disable the service account if compromised",
+                    "Implement Organisation Policy to prevent key creation",
+                    "Migrate to Workload Identity where possible",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
+            false_positive_tuning=(
+                "Whitelist automation accounts that legitimately create keys; "
+                "use Organisation Policy to prevent key creation where not needed"
+            ),
+            detection_coverage="95% - catches all service account key creation",
+            evasion_considerations=(
+                "Attackers may use existing keys rather than creating new ones; "
+                "combine with key usage monitoring"
+            ),
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost="$5-10",
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "IAM Admin Activity logs (enabled by default)",
+            ],
+        ),
+        # Strategy 7: GCP Service Account Impersonation Permissions
+        DetectionStrategy(
+            strategy_id="t1098-gcp-sa-impersonation",
+            name="GCP Service Account Impersonation Detection",
+            description=(
+                "Detect when permissions are granted that allow service account "
+                "impersonation (iam.serviceAccounts.actAs, getAccessToken, signBlob). "
+                "These permissions enable privilege escalation."
+            ),
+            detection_type=DetectionType.GCP_LOG_METRIC,
+            cloud_provider=CloudProvider.GCP,
+            implementation=DetectionImplementation(
+                gcp_logging_query="""protoPayload.methodName="SetIamPolicy"
+protoPayload.request.policy.bindings.role=~"(serviceAccountUser|serviceAccountTokenCreator|serviceAccountKeyAdmin|workloadIdentityUser)"
+severity>=NOTICE""",
+                terraform_template="""# GCP Service Account Impersonation Permission Detection for T1098
+# Detects grants of SA impersonation permissions (privilege escalation vector)
+
+variable "project_id" {
+  type        = string
+  description = "GCP project ID"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email address for security alerts"
+}
+
+# Notification channel
+resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
+  display_name = "T1098 SA Impersonation Alerts"
+  type         = "email"
+  labels = {
+    email_address = var.alert_email
+  }
+}
+
+# Log-based metric
+resource "google_logging_metric" "sa_impersonation" {
+  project     = var.project_id
+  name        = "t1098-sa-impersonation-grants"
+  description = "Detects grants of service account impersonation permissions"
+  filter      = <<-EOT
+    protoPayload.methodName="SetIamPolicy"
+    protoPayload.request.policy.bindings.role=~"(serviceAccountUser|serviceAccountTokenCreator|serviceAccountKeyAdmin|workloadIdentityUser)"
+    severity>=NOTICE
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    labels {
+      key         = "actor"
+      value_type  = "STRING"
+      description = "Principal granting the permission"
+    }
+    labels {
+      key         = "role"
+      value_type  = "STRING"
+      description = "Impersonation role granted"
+    }
+  }
+
+  label_extractors = {
+    "actor" = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
+    "role"  = "EXTRACT(protoPayload.request.policy.bindings.role)"
+  }
+}
+
+# Alert policy
+resource "google_monitoring_alert_policy" "sa_impersonation_alert" {
+  project      = var.project_id
+  display_name = "T1098: SA Impersonation Permission Granted"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "SA Impersonation Permission Granted"
+
+    condition_threshold {
+      filter          = "metric.type=\\"logging.googleapis.com/user/${google_logging_metric.sa_impersonation.name}\\" AND resource.type=\\"global\\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
+  documentation {
+    content   = "Service account impersonation permission ($${metric.labels.role}) was granted by $${metric.labels.actor}. This allows privilege escalation via service account impersonation. Investigate for MITRE T1098 Account Manipulation."
+    mime_type = "text/markdown"
+  }
+}""",
+                alert_severity="critical",
+                alert_title="GCP: Service Account Impersonation Permission Granted",
+                alert_description_template=(
+                    "Service account impersonation permission ({role}) was granted by {actor}. "
+                    "This is a critical privilege escalation vector."
+                ),
+                investigation_steps=[
+                    "Identify who was granted the impersonation permission",
+                    "Determine if this follows change management procedures",
+                    "Review the service account's permissions (blast radius)",
+                    "Check if the actor is authorised to grant this permission",
+                    "Investigate any impersonation activity that has occurred",
+                ],
+                containment_actions=[
+                    "Revoke the impersonation permission immediately",
+                    "Review all actions taken via impersonation",
+                    "Implement Organisation Policy to restrict SA impersonation",
+                    "Enable IAM Conditions for time-limited access",
+                    "Audit all identities with impersonation permissions",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.LOW,
+            false_positive_tuning=(
+                "Whitelist legitimate CI/CD pipelines that require impersonation; "
+                "implement approval workflows for impersonation permissions"
+            ),
+            detection_coverage="95% - catches all impersonation permission grants",
+            evasion_considerations=(
+                "Attackers may use existing impersonation permissions; "
+                "combine with impersonation activity monitoring"
+            ),
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost="$5-10",
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Admin Activity logs (enabled by default)",
+            ],
+        ),
     ],
     recommended_order=[
         "t1098-guardduty",
+        "t1098-gcp-iam-changes",
+        "t1098-gcp-sa-impersonation",
+        "t1098-gcp-sa-key",
         "t1098-access-key-creation",
         "t1098-permission-escalation",
         "t1098-iam-changes",

@@ -556,11 +556,227 @@ resource "google_monitoring_alert_policy" "image_push" {
             estimated_monthly_cost="$5-10",
             prerequisites=["Cloud Audit Logs enabled"],
         ),
+        # Strategy: GCP GCE Custom Image Detection
+        DetectionStrategy(
+            strategy_id="t1525-gcp-gce-image",
+            name="GCP GCE Custom Image Creation and Sharing Detection",
+            description=(
+                "Detect creation of GCE custom images and changes to image sharing "
+                "permissions. Custom VM images can contain implanted backdoors similar "
+                "to container images."
+            ),
+            detection_type=DetectionType.GCP_LOG_METRIC,
+            cloud_provider=CloudProvider.GCP,
+            implementation=DetectionImplementation(
+                gcp_logging_query="""-- Detect GCE custom image creation and sharing
+(protoPayload.methodName=~"compute.images.insert|compute.images.create"
+ protoPayload.serviceName="compute.googleapis.com")
+OR
+-- Image IAM policy changes (sharing with external accounts)
+(protoPayload.methodName="compute.images.setIamPolicy"
+ protoPayload.serviceName="compute.googleapis.com")
+OR
+-- Image deprecation/deletion (covering tracks)
+(protoPayload.methodName=~"compute.images.deprecate|compute.images.delete"
+ protoPayload.serviceName="compute.googleapis.com")
+severity>=NOTICE""",
+                terraform_template="""# GCP: Detect GCE custom image creation and sharing (T1525)
+
+variable "project_id" {
+  type        = string
+  description = "GCP project ID"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+# Notification channel
+resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
+  display_name = "T1525 GCE Image Alerts"
+  type         = "email"
+  labels = {
+    email_address = var.alert_email
+  }
+}
+
+# Metric for GCE image creation
+resource "google_logging_metric" "gce_image_creation" {
+  project     = var.project_id
+  name        = "t1525-gce-image-creation"
+  description = "GCE custom image creation events"
+  filter      = <<-EOT
+    protoPayload.methodName=~"compute.images.insert|compute.images.create"
+    protoPayload.serviceName="compute.googleapis.com"
+    severity>=NOTICE
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    labels {
+      key         = "actor"
+      value_type  = "STRING"
+      description = "Principal creating the image"
+    }
+    labels {
+      key         = "image_name"
+      value_type  = "STRING"
+      description = "Name of the created image"
+    }
+  }
+
+  label_extractors = {
+    "actor"      = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
+    "image_name" = "EXTRACT(protoPayload.request.name)"
+  }
+}
+
+# Metric for image IAM policy changes
+resource "google_logging_metric" "gce_image_sharing" {
+  project     = var.project_id
+  name        = "t1525-gce-image-sharing"
+  description = "GCE image IAM policy changes"
+  filter      = <<-EOT
+    protoPayload.methodName="compute.images.setIamPolicy"
+    protoPayload.serviceName="compute.googleapis.com"
+    severity>=NOTICE
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    labels {
+      key         = "actor"
+      value_type  = "STRING"
+      description = "Principal changing the policy"
+    }
+  }
+
+  label_extractors = {
+    "actor" = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
+  }
+}
+
+# Alert for image creation
+resource "google_monitoring_alert_policy" "gce_image_alert" {
+  project      = var.project_id
+  display_name = "T1525: GCE Custom Image Created"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "GCE Image Creation"
+
+    condition_threshold {
+      filter          = "metric.type=\\"logging.googleapis.com/user/${google_logging_metric.gce_image_creation.name}\\" AND resource.type=\\"global\\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
+  documentation {
+    content   = "GCE custom image created by $${metric.labels.actor}: $${metric.labels.image_name}. Verify this is an authorised image creation and scan for malware (MITRE T1525)."
+    mime_type = "text/markdown"
+  }
+}
+
+# Alert for image sharing
+resource "google_monitoring_alert_policy" "gce_image_sharing_alert" {
+  project      = var.project_id
+  display_name = "T1525: GCE Image Sharing Changed"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "GCE Image Sharing"
+
+    condition_threshold {
+      filter          = "metric.type=\\"logging.googleapis.com/user/${google_logging_metric.gce_image_sharing.name}\\" AND resource.type=\\"global\\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
+  documentation {
+    content   = "GCE image sharing permissions changed by $${metric.labels.actor}. Verify the image is not being shared with unauthorised accounts (MITRE T1525)."
+    mime_type = "text/markdown"
+  }
+}""",
+                alert_severity="high",
+                alert_title="GCP: GCE Custom Image Created or Shared",
+                alert_description_template=(
+                    "GCE custom image activity by {actor}. Image: {image_name}. "
+                    "Custom images may contain implanted backdoors."
+                ),
+                investigation_steps=[
+                    "Identify the source disk or snapshot used to create the image",
+                    "Verify the actor is authorised to create/share images",
+                    "Scan the image for malware using third-party tools",
+                    "Check if the image has been used to create any instances",
+                    "Review the IAM policy for external sharing",
+                    "Compare with approved golden images",
+                ],
+                containment_actions=[
+                    "Delete the unauthorised image immediately",
+                    "Revoke external sharing permissions",
+                    "Terminate any instances created from the image",
+                    "Implement Organisation Policy to restrict image creation",
+                    "Enable Shielded VM requirements for instances",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
+            false_positive_tuning=(
+                "Whitelist image builder service accounts; "
+                "exclude scheduled golden image creation pipelines"
+            ),
+            detection_coverage="95% - catches all GCE image creation and sharing",
+            evasion_considerations=(
+                "Attackers may use existing shared images; "
+                "combine with instance creation monitoring"
+            ),
+            implementation_effort=EffortLevel.LOW,
+            implementation_time="30 minutes",
+            estimated_monthly_cost="$5-10",
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Compute Engine Admin Activity logs",
+            ],
+        ),
     ],
     recommended_order=[
         "t1525-aws-ecr-scan",
         "t1525-aws-ecr",
         "t1525-gcp-gcr",
+        "t1525-gcp-gce-image",
     ],
     total_effort_hours=2.0,
     coverage_improvement="+15% improvement for Persistence tactic",

@@ -761,10 +761,242 @@ resource "google_monitoring_alert_policy" "marketplace_activity" {
                 "Organisation policies configured",
             ],
         ),
+        # Strategy: GCP External Identity and Cross-Project Access
+        DetectionStrategy(
+            strategy_id="t1199-gcp-external-identity",
+            name="GCP External Identity and Cross-Project Access Detection",
+            description=(
+                "Detect when external identities access resources via Workload Identity Federation, "
+                "cross-project service account impersonation, or domain-wide delegation. "
+                "These are the primary vectors for trusted relationship abuse in GCP."
+            ),
+            detection_type=DetectionType.GCP_LOG_METRIC,
+            cloud_provider=CloudProvider.GCP,
+            implementation=DetectionImplementation(
+                gcp_logging_query="""-- Detect external identity access and cross-project impersonation
+-- Workload Identity Federation token generation
+(protoPayload.serviceName="sts.googleapis.com"
+ protoPayload.methodName="google.identity.sts.v1.SecurityTokenService.ExchangeToken")
+OR
+-- Cross-project service account access
+(protoPayload.serviceName="iamcredentials.googleapis.com"
+ protoPayload.methodName=~"GenerateAccessToken|GenerateIdToken|SignBlob"
+ protoPayload.authenticationInfo.principalEmail!~"@.*\\.iam\\.gserviceaccount\\.com$")
+OR
+-- IAM policy grants to external principals (different org/domain)
+(protoPayload.methodName="SetIamPolicy"
+ protoPayload.request.policy.bindings.members=~"(user:|serviceAccount:).*@(?!yourdomain\\.com)")
+severity>=NOTICE""",
+                terraform_template="""# GCP: Detect external identity and cross-project access (T1199)
+# Monitors Workload Identity Federation, cross-project impersonation, and external IAM grants
+
+variable "project_id" {
+  type        = string
+  description = "GCP project ID"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+variable "trusted_domains" {
+  type        = list(string)
+  default     = []
+  description = "List of trusted domains (e.g., ['yourdomain.com', 'partner.com'])"
+}
+
+# Notification channel
+resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
+  display_name = "T1199 External Identity Alerts"
+  type         = "email"
+  labels = {
+    email_address = var.alert_email
+  }
+}
+
+# Metric for Workload Identity Federation token exchanges
+resource "google_logging_metric" "wif_token_exchange" {
+  project     = var.project_id
+  name        = "t1199-wif-token-exchange"
+  description = "Workload Identity Federation token exchanges"
+  filter      = <<-EOT
+    protoPayload.serviceName="sts.googleapis.com"
+    protoPayload.methodName="google.identity.sts.v1.SecurityTokenService.ExchangeToken"
+    severity>=NOTICE
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    labels {
+      key         = "pool_id"
+      value_type  = "STRING"
+      description = "Workload Identity Pool ID"
+    }
+    labels {
+      key         = "subject"
+      value_type  = "STRING"
+      description = "External subject"
+    }
+  }
+
+  label_extractors = {
+    "pool_id" = "EXTRACT(protoPayload.resourceName)"
+    "subject" = "EXTRACT(protoPayload.request.subjectToken)"
+  }
+}
+
+# Metric for cross-project service account impersonation
+resource "google_logging_metric" "cross_project_impersonation" {
+  project     = var.project_id
+  name        = "t1199-cross-project-impersonation"
+  description = "Cross-project service account token generation"
+  filter      = <<-EOT
+    protoPayload.serviceName="iamcredentials.googleapis.com"
+    protoPayload.methodName=~"GenerateAccessToken|GenerateIdToken|SignBlob"
+    severity>=NOTICE
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    labels {
+      key         = "caller"
+      value_type  = "STRING"
+      description = "Caller principal"
+    }
+    labels {
+      key         = "target_sa"
+      value_type  = "STRING"
+      description = "Target service account"
+    }
+  }
+
+  label_extractors = {
+    "caller"    = "EXTRACT(protoPayload.authenticationInfo.principalEmail)"
+    "target_sa" = "EXTRACT(protoPayload.resourceName)"
+  }
+}
+
+# Alert for WIF usage from unexpected pools
+resource "google_monitoring_alert_policy" "wif_alert" {
+  project      = var.project_id
+  display_name = "T1199: Workload Identity Federation Token Exchange"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "WIF Token Exchange"
+
+    condition_threshold {
+      filter          = "metric.type=\\"logging.googleapis.com/user/${google_logging_metric.wif_token_exchange.name}\\" AND resource.type=\\"global\\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
+  documentation {
+    content   = "External identity accessed GCP via Workload Identity Federation. Pool: $${metric.labels.pool_id}. Verify this is an expected trusted relationship (MITRE T1199)."
+    mime_type = "text/markdown"
+  }
+}
+
+# Alert for cross-project impersonation
+resource "google_monitoring_alert_policy" "cross_project_alert" {
+  project      = var.project_id
+  display_name = "T1199: Cross-Project Service Account Impersonation"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Cross-Project SA Impersonation"
+
+    condition_threshold {
+      filter          = "metric.type=\\"logging.googleapis.com/user/${google_logging_metric.cross_project_impersonation.name}\\" AND resource.type=\\"global\\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
+  documentation {
+    content   = "Cross-project service account impersonation detected. Caller: $${metric.labels.caller} impersonated $${metric.labels.target_sa}. Verify this is an expected trusted relationship (MITRE T1199)."
+    mime_type = "text/markdown"
+  }
+}""",
+                alert_severity="high",
+                alert_title="GCP: External Identity or Cross-Project Access Detected",
+                alert_description_template=(
+                    "External identity accessed GCP resources. Caller: {caller}, "
+                    "Target: {target_sa}. This may indicate trusted relationship abuse."
+                ),
+                investigation_steps=[
+                    "Identify the external identity or calling project",
+                    "Verify the Workload Identity Pool configuration",
+                    "Check if cross-project access is authorised",
+                    "Review what actions the external identity performed",
+                    "Validate the trusted relationship is still required",
+                    "Check for unusual access patterns or times",
+                ],
+                containment_actions=[
+                    "Revoke the IAM bindings for external principals",
+                    "Disable or delete the Workload Identity Pool provider",
+                    "Remove cross-project impersonation permissions",
+                    "Implement Organisation Policy constraints for WIF",
+                    "Review and audit all external access grants",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
+            false_positive_tuning=(
+                "Whitelist known CI/CD pipelines and automation; "
+                "configure trusted Workload Identity pools; "
+                "exclude expected cross-project service accounts"
+            ),
+            detection_coverage="85% - detects WIF, cross-project impersonation, and external IAM grants",
+            evasion_considerations=(
+                "Attackers may use existing trusted relationships; "
+                "combine with anomaly detection for unusual access patterns"
+            ),
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="1 hour",
+            estimated_monthly_cost="$10-20",
+            prerequisites=[
+                "Cloud Audit Logs enabled",
+                "Data Access logs for iamcredentials.googleapis.com",
+            ],
+        ),
     ],
     recommended_order=[
         "t1199-aws-delegated-admin",
         "t1199-aws-partner-access",
+        "t1199-gcp-external-identity",
         "t1199-gcp-shared-vpc",
         "t1199-aws-support-access",
         "t1199-gcp-marketplace",

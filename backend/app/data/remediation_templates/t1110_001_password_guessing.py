@@ -1102,11 +1102,11 @@ resource "aws_cloudwatch_metric_alarm" "console_brute_force" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""-- Authentication failures across GCP services
+-- Note: SetIamPolicy is NOT included as it's an authorization operation, not authentication
 resource.type="audited_resource"
 (
   protoPayload.methodName=~"google.cloud.identityplatform.*"
   OR protoPayload.methodName=~"google.login.LoginService.*"
-  OR protoPayload.methodName=~"SetIamPolicy"
 )
 protoPayload.status.code!=0
 severity>="WARNING"
