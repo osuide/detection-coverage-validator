@@ -1049,7 +1049,7 @@ resource "google_logging_metric" "dns_tunnel" {
 }
 
 # Step 3: Alert on threshold
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -1069,7 +1069,7 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
       threshold_value = 100
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1146,7 +1146,7 @@ resource "google_logging_metric" "alt_protocol" {
 }
 
 # Step 3: Create alert policy
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -1166,7 +1166,7 @@ resource "google_monitoring_alert_policy" "alt_protocol" {
       threshold_value = 5
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

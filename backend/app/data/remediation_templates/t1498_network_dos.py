@@ -582,7 +582,7 @@ variable "alert_email" {
   description = "Email address for DDoS alerts"
 }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "DDoS Security Alerts"
   type         = "email"
@@ -632,7 +632,7 @@ resource "google_monitoring_alert_policy" "ddos_attack" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "3600s"
@@ -689,7 +689,7 @@ jsonPayload.bytes_sent > 100000000""",
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Network Flood Alerts"
   type         = "email"
@@ -739,7 +739,7 @@ resource "google_monitoring_alert_policy" "network_flood" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

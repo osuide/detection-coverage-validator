@@ -835,7 +835,7 @@ OR protoPayload.request.spec.template.metadata.annotations."run.googleapis.com/e
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -878,7 +878,7 @@ resource "google_monitoring_alert_policy" "cloud_run_mod" {
       threshold_value = 0
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -938,7 +938,7 @@ protoPayload.request.spec.containers.command=~"systemctl|systemd|init.d|service|
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -983,7 +983,7 @@ resource "google_monitoring_alert_policy" "system_process" {
       threshold_value = 0
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1059,7 +1059,7 @@ protoPayload.methodName=~"google.cloud.functions.v1.CloudFunctionsService.Create
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s3" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -1102,7 +1102,7 @@ resource "google_monitoring_alert_policy" "function_mod" {
       threshold_value = 0
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s3.id]
 
   alert_strategy {
     auto_close = "1800s"

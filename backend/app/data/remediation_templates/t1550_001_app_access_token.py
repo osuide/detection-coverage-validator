@@ -1073,7 +1073,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -1114,7 +1114,7 @@ resource "google_monitoring_alert_policy" "sa_token_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1178,7 +1178,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -1219,7 +1219,7 @@ resource "google_monitoring_alert_policy" "oauth_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1842,7 +1842,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s3" {
   project      = var.project_id
   display_name = "OAuth Security Alerts"
   type         = "email"
@@ -1905,7 +1905,7 @@ resource "google_monitoring_alert_policy" "oauth_consent_attack" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s3.id]
 
   alert_strategy {
     auto_close = "1800s"

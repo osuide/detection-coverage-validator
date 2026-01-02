@@ -1009,7 +1009,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   display_name = "Audit Log Security Alerts"
   type         = "email"
   project      = var.project_id
@@ -1073,7 +1073,7 @@ resource "google_monitoring_alert_policy" "log_sink_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1127,7 +1127,7 @@ resource "google_monitoring_alert_policy" "data_access_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1180,7 +1180,7 @@ resource "google_monitoring_alert_policy" "logging_bucket_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1196,7 +1196,7 @@ resource "google_monitoring_alert_policy" "logging_bucket_alert" {
 }
 
 output "notification_channel_id" {
-  value       = google_monitoring_notification_channel.email.id
+  value       = google_monitoring_notification_channel.email_s1.id
   description = "Notification channel for alerts"
 }""",
                 alert_severity="critical",

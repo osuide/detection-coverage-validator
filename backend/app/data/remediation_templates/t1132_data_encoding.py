@@ -636,7 +636,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts - Encoding Detection"
   type         = "email"
@@ -681,7 +681,7 @@ resource "google_monitoring_alert_policy" "encoded_http" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "86400s"
@@ -763,7 +763,7 @@ resource "google_dns_managed_zone" "monitored" {
 }
 
 # Step 2: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts - DNS Encoding"
   type         = "email"
@@ -808,7 +808,7 @@ resource "google_monitoring_alert_policy" "encoded_dns" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "86400s"
@@ -882,7 +882,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s3" {
   project      = var.project_id
   display_name = "Security Alerts - Encoding Tools"
   type         = "email"
@@ -932,7 +932,7 @@ resource "google_monitoring_alert_policy" "encoding_tools" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s3.id]
 
   alert_strategy {
     auto_close = "86400s"

@@ -761,7 +761,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Supply Chain Security Alerts"
   type         = "email"
@@ -811,7 +811,7 @@ resource "google_monitoring_alert_policy" "artifact_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "604800s"  # 7 days
@@ -892,7 +892,7 @@ variable "allowed_repo_pattern" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Cloud Build Security Alerts"
   type         = "email"
@@ -935,7 +935,7 @@ resource "google_monitoring_alert_policy" "build_compromise" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "604800s"
@@ -984,7 +984,7 @@ resource "google_monitoring_alert_policy" "suspicious_source" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1055,7 +1055,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s3" {
   project      = var.project_id
   display_name = "GCR Security Alerts"
   type         = "email"
@@ -1104,7 +1104,7 @@ resource "google_monitoring_alert_policy" "gcr_activity" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s3.id]
 
   alert_strategy {
     auto_close = "1800s"

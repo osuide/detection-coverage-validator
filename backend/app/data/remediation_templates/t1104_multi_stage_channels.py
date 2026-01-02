@@ -625,7 +625,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel for alerts
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts - Multi-Stage C2"
   type         = "email"
@@ -681,7 +681,7 @@ resource "google_monitoring_alert_policy" "multi_stage_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -744,7 +744,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts - Process Sequences"
   type         = "email"
@@ -798,7 +798,7 @@ resource "google_monitoring_alert_policy" "process_sequence_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

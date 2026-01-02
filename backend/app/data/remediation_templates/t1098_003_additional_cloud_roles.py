@@ -619,7 +619,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   display_name = "Security Alerts"
   type         = "email"
   project      = var.project_id
@@ -664,7 +664,7 @@ resource "google_monitoring_alert_policy" "iam_binding" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -723,7 +723,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   display_name = "Security Alerts"
   type         = "email"
   project      = var.project_id
@@ -768,7 +768,7 @@ resource "google_monitoring_alert_policy" "sa_impersonation" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

@@ -502,7 +502,7 @@ resource "google_pubsub_topic" "default_sa_alerts" {
 }
 
 # Step 3: Create alert notification channel and policy
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Default SA Alert Email"
   type         = "email"
@@ -525,7 +525,7 @@ resource "google_monitoring_alert_policy" "default_sa_activity" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     notification_rate_limit {

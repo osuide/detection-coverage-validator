@@ -573,7 +573,7 @@ severity>=WARNING""",
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -599,7 +599,7 @@ resource "google_monitoring_alert_policy" "http_flood" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -631,7 +631,7 @@ resource "google_monitoring_alert_policy" "high_5xx" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -659,7 +659,7 @@ resource "google_monitoring_alert_policy" "backend_latency" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -739,7 +739,7 @@ jsonPayload.enforcedSecurityPolicy.configuredAction="RATE_BASED_BAN"''',
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -788,7 +788,7 @@ resource "google_monitoring_alert_policy" "rate_limit_alert" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -820,7 +820,7 @@ resource "google_monitoring_alert_policy" "throttle_alert" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -878,7 +878,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 variable "backend_service_name" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s3" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -918,7 +918,7 @@ resource "google_monitoring_alert_policy" "connection_errors" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s3.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -947,7 +947,7 @@ resource "google_monitoring_alert_policy" "backend_requests" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s3.id]
 
   alert_strategy {
     auto_close = "1800s"

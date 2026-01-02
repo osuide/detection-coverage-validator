@@ -393,7 +393,7 @@ variable "alert_email" {
 }
 
 # Notification channel for alerts
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   display_name = "Repository Security Alerts"
   type         = "email"
   project      = var.project_id
@@ -440,7 +440,7 @@ resource "google_monitoring_alert_policy" "repo_activity" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"

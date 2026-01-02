@@ -447,7 +447,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Binary Alerts"
   type         = "email"
@@ -503,7 +503,7 @@ resource "google_monitoring_alert_policy" "binary_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -576,7 +576,7 @@ variable "inventory_bucket" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Binary Hash Alerts"
   type         = "email"

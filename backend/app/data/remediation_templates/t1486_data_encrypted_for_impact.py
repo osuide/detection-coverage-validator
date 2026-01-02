@@ -1586,7 +1586,7 @@ variable "threshold" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts - Ransomware"
   type         = "email"
@@ -1646,7 +1646,7 @@ resource "google_monitoring_alert_policy" "storage_ransomware" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1712,7 +1712,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts - Disk Encryption"
   type         = "email"
@@ -1772,7 +1772,7 @@ resource "google_monitoring_alert_policy" "disk_encryption_anomaly" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1837,7 +1837,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s3" {
   project      = var.project_id
   display_name = "Security Alerts - Cloud SQL"
   type         = "email"
@@ -1897,7 +1897,7 @@ resource "google_monitoring_alert_policy" "sql_changes" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s3.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1953,7 +1953,7 @@ resource "google_monitoring_alert_policy" "sql_changes" {
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s4" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -1985,7 +1985,7 @@ resource "google_monitoring_alert_policy" "cmek_changes" {
       threshold_value = 0
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s4.id]
 
   alert_strategy {
     auto_close = "1800s"

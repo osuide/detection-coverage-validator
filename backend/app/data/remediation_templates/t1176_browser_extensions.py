@@ -718,7 +718,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Browser Extension Alerts"
   type         = "email"
@@ -772,7 +772,7 @@ resource "google_monitoring_alert_policy" "extension_alert" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
   alert_strategy {
     auto_close = "1800s"
     notification_rate_limit {
@@ -852,7 +852,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Workspace Extension Policy Alerts"
   type         = "email"
@@ -906,7 +906,7 @@ resource "google_monitoring_alert_policy" "policy_alert" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
   alert_strategy {
     auto_close = "3600s"
     notification_rate_limit {

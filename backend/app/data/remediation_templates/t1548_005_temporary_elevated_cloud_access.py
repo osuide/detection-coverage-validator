@@ -397,7 +397,7 @@ severity="NOTICE"''',
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -434,7 +434,7 @@ resource "google_monitoring_alert_policy" "sa_impersonation_alert" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -487,7 +487,7 @@ severity="NOTICE"''',
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -524,7 +524,7 @@ resource "google_monitoring_alert_policy" "sa_user_role_alert" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

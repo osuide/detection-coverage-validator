@@ -625,7 +625,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel for alerts
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts - Brute Force"
   type         = "email"

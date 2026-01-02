@@ -656,7 +656,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   display_name = "Security Alerts - Input Capture"
   type         = "email"
   project      = var.project_id
@@ -709,7 +709,7 @@ resource "google_monitoring_alert_policy" "failed_auth_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -756,7 +756,7 @@ resource "google_monitoring_alert_policy" "suspicious_login_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -837,7 +837,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   display_name = "OAuth Token Alerts"
   type         = "email"
   project      = var.project_id
@@ -894,7 +894,7 @@ resource "google_monitoring_alert_policy" "token_volume" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

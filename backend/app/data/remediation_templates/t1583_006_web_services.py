@@ -351,7 +351,7 @@ severity>="WARNING"''',
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Web Service Alerts"
   type         = "email"
@@ -385,7 +385,7 @@ resource "google_monitoring_alert_policy" "web_service_abuse" {
       threshold_value = 100
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -439,7 +439,7 @@ jsonPayload.bytes_sent > 100000000""",
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Network Alerts"
   type         = "email"
@@ -479,7 +479,7 @@ resource "google_monitoring_alert_policy" "high_traffic" {
       }
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

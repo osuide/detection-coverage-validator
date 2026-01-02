@@ -410,7 +410,7 @@ resource "aws_sqs_queue_policy" "dlq" {
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -431,7 +431,7 @@ resource "google_monitoring_alert_policy" "high_cpu" {
       threshold_value = 0.9
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"

@@ -556,7 +556,7 @@ resource "google_logging_metric" "http_anomaly" {
 }
 
 # Step 3: Create alert policy
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -576,7 +576,7 @@ resource "google_monitoring_alert_policy" "http_anomaly" {
       threshold_value = 5
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -655,7 +655,7 @@ resource "google_logging_metric" "dns_encoding" {
 }
 
 # Step 3: Create alert policy
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -675,7 +675,7 @@ resource "google_monitoring_alert_policy" "dns_encoding" {
       threshold_value = 50
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -745,7 +745,7 @@ resource "google_logging_metric" "protocol_anomaly" {
 }
 
 # Step 3: Create alert policy
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s3" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -765,7 +765,7 @@ resource "google_monitoring_alert_policy" "protocol_anomaly" {
       threshold_value = 20
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s3.id]
 
   alert_strategy {
     auto_close = "1800s"

@@ -570,7 +570,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "T1199 Security Alerts"
   type         = "email"
@@ -609,7 +609,7 @@ resource "google_monitoring_alert_policy" "partner_access" {
       threshold_value = 0
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
   alert_strategy {
     auto_close = "604800s"  # 7 days
   }
@@ -678,7 +678,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Marketplace Security Alerts"
   type         = "email"
@@ -718,7 +718,7 @@ resource "google_monitoring_alert_policy" "marketplace_activity" {
       threshold_value = 0
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

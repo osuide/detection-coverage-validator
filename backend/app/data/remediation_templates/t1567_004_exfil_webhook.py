@@ -594,7 +594,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -633,7 +633,7 @@ resource "google_monitoring_alert_policy" "webhook_exfil" {
       threshold_value = 10
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -688,7 +688,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -725,7 +725,7 @@ resource "google_monitoring_alert_policy" "script_webhook" {
       threshold_value = 5
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

@@ -1674,7 +1674,7 @@ resource "google_logging_metric" "dns_blocks" {
 }
 
 # Step 6: Notification channel for alerts
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   display_name = "DNS Threat Blocking Alerts"
   type         = "email"
   project      = var.project_id
@@ -1706,7 +1706,7 @@ resource "google_monitoring_alert_policy" "dns_blocks" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "86400s"
@@ -1815,7 +1815,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel for alerts
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   display_name = "DNS Anomaly Detection Alerts"
   type         = "email"
   project      = var.project_id
@@ -1944,7 +1944,7 @@ resource "google_monitoring_alert_policy" "suspicious_types" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "86400s"
@@ -1981,7 +1981,7 @@ resource "google_monitoring_alert_policy" "long_queries" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "86400s"
@@ -2018,7 +2018,7 @@ resource "google_monitoring_alert_policy" "high_entropy" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "86400s"
@@ -2169,7 +2169,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s3" {
   display_name = "SCC DNS Threat Alerts"
   type         = "email"
   project      = var.project_id
@@ -2286,7 +2286,7 @@ resource "google_monitoring_alert_policy" "scc_dns_threats" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s3.id]
 
   alert_strategy {
     auto_close = "86400s"

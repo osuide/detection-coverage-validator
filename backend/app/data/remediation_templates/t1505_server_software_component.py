@@ -500,7 +500,7 @@ OR protoPayload.methodName="v1.compute.instances.addAccessConfig"''',
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -535,7 +535,7 @@ resource "google_monitoring_alert_policy" "metadata_modification" {
       threshold_value = 0
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -588,7 +588,7 @@ OR protoPayload.methodName="google.appengine.v1.Services.UpdateService"''',
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -622,7 +622,7 @@ resource "google_monitoring_alert_policy" "app_engine_deploy" {
       threshold_value = 0
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

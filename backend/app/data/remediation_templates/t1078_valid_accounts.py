@@ -1300,7 +1300,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts - Valid Accounts"
   type         = "email"
@@ -1353,7 +1353,7 @@ resource "google_monitoring_alert_policy" "login_anomaly" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "86400s"
@@ -1424,7 +1424,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts - Service Accounts"
   type         = "email"
@@ -1483,7 +1483,7 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -2121,7 +2121,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s3" {
   project      = var.project_id
   display_name = "Security Alerts - Impossible Travel"
   type         = "email"
@@ -2849,7 +2849,7 @@ variable "trusted_workload_identity_pools" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s4" {
   project      = var.project_id
   display_name = "Workload Identity Security Alerts"
   type         = "email"
@@ -2921,7 +2921,7 @@ resource "google_monitoring_alert_policy" "workload_identity_abuse" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s4.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -2995,7 +2995,7 @@ resource "google_bigquery_dataset" "workload_identity_logs" {
 }
 
 output "notification_channel_id" {
-  value       = google_monitoring_notification_channel.email.id
+  value       = google_monitoring_notification_channel.email_s4.id
   description = "Notification channel ID for alerts"
 }
 

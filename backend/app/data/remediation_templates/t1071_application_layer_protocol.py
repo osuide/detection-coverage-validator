@@ -724,7 +724,7 @@ variable "alert_email" {
 }
 
 # Step 1: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts - C2 Detection"
   type         = "email"
@@ -772,7 +772,7 @@ resource "google_monitoring_alert_policy" "c2_detection" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "86400s"
@@ -843,7 +843,7 @@ variable "alert_email" {
 # Note: SCC must be enabled manually or via organisation policies
 
 # Step 2: Notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts - SCC"
   type         = "email"

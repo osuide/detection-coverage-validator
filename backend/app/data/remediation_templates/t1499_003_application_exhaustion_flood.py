@@ -503,7 +503,7 @@ variable "alert_email" {
   description = "Email for alerts"
 }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "App Exhaustion Alerts"
   type         = "email"
@@ -546,7 +546,7 @@ resource "google_monitoring_alert_policy" "slow_request_rate" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -590,7 +590,7 @@ resource "google_monitoring_alert_policy" "server_error_rate" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -655,7 +655,7 @@ variable "alert_email" {
   description = "Email for alerts"
 }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "GCE Exhaustion Alerts"
   type         = "email"
@@ -686,7 +686,7 @@ resource "google_monitoring_alert_policy" "high_cpu" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -722,7 +722,7 @@ resource "google_monitoring_alert_policy" "high_memory" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -770,7 +770,7 @@ resource "google_monitoring_alert_policy" "rapid_autoscaling" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

@@ -1017,7 +1017,7 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Service Account Creation Alerts"
   type         = "email"
@@ -1069,7 +1069,7 @@ resource "google_monitoring_alert_policy" "sa_creation" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1130,7 +1130,7 @@ variable "alert_email" {
   type = string
 }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Federated Identity Alerts"
   type         = "email"
@@ -1173,7 +1173,7 @@ resource "google_monitoring_alert_policy" "wif_creation" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

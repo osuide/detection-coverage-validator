@@ -1042,7 +1042,7 @@ variable "alert_email" {
 }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   display_name = "OS Config Security Alerts"
   type         = "email"
   project      = var.project_id
@@ -1100,7 +1100,7 @@ resource "google_monitoring_alert_policy" "osconfig_policy" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1153,7 +1153,7 @@ resource "google_monitoring_alert_policy" "patch_deployment" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1206,7 +1206,7 @@ resource "google_monitoring_alert_policy" "ssh_browser" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -1222,7 +1222,7 @@ resource "google_monitoring_alert_policy" "ssh_browser" {
 }
 
 output "notification_channel_id" {
-  value       = google_monitoring_notification_channel.email.id
+  value       = google_monitoring_notification_channel.email_s1.id
   description = "Notification channel for alerts"
 }""",
                 alert_severity="high",

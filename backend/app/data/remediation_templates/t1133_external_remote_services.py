@@ -517,7 +517,7 @@ OR (resource.type="gce_firewall" AND protoPayload.methodName="v1.compute.firewal
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -554,7 +554,7 @@ resource "google_monitoring_alert_policy" "remote_access" {
       threshold_value = 3
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"
@@ -611,7 +611,7 @@ jsonPayload.connection.src_ip!="192.168.0.0/16"''',
 variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -647,7 +647,7 @@ resource "google_monitoring_alert_policy" "ssh_rdp_external" {
       threshold_value = 10
     }
   }
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"

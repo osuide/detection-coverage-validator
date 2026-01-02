@@ -661,7 +661,7 @@ resource "google_logging_metric" "native_api" {
 }
 
 # Step 2: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Native API Abuse Alerts"
   type         = "email"
@@ -690,7 +690,7 @@ resource "google_monitoring_alert_policy" "native_api" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "1800s"

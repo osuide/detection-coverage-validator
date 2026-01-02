@@ -599,7 +599,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -645,7 +645,7 @@ resource "google_monitoring_alert_policy" "phishing_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s1.id]
 
   alert_strategy {
     auto_close = "604800s"  # 7 days
@@ -708,7 +708,7 @@ resource "google_project_service" "webrisk" {
 }
 
 # Step 2: Create notification channel
-resource "google_monitoring_notification_channel" "email" {
+resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
@@ -749,7 +749,7 @@ resource "google_monitoring_alert_policy" "malicious_url_alert" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.id]
+  notification_channels = [google_monitoring_notification_channel.email_s2.id]
 
   alert_strategy {
     auto_close = "1800s"
