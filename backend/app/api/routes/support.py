@@ -583,6 +583,36 @@ Submitted via A13E Support Form at {submitted_at.strftime('%Y-%m-%d %H:%M UTC')}
             body=email_body,
         )
 
+        # Send confirmation email to user
+        user_confirmation = f"""Hi {context.full_name.split()[0] if context.full_name else 'there'},
+
+Thank you for contacting A13E Support. We've received your request and will get back to you shortly.
+
+Ticket Reference: {ticket_id}
+Subject: {request.subject}
+Category: {category_display.get(request.category, request.category)}
+
+What happens next:
+- Our team will review your request
+- You'll receive a response within 24 hours (usually much sooner)
+- Reply to this email to add more information to your ticket
+
+If this is urgent, please reply with "URGENT" in the subject line.
+
+Best regards,
+The A13E Support Team
+
+---
+A13E Detection Coverage Validator
+https://app.a13e.com
+"""
+
+        ws.send_email(
+            to=current_user.email,
+            subject=f"[{ticket_id}] We've received your support request",
+            body=user_confirmation,
+        )
+
     except Exception as e:
         # Log error but don't fail the request - ticket was submitted
         import structlog

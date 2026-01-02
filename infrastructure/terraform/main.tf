@@ -232,6 +232,9 @@ module "backend" {
   github_client_id     = var.github_client_id
   github_client_secret = var.github_client_secret
 
+  # Support system API key for Google Workspace integration
+  support_api_key = var.support_api_key
+
   # WAF IP restriction - NOT applied to API (only frontend)
   # API relies on authentication, not IP allowlisting
   allowed_ips = []
@@ -251,6 +254,7 @@ module "backend" {
   workspace_wif_provider_id       = var.enable_workspace_wif ? "aws-${var.environment}" : ""
   workspace_service_account_email = var.workspace_service_account_email
   workspace_admin_email           = var.workspace_admin_email
+  support_crm_spreadsheet_id      = var.support_crm_spreadsheet_id
 }
 
 # Frontend (S3 + CloudFront)

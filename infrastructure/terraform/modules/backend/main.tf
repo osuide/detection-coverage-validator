@@ -163,6 +163,13 @@ variable "github_client_secret" {
   sensitive   = true
 }
 
+variable "support_api_key" {
+  type        = string
+  description = "API key for Google Workspace support integration"
+  default     = ""
+  sensitive   = true
+}
+
 # Note: Microsoft SSO has been removed from the product
 
 # Google Workspace WIF Configuration
@@ -199,6 +206,12 @@ variable "workspace_service_account_email" {
 variable "workspace_admin_email" {
   type        = string
   description = "Workspace admin email for domain-wide delegation"
+  default     = ""
+}
+
+variable "support_crm_spreadsheet_id" {
+  type        = string
+  description = "Google Sheets ID for support CRM ticket logging"
   default     = ""
 }
 
@@ -625,6 +638,22 @@ resource "aws_secretsmanager_secret_version" "github_client_secret" {
   secret_string = var.github_client_secret
 }
 
+resource "aws_secretsmanager_secret" "support_api_key" {
+  count = var.support_api_key != "" ? 1 : 0
+  name  = "a13e/${var.environment}/support-api-key"
+
+  tags = {
+    Name        = "a13e-${var.environment}-support-api-key"
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "support_api_key" {
+  count         = var.support_api_key != "" ? 1 : 0
+  secret_id     = aws_secretsmanager_secret.support_api_key[0].id
+  secret_string = var.support_api_key
+}
+
 # IAM Policy for ECS Execution Role to read secrets
 resource "aws_iam_role_policy" "ecs_execution_secrets" {
   name = "a13e-${var.environment}-ecs-secrets-policy"
@@ -642,7 +671,8 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         var.credential_encryption_key != "" ? [aws_secretsmanager_secret.credential_encryption_key[0].arn] : [],
         var.stripe_secret_key != "" ? [aws_secretsmanager_secret.stripe_secret_key[0].arn] : [],
         var.stripe_webhook_secret != "" ? [aws_secretsmanager_secret.stripe_webhook_secret[0].arn] : [],
-        var.github_client_secret != "" ? [aws_secretsmanager_secret.github_client_secret[0].arn] : []
+        var.github_client_secret != "" ? [aws_secretsmanager_secret.github_client_secret[0].arn] : [],
+        var.support_api_key != "" ? [aws_secretsmanager_secret.support_api_key[0].arn] : []
       )
     }]
   })
@@ -714,7 +744,8 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "WORKSPACE_WIF_POOL_ID", value = var.workspace_wif_pool_id },
         { name = "WORKSPACE_WIF_PROVIDER_ID", value = var.workspace_wif_provider_id },
         { name = "WORKSPACE_SERVICE_ACCOUNT_EMAIL", value = var.workspace_service_account_email },
-        { name = "WORKSPACE_ADMIN_EMAIL", value = var.workspace_admin_email }
+        { name = "WORKSPACE_ADMIN_EMAIL", value = var.workspace_admin_email },
+        { name = "SUPPORT_CRM_SPREADSHEET_ID", value = var.support_crm_spreadsheet_id }
       ] : []
     )
 
@@ -741,6 +772,10 @@ resource "aws_ecs_task_definition" "backend" {
       var.github_client_secret != "" ? [{
         name      = "GITHUB_CLIENT_SECRET"
         valueFrom = aws_secretsmanager_secret.github_client_secret[0].arn
+      }] : [],
+      var.support_api_key != "" ? [{
+        name      = "SUPPORT_API_KEY"
+        valueFrom = aws_secretsmanager_secret.support_api_key[0].arn
       }] : []
     )
 

@@ -131,6 +131,13 @@ variable "github_client_secret" {
   default     = ""
 }
 
+variable "support_api_key" {
+  description = "API key for Google Workspace support integration"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # Note: Microsoft SSO has been removed from the product
 
 # ============================================================================
@@ -269,6 +276,12 @@ variable "workspace_admin_email" {
 
 variable "workspace_service_account_email" {
   description = "Existing GCP service account email for Workspace access (if empty, creates a new one)"
+  type        = string
+  default     = ""
+}
+
+variable "support_crm_spreadsheet_id" {
+  description = "Google Sheets ID for support CRM ticket logging"
   type        = string
   default     = ""
 }

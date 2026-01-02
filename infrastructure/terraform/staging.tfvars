@@ -39,6 +39,9 @@ enable_cognito = true
 # github_client_id     = ""  # Set via TF_VAR_github_client_id
 # github_client_secret = ""  # Set via TF_VAR_github_client_secret
 
+# Support API key for Google Workspace integration
+# support_api_key = ""  # Set via TF_VAR_support_api_key
+
 # Note: GitHub authentication is handled by the backend directly (not via Cognito)
 # Microsoft SSO has been removed from the product
 
@@ -88,3 +91,4 @@ workspace_gcp_project_id        = "a13e-workspace-automation"
 workspace_gcp_project_number    = "323306277338"
 workspace_admin_email           = "austin@a13e.com"
 workspace_service_account_email = "workspace-automation@a13e-workspace-automation.iam.gserviceaccount.com"
+support_crm_spreadsheet_id      = "1UMVumA3LyD5fLjd32EQYi_h3oaQiOrvkpbn3oyDZSsU"
