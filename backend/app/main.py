@@ -798,7 +798,7 @@ app.include_router(admin_router, prefix="/api/v1/admin")
 app.include_router(public_api_router, prefix="/api/v1")
 
 # Support system integration (dedicated API key auth)
-app.include_router(support.router, prefix="/api", tags=["Support Integration"])
+app.include_router(support.router, prefix="/api/v1", tags=["Support Integration"])
 
 # Google Workspace setup (admin only)
 app.include_router(workspace_setup.router, prefix="/api/v1", tags=["Workspace Setup"])
