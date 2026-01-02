@@ -833,12 +833,12 @@ def require_tier(*tiers: Any) -> Callable:
 
 
 # Support API authentication
+# Module-level bearer scheme instance for support API
+_support_api_bearer = HTTPBearer(scheme_name="Support-API-Key", auto_error=True)
 
 
 async def verify_support_api_key(
-    x_support_api_key: str = Depends(
-        lambda: HTTPBearer(scheme_name="Support-API-Key", auto_error=True)
-    ),
+    credentials: HTTPAuthorizationCredentials = Depends(_support_api_bearer),
 ) -> str:
     """Verify the support API key for support system integration.
 
@@ -859,12 +859,8 @@ async def verify_support_api_key(
             detail="Support API not configured",
         )
 
-    # Extract token from credentials if HTTPAuthorizationCredentials
-    token = (
-        x_support_api_key.credentials
-        if hasattr(x_support_api_key, "credentials")
-        else str(x_support_api_key)
-    )
+    # Extract the token from HTTPAuthorizationCredentials
+    token = credentials.credentials
 
     if not secrets.compare_digest(token, settings.support_api_key):
         logger.warning(
