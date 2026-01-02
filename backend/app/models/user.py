@@ -571,6 +571,7 @@ class AuditLogAction(str, enum.Enum):
     USER_ROLE_CHANGED = "user.role_changed"
     USER_REMOVED = "user.removed"
     USER_SUSPENDED = "user.suspended"
+    USER_ACTIVATED = "user.activated"
 
     # Member management
     MEMBER_INVITED = "member.invited"

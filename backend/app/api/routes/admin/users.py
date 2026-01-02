@@ -17,7 +17,7 @@ from app.models.user import (
     OrganizationMember,
     Organization,
     AuditLog,
-    AuditEventType,
+    AuditLogAction,
 )
 from app.api.deps import get_current_admin
 
@@ -234,9 +234,9 @@ async def update_user_status(
     # Create audit log
     action = "activated" if body.is_active else "suspended"
     event_type = (
-        AuditEventType.USER_SUSPENDED
+        AuditLogAction.USER_SUSPENDED
         if not body.is_active
-        else AuditEventType.SETTINGS_CHANGED
+        else AuditLogAction.USER_ACTIVATED
     )
 
     if org_id:
@@ -326,7 +326,7 @@ async def suspend_user(
         audit_log = AuditLog(
             organization_id=org_id,
             user_id=user_id,
-            event_type=AuditEventType.USER_SUSPENDED,
+            event_type=AuditLogAction.USER_SUSPENDED,
             resource_type="user",
             resource_id=str(user_id),
             ip_address=get_client_ip(request),
@@ -404,7 +404,7 @@ async def unsuspend_user(
         audit_log = AuditLog(
             organization_id=org_id,
             user_id=user_id,
-            event_type=AuditEventType.SETTINGS_CHANGED,
+            event_type=AuditLogAction.USER_ACTIVATED,
             resource_type="user",
             resource_id=str(user_id),
             ip_address=get_client_ip(request),

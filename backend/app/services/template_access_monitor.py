@@ -266,7 +266,7 @@ class TemplateAccessMonitor:
                 return
 
             # Import here to avoid circular imports
-            from app.models.user import User, AuditEventType, AuditLog
+            from app.models.user import User, AuditLogAction, AuditLog
 
             # Suspend user until admin review
             await db.execute(
@@ -277,7 +277,7 @@ class TemplateAccessMonitor:
             audit_log = AuditLog(
                 organization_id=org_id,
                 user_id=user_id,
-                event_type=AuditEventType.USER_SUSPENDED,
+                event_type=AuditLogAction.USER_SUSPENDED,
                 resource_type="user",
                 resource_id=str(user_id),
                 ip_address=client_ip,
