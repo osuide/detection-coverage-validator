@@ -86,6 +86,9 @@ design/
 backend/docs/
 add_template_registration.py
 
+# Google Apps Script (contains API keys configured via Script Properties)
+docs/support-system/google-apps-script/
+
 # API Documentation Site (docs.a13e.com)
 # Ignore internal/development docs
 /docs/architecture/
