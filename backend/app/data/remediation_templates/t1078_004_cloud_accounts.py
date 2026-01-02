@@ -1169,7 +1169,7 @@ resource "google_logging_metric" "sa_credential_usage" {
   filter  = <<-EOT
     resource.type="audited_resource"
     protoPayload.authenticationInfo.principalEmail:*@*.iam.gserviceaccount.com
-    protoPayload.methodName=~"GetIamPolicy|SetIamPolicy|CreateServiceAccountKey|iam.serviceAccounts.getAccessToken"
+    protoPayload.methodName=~"GetIamPolicy|SetIamPolicy|CreateServiceAccountKey|GenerateAccessToken|GenerateIdToken|getAccessToken"
   EOT
 
   metric_descriptor {
@@ -1218,6 +1218,13 @@ resource "google_monitoring_alert_policy" "sa_abuse" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Sensitive service account operation detected. Review Cloud Audit Logs."

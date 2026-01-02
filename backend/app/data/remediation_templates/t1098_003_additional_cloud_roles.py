@@ -609,17 +609,20 @@ protoPayload.request.policy.bindings.role=~"(owner|admin|editor)"''',
                 gcp_terraform_template="""# GCP: Detect IAM role binding changes
 
 variable "project_id" {
-  type = string
+  type        = string
+  description = "GCP Project ID"
 }
 
 variable "alert_email" {
-  type = string
+  type        = string
+  description = "Email for security alerts"
 }
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
   display_name = "Security Alerts"
   type         = "email"
+  project      = var.project_id
   labels = {
     email_address = var.alert_email
   }
@@ -627,10 +630,11 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "iam_binding" {
-  name   = "privileged-iam-binding-changes"
-  filter = <<-EOT
-    protoPayload.methodName=~"SetIamPolicy"
-    protoPayload.request.policy.bindings.role=~"(owner|admin|editor)"
+  name    = "privileged-iam-binding-changes"
+  project = var.project_id
+  filter  = <<-EOT
+    protoPayload.methodName=~"SetIamPolicy|setIamPolicy"
+    protoPayload.request.policy.bindings.role=~"(roles/owner|roles/editor|admin)"
   EOT
 
   metric_descriptor {
@@ -642,19 +646,32 @@ resource "google_logging_metric" "iam_binding" {
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "iam_binding" {
   display_name = "Privileged IAM Binding Changed"
+  project      = var.project_id
   combiner     = "OR"
 
   conditions {
     display_name = "Admin/Owner role binding"
     condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.iam_binding.name}\""
+      filter          = "metric.type=\\"logging.googleapis.com/user/${google_logging_metric.iam_binding.name}\\" resource.type=\\"global\\""
       duration        = "0s"
       comparison      = "COMPARISON_GT"
       threshold_value = 0
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_COUNT"
+      }
     }
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Privileged Role Binding Added",
@@ -692,21 +709,24 @@ resource "google_monitoring_alert_policy" "iam_binding" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''protoPayload.methodName="SetIamPolicy"
-protoPayload.request.policy.bindings.role="roles/iam.serviceAccountTokenCreator"''',
+protoPayload.request.policy.bindings.role=~"serviceAccountTokenCreator|serviceAccountUser|serviceAccountKeyAdmin|workloadIdentityUser"''',
                 gcp_terraform_template="""# GCP: Detect service account impersonation
 
 variable "project_id" {
-  type = string
+  type        = string
+  description = "GCP Project ID"
 }
 
 variable "alert_email" {
-  type = string
+  type        = string
+  description = "Email for security alerts"
 }
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
   display_name = "Security Alerts"
   type         = "email"
+  project      = var.project_id
   labels = {
     email_address = var.alert_email
   }
@@ -714,10 +734,11 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "sa_impersonation" {
-  name   = "sa-impersonation-permissions"
-  filter = <<-EOT
+  name    = "sa-impersonation-permissions"
+  project = var.project_id
+  filter  = <<-EOT
     protoPayload.methodName="SetIamPolicy"
-    protoPayload.request.policy.bindings.role=~"serviceAccountTokenCreator|serviceAccountUser"
+    protoPayload.request.policy.bindings.role=~"serviceAccountTokenCreator|serviceAccountUser|serviceAccountKeyAdmin|workloadIdentityUser"
   EOT
 
   metric_descriptor {
@@ -729,19 +750,32 @@ resource "google_logging_metric" "sa_impersonation" {
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "sa_impersonation" {
   display_name = "Service Account Impersonation Enabled"
+  project      = var.project_id
   combiner     = "OR"
 
   conditions {
     display_name = "SA impersonation permission added"
     condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.sa_impersonation.name}\""
+      filter          = "metric.type=\\"logging.googleapis.com/user/${google_logging_metric.sa_impersonation.name}\\" resource.type=\\"global\\""
       duration        = "0s"
       comparison      = "COMPARISON_GT"
       threshold_value = 0
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_COUNT"
+      }
     }
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Service Account Impersonation Enabled",

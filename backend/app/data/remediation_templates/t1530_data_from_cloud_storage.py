@@ -1005,7 +1005,7 @@ resource "aws_cloudwatch_metric_alarm" "cross_account" {
             implementation=DetectionImplementation(
                 gcp_logging_query="""-- GCS data access and potential exfiltration
 resource.type="gcs_bucket"
-protoPayload.methodName=~"storage.objects.get|storage.objects.list"
+protoPayload.methodName=~"storage.objects.get|storage.objects.list|storage.objects.copy"
 severity>=NOTICE
 """,
                 gcp_terraform_template="""# GCP Cloud Storage Exfiltration Detection
@@ -1039,7 +1039,7 @@ resource "google_logging_metric" "gcs_object_access" {
   name    = "gcs-object-access"
   filter  = <<-EOT
     resource.type="gcs_bucket"
-    protoPayload.methodName=~"storage.objects.get|storage.objects.list"
+    protoPayload.methodName=~"storage.objects.get|storage.objects.list|storage.objects.copy"
   EOT
 
   metric_descriptor {
@@ -1085,6 +1085,13 @@ resource "google_monitoring_alert_policy" "gcs_bulk_access" {
 
   notification_channels = [google_monitoring_notification_channel.email.id]
 
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
   documentation {
     content   = "High volume Cloud Storage access detected. May indicate data exfiltration."
     mime_type = "text/markdown"
@@ -1092,13 +1099,14 @@ resource "google_monitoring_alert_policy" "gcs_bulk_access" {
 }
 
 # Log-based metric for cross-project access
+# Detects access from principals outside this project (potential exfiltration)
 resource "google_logging_metric" "gcs_cross_project" {
   project = var.project_id
   name    = "gcs-cross-project-access"
   filter  = <<-EOT
     resource.type="gcs_bucket"
-    protoPayload.methodName=~"storage.objects.get"
-    protoPayload.authenticationInfo.principalEmail!~"@${var.project_id}.iam.gserviceaccount.com"
+    protoPayload.methodName=~"storage.objects.get|storage.objects.copy"
+    NOT protoPayload.authenticationInfo.principalEmail:*@${var.project_id}*
   EOT
 
   metric_descriptor {
@@ -1128,6 +1136,13 @@ resource "google_monitoring_alert_policy" "gcs_cross_project" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Cross-project Cloud Storage access detected. Verify authorisation."

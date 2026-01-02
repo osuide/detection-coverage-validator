@@ -841,7 +841,7 @@ output "alert_topic_arn" {
             implementation=DetectionImplementation(
                 gcp_logging_query="""# Secret Manager access detection
 protoPayload.serviceName="secretmanager.googleapis.com"
-protoPayload.methodName=~"AccessSecretVersion|ListSecretVersions"
+protoPayload.methodName=~"AccessSecretVersion|GetSecretVersion|ListSecrets|ListSecretVersions"
 protoPayload.authenticationInfo.principalEmail:*""",
                 gcp_terraform_template="""# GCP Secret Manager Access Detection
 
@@ -873,7 +873,7 @@ resource "google_logging_metric" "secret_access" {
 
   filter = <<-EOT
     protoPayload.serviceName="secretmanager.googleapis.com"
-    protoPayload.methodName=~"AccessSecretVersion|GetSecretVersion"
+    protoPayload.methodName=~"AccessSecretVersion|GetSecretVersion|ListSecrets|ListSecretVersions"
   EOT
 
   metric_descriptor {
@@ -924,6 +924,9 @@ resource "google_monitoring_alert_policy" "secret_access" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
