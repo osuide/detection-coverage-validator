@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Shield, Search, Filter, ChevronDown, Eye, Activity, Zap, CheckCircle, Lock, AlertTriangle, XCircle, HelpCircle, Bell } from 'lucide-react'
+import { Shield, Search, Filter, ChevronDown, Eye, Activity, Zap, CheckCircle, Lock, AlertTriangle, XCircle, HelpCircle, Bell, MapPin } from 'lucide-react'
 import { detectionsApi, Detection, EvaluationSummary } from '../services/api'
 import { useState, useMemo } from 'react'
 import DetectionDetailModal from '../components/DetectionDetailModal'
@@ -7,6 +7,10 @@ import SecurityHubAggregatedCard, {
   isSecurityHubAggregated,
   SecurityHubAggregatedConfig,
 } from '../components/SecurityHubAggregatedCard'
+import {
+  RegionalAggregatedCard,
+  groupDetectionsByName,
+} from '../components/InspectorAggregatedCard'
 
 type SortField = 'name' | 'detection_type' | 'region' | 'status' | 'mapping_count' | 'discovered_at'
 type SortDirection = 'asc' | 'desc'
@@ -186,20 +190,30 @@ export default function Detections() {
 
   const detections = data?.items ?? []
 
-  // Separate aggregated Security Hub detections from regular ones
-  const { aggregatedDetections, regularDetections } = useMemo(() => {
-    const aggregated: Detection[] = []
-    const regular: Detection[] = []
+  // Separate aggregated detections from regular ones
+  const { securityHubDetections, multiRegionGroups, regularDetections } = useMemo(() => {
+    const securityHub: Detection[] = []
+    const nonSecurityHub: Detection[] = []
 
+    // First, separate Security Hub aggregated detections
     detections.forEach((d) => {
       if (isSecurityHubAggregated(d)) {
-        aggregated.push(d)
+        securityHub.push(d)
       } else {
-        regular.push(d)
+        nonSecurityHub.push(d)
       }
     })
 
-    return { aggregatedDetections: aggregated, regularDetections: regular }
+    // Group remaining detections by name to find multi-region detections
+    // Detections with the same name across regions are aggregated
+    const { multiRegionGroups: groups, singleRegionDetections } =
+      groupDetectionsByName(nonSecurityHub)
+
+    return {
+      securityHubDetections: securityHub,
+      multiRegionGroups: groups,
+      regularDetections: singleRegionDetections,
+    }
   }, [detections])
 
   // Apply filters to regular detections only (aggregated ones shown separately)
@@ -336,21 +350,26 @@ export default function Detections() {
       {/* Results count */}
       <p className="text-sm text-gray-400 mb-4">
         Showing {filteredDetections.length} of {regularDetections.length} detections
-        {aggregatedDetections.length > 0 && (
+        {securityHubDetections.length > 0 && (
           <span className="ml-2 text-blue-400">
-            + {aggregatedDetections.length} Security Hub standard{aggregatedDetections.length !== 1 ? 's' : ''}
+            + {securityHubDetections.length} Security Hub standard{securityHubDetections.length !== 1 ? 's' : ''}
+          </span>
+        )}
+        {multiRegionGroups.length > 0 && (
+          <span className="ml-2 text-cyan-400">
+            + {multiRegionGroups.length} multi-region detection{multiRegionGroups.length !== 1 ? 's' : ''}
           </span>
         )}
       </p>
 
       {/* Aggregated Security Hub Standards */}
-      {aggregatedDetections.length > 0 && (
+      {securityHubDetections.length > 0 && (
         <div className="mb-6 space-y-4">
           <h2 className="text-lg font-medium text-white flex items-center gap-2">
             <Lock className="h-5 w-5 text-blue-400" />
             Security Hub Standards
           </h2>
-          {aggregatedDetections.map((detection) => (
+          {securityHubDetections.map((detection) => (
             <SecurityHubAggregatedCard
               key={detection.id}
               detection={{
@@ -363,11 +382,30 @@ export default function Detections() {
         </div>
       )}
 
-      {/* Regular Detections Table */}
-      {regularDetections.length > 0 && aggregatedDetections.length > 0 && (
-        <h2 className="text-lg font-medium text-white mb-4">Individual Detections</h2>
+      {/* Multi-Region Detections (aggregated by name) */}
+      {multiRegionGroups.length > 0 && (
+        <div className="mb-6 space-y-4">
+          <h2 className="text-lg font-medium text-white flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-cyan-400" />
+            Multi-Region Detections
+          </h2>
+          {multiRegionGroups.map((group) => (
+            <RegionalAggregatedCard
+              key={group.name}
+              name={group.name}
+              detectionType={group.detectionType}
+              detections={group.detections}
+              onViewDetails={(detection) => setSelectedDetection(detection)}
+            />
+          ))}
+        </div>
       )}
-      {!filteredDetections.length && regularDetections.length === 0 && aggregatedDetections.length === 0 ? (
+
+      {/* Regular Detections Table (single-region only) */}
+      {regularDetections.length > 0 && (securityHubDetections.length > 0 || multiRegionGroups.length > 0) && (
+        <h2 className="text-lg font-medium text-white mb-4">Single-Region Detections</h2>
+      )}
+      {!filteredDetections.length && regularDetections.length === 0 && securityHubDetections.length === 0 && multiRegionGroups.length === 0 ? (
         <div className="text-center py-12 card">
           <Shield className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-lg font-medium text-white">No detections found</h3>
