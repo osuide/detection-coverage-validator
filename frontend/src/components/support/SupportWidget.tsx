@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router'
 import {
   MessageSquare,
@@ -12,23 +12,15 @@ import { supportApi, UserSupportContext } from '../../services/supportApi'
 import { useAuth } from '../../contexts/AuthContext'
 
 /**
- * Get the docs URL based on current environment.
- * - staging.a13e.com → docs.staging.a13e.com
- * - app.a13e.com → docs.a13e.com
- * - localhost → docs.staging.a13e.com (for dev)
+ * User documentation URL.
+ *
+ * URL Structure:
+ * - User docs: /docs on the same origin (staging.a13e.com/docs, app.a13e.com/docs)
+ * - OpenAPI specs: separate subdomain (docs.staging.a13e.com, docs.a13e.com)
+ *
+ * We use a relative path so it works in all environments.
  */
-function getDocsUrl(): string {
-  const hostname = window.location.hostname
-
-  if (hostname.includes('staging.a13e.com')) {
-    return 'https://docs.staging.a13e.com'
-  }
-  if (hostname.includes('a13e.com')) {
-    return 'https://docs.a13e.com'
-  }
-  // Local development defaults to staging docs
-  return 'https://docs.staging.a13e.com'
-}
+const USER_DOCS_URL = '/docs'
 
 export default function SupportWidget() {
   const { user } = useAuth()
@@ -38,7 +30,6 @@ export default function SupportWidget() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [context, setContext] = useState<UserSupportContext | null>(null)
   const [ticketId, setTicketId] = useState<string | null>(null)
-  const docsUrl = useMemo(() => getDocsUrl(), [])
 
   // Form State
   const [subject, setSubject] = useState('')
@@ -121,7 +112,7 @@ export default function SupportWidget() {
                 {/* Quick Links (Placeholders for now) */}
                 <div className="grid grid-cols-2 gap-3">
                   <a
-                    href={docsUrl}
+                    href={USER_DOCS_URL}
                     target="_blank"
                     rel="noreferrer"
                     className="flex flex-col items-center justify-center p-4 bg-slate-700/50 hover:bg-slate-700 rounded-lg border border-slate-600 transition-colors text-center group"

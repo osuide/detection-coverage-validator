@@ -243,8 +243,17 @@ export default function ScrollToTop() {
 
 **Added in App.tsx before `<Routes>`** - applies to all pages including nested admin and protected routes.
 
-### URL References
+### URL Structure
 
-- **App URL**: `app.a13e.com` (not `a13e.com`)
-- **Marketing site**: `a13e.com` or `staging.a13e.com`
+| Site | Staging | Production |
+|------|---------|------------|
+| **App (Frontend)** | `staging.a13e.com` | `app.a13e.com` |
+| **API** | `api.staging.a13e.com` | `api.a13e.com` |
+| **User Documentation** | `staging.a13e.com/docs` | `app.a13e.com/docs` |
+| **OpenAPI Specs** | `docs.staging.a13e.com` | `docs.a13e.com` |
+| **Marketing Site** | `staging.a13e.com` | `a13e.com` |
+
+**Important**: User docs (`/docs`) are part of the React app. OpenAPI specs are a separate static site on the `docs.` subdomain.
+
 - Use `<Link to="/path">` for internal navigation, not `<a href="#">`
+- For user docs in components, use relative `/docs` path (works in all environments)
