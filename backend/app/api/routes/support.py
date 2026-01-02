@@ -290,9 +290,13 @@ async def get_customer_context(
     # Days since registration
     days_since_registration = None
     if user.created_at:
-        delta = datetime.now(timezone.utc) - user.created_at.replace(
-            tzinfo=timezone.utc
+        # Handle both naive and aware datetimes safely
+        created_at_utc = (
+            user.created_at.astimezone(timezone.utc)
+            if user.created_at.tzinfo
+            else user.created_at.replace(tzinfo=timezone.utc)
         )
+        delta = datetime.now(timezone.utc) - created_at_utc
         days_since_registration = delta.days
 
     # Build notes for support context
@@ -389,9 +393,13 @@ def _build_support_notes(
 
     # Engagement notes
     if user.last_login_at:
-        days_since_login = (
-            datetime.now(timezone.utc) - user.last_login_at.replace(tzinfo=timezone.utc)
-        ).days
+        # Handle both naive and aware datetimes safely
+        last_login_utc = (
+            user.last_login_at.astimezone(timezone.utc)
+            if user.last_login_at.tzinfo
+            else user.last_login_at.replace(tzinfo=timezone.utc)
+        )
+        days_since_login = (datetime.now(timezone.utc) - last_login_utc).days
         if days_since_login > 30:
             notes.append(f"Inactive - last login {days_since_login} days ago")
 
@@ -528,7 +536,10 @@ async def submit_support_ticket(
         "integration": "Integration",
     }
 
-    # Try to log to CRM and send email
+    # Track whether critical operations succeeded
+    support_email_sent = False
+    crm_logged = False
+
     try:
         from app.services.google_workspace_service import get_workspace_service
 
@@ -537,30 +548,41 @@ async def submit_support_ticket(
         # domain-wide delegation cannot impersonate Google Groups (support@a13e.com).
         # We use reply_to=support@a13e.com so replies go to the support group.
 
-        # Log to CRM spreadsheet if configured
+        # Log to CRM spreadsheet if configured (non-critical - continue on failure)
         if settings.support_crm_spreadsheet_id:
-            ws.append_to_sheet(
-                spreadsheet_id=settings.support_crm_spreadsheet_id,
-                sheet_name="Tickets",
-                values=[
-                    [
-                        ticket_id,
-                        submitted_at.isoformat(),
-                        current_user.email,
-                        context.tier_display,
-                        category_display.get(request.category, request.category),
-                        "Normal",  # Default priority
-                        "New",  # Initial status
-                        request.subject,
-                        request.description[:500],  # Truncate for sheet
-                        request.cloud_provider or "N/A",
-                        "",  # Assigned To
-                        "",  # Resolution Notes
-                    ]
-                ],
-            )
+            try:
+                ws.append_to_sheet(
+                    spreadsheet_id=settings.support_crm_spreadsheet_id,
+                    sheet_name="Tickets",
+                    values=[
+                        [
+                            ticket_id,
+                            submitted_at.isoformat(),
+                            current_user.email,
+                            context.tier_display,
+                            category_display.get(request.category, request.category),
+                            "Normal",  # Default priority
+                            "New",  # Initial status
+                            request.subject,
+                            request.description[
+                                :3000
+                            ],  # Truncate for sheet readability
+                            request.cloud_provider or "N/A",
+                            "",  # Assigned To
+                            "",  # Resolution Notes
+                        ]
+                    ],
+                )
+                crm_logged = True
+            except Exception as e:
+                logger.error(
+                    "support_crm_logging_failed",
+                    ticket_id=ticket_id,
+                    error=str(e),
+                )
+                # Continue - CRM logging is not critical
 
-        # Send email to support
+        # Send email to support (CRITICAL - must succeed)
         email_body = f"""
 New Support Ticket: {ticket_id}
 
@@ -589,8 +611,9 @@ Submitted via A13E Support Form at {submitted_at.strftime('%Y-%m-%d %H:%M UTC')}
             from_address=settings.support_email,
             reply_to=settings.support_email,
         )
+        support_email_sent = True
 
-        # Send confirmation email to user (with reply-to: support@a13e.com)
+        # Send confirmation email to user (non-critical - continue on failure)
         user_confirmation = f"""Hi {context.full_name.split()[0] if context.full_name else 'there'},
 
 Thank you for contacting A13E Support. We've received your request and will get back to you shortly.
@@ -623,7 +646,7 @@ https://app.a13e.com
                 reply_to=settings.support_email,
             )
         except Exception as e:
-            # Log error but don't fail if user email fails (ticket is already submitted)
+            # Log error but don't fail if user confirmation fails
             logger.error(
                 "support_confirmation_email_failed",
                 ticket_id=ticket_id,
@@ -632,12 +655,19 @@ https://app.a13e.com
             )
 
     except Exception as e:
-        # Log error but don't fail the request - ticket was submitted
         logger.error(
-            "support_ticket_logging_failed",
+            "support_ticket_submission_failed",
             ticket_id=ticket_id,
+            support_email_sent=support_email_sent,
+            crm_logged=crm_logged,
             error=str(e),
         )
+        # If support email wasn't sent, the ticket is lost - return error
+        if not support_email_sent:
+            raise HTTPException(
+                status_code=503,
+                detail="Unable to submit support ticket. Please try again or email support@a13e.com directly.",
+            )
 
     return SubmitTicketResponse(
         ticket_id=ticket_id,
