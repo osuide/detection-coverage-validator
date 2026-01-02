@@ -790,6 +790,7 @@ class GoogleWorkspaceService:
         subject: str,
         body: str,
         cc: Optional[list[str]] = None,
+        reply_to: Optional[str] = None,
     ) -> dict:
         """
         Send an email via Gmail API.
@@ -799,6 +800,7 @@ class GoogleWorkspaceService:
             subject: Email subject
             body: Email body (plain text)
             cc: Optional list of CC recipients
+            reply_to: Optional Reply-To address (for sending on behalf of a group)
 
         Returns:
             Sent message object
@@ -811,6 +813,8 @@ class GoogleWorkspaceService:
         message["subject"] = subject
         if cc:
             message["cc"] = ", ".join(cc)
+        if reply_to:
+            message["reply-to"] = reply_to
 
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
 

@@ -530,18 +530,12 @@ async def submit_support_ticket(
 
     # Try to log to CRM and send email
     try:
-        from app.services.google_workspace_service import (
-            get_workspace_service,
-            GoogleWorkspaceService,
-        )
+        from app.services.google_workspace_service import get_workspace_service
 
         ws = get_workspace_service()
-
-        # Create a separate service instance for sending emails FROM support@a13e.com
-        # The default service uses workspace_admin_email (austin@a13e.com) for delegation
-        support_email_service = GoogleWorkspaceService(
-            delegated_user=settings.support_email
-        )
+        # Note: Emails are sent FROM the workspace admin (austin@a13e.com) because
+        # domain-wide delegation cannot impersonate Google Groups (support@a13e.com).
+        # We use reply_to=support@a13e.com so replies go to the support group.
 
         # Log to CRM spreadsheet if configured
         if settings.support_crm_spreadsheet_id:
@@ -588,13 +582,14 @@ Description:
 Submitted via A13E Support Form at {submitted_at.strftime('%Y-%m-%d %H:%M UTC')}
 """
 
-        support_email_service.send_email(
+        ws.send_email(
             to=settings.support_email,
             subject=f"[{ticket_id}] {request.subject}",
             body=email_body,
+            reply_to=settings.support_email,
         )
 
-        # Send confirmation email to user (from support@a13e.com)
+        # Send confirmation email to user (with reply-to: support@a13e.com)
         user_confirmation = f"""Hi {context.full_name.split()[0] if context.full_name else 'there'},
 
 Thank you for contacting A13E Support. We've received your request and will get back to you shortly.
@@ -619,10 +614,11 @@ https://app.a13e.com
 """
 
         try:
-            support_email_service.send_email(
+            ws.send_email(
                 to=current_user.email,
                 subject=f"[{ticket_id}] We've received your support request",
                 body=user_confirmation,
+                reply_to=settings.support_email,
             )
         except Exception as e:
             # Log error but don't fail if user email fails (ticket is already submitted)
