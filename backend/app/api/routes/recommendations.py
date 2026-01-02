@@ -3,19 +3,26 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi_limiter.depends import RateLimiter
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_scope
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    get_client_ip,
+    require_scope,
+)
 from app.models.cloud_account import CloudAccount
 from app.models.coverage import CoverageSnapshot
 from app.services.remediation_service import (
     remediation_service,
 )
 from app.services.mitre_threat_service import MitreThreatService
+from app.services.template_access_monitor import get_template_access_monitor
 
 router = APIRouter()
 
@@ -141,7 +148,11 @@ class ImplementationPlanResponse(BaseModel):
 @router.get(
     "/techniques",
     response_model=List[TechniqueInfo],
-    dependencies=[Depends(require_scope("read:recommendations"))],
+    dependencies=[
+        Depends(require_scope("read:recommendations")),
+        # Rate limit: 10 requests per minute (returns full list)
+        Depends(RateLimiter(times=10, seconds=60)),
+    ],
 )
 async def list_available_techniques(
     auth: AuthContext = Depends(get_auth_context),
@@ -150,6 +161,8 @@ async def list_available_techniques(
     List all MITRE ATT&CK techniques that have remediation templates.
 
     Returns a summary of each technique including severity and effort estimates.
+
+    Rate limited to 10 requests per minute as this returns the full list.
     """
     techniques = remediation_service.get_available_techniques()
     return [TechniqueInfo(**t) for t in techniques]
@@ -158,10 +171,15 @@ async def list_available_techniques(
 @router.get(
     "/techniques/{technique_id}",
     response_model=TechniqueRemediationResponse,
-    dependencies=[Depends(require_scope("read:recommendations"))],
+    dependencies=[
+        Depends(require_scope("read:recommendations")),
+        # Rate limit: 60 requests per minute per user
+        Depends(RateLimiter(times=60, seconds=60)),
+    ],
 )
 async def get_technique_remediation(
     technique_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
 ) -> dict:
@@ -169,7 +187,20 @@ async def get_technique_remediation(
     Get complete remediation guidance for a MITRE ATT&CK technique.
 
     Includes threat context, detection strategies, and implementation guidance.
+
+    Rate limited to 60 requests per minute to prevent bulk scraping.
     """
+    # Track template access for bulk detection (with db for suspension capability)
+    monitor = get_template_access_monitor()
+    await monitor.record_access(
+        user_id=auth.user_id,
+        org_id=auth.organization_id,
+        technique_id=technique_id.upper(),
+        endpoint="/recommendations/techniques/{technique_id}",
+        client_ip=get_client_ip(request),
+        db=db,
+    )
+
     remediation = remediation_service.get_technique_remediation(technique_id)
 
     if not remediation:
@@ -225,18 +256,37 @@ async def get_technique_remediation(
 @router.get(
     "/techniques/{technique_id}/strategies/{strategy_id}",
     response_model=StrategyDetailResponse,
-    dependencies=[Depends(require_scope("read:recommendations"))],
+    dependencies=[
+        Depends(require_scope("read:recommendations")),
+        # Rate limit: 60 requests per minute per user
+        Depends(RateLimiter(times=60, seconds=60)),
+    ],
 )
 async def get_strategy_details(
     technique_id: str,
     strategy_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_auth_context),
 ) -> dict:
     """
     Get detailed implementation guidance for a specific detection strategy.
 
     Includes CloudWatch queries, CloudFormation templates, and response guidance.
+
+    Rate limited to 60 requests per minute to prevent bulk scraping.
     """
+    # Track template access for bulk detection (with db for suspension capability)
+    monitor = get_template_access_monitor()
+    await monitor.record_access(
+        user_id=auth.user_id,
+        org_id=auth.organization_id,
+        technique_id=technique_id.upper(),
+        endpoint="/recommendations/techniques/{technique_id}/strategies/{strategy_id}",
+        client_ip=get_client_ip(request),
+        db=db,
+    )
+
     details = remediation_service.get_strategy_details(technique_id, strategy_id)
 
     if not details:

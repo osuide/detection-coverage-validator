@@ -2,17 +2,19 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi_limiter.depends import RateLimiter
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import AuthContext, require_role, require_scope
+from app.core.security import AuthContext, get_client_ip, require_role, require_scope
 from app.models.user import UserRole
 from app.models.mitre import Tactic
 from app.data.remediation_templates.template_loader import get_template
 from app.services.mitre_threat_service import MitreThreatService
+from app.services.template_access_monitor import get_template_access_monitor
 
 router = APIRouter(prefix="/techniques", tags=["techniques"])
 
@@ -123,10 +125,15 @@ class TechniqueSummaryResponse(BaseModel):
 @router.get(
     "/{technique_id}",
     response_model=TechniqueDetailResponse,
-    dependencies=[Depends(require_scope("read:techniques"))],
+    dependencies=[
+        Depends(require_scope("read:techniques")),
+        # Rate limit: 60 requests per minute per user
+        Depends(RateLimiter(times=60, seconds=60)),
+    ],
 )
 async def get_technique_detail(
     technique_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(
         require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
@@ -136,9 +143,22 @@ async def get_technique_detail(
 
     Returns threat context, detection strategies with IaC templates,
     and implementation guidance.
+
+    Rate limited to 60 requests per minute to prevent bulk scraping.
     """
     # Normalise technique ID (handle both T1055 and t1055)
     technique_id = technique_id.upper()
+
+    # Track template access for bulk detection (with db for suspension capability)
+    monitor = get_template_access_monitor()
+    await monitor.record_access(
+        user_id=auth.user_id,
+        org_id=auth.organization_id,
+        technique_id=technique_id,
+        endpoint="/techniques/{technique_id}",
+        client_ip=get_client_ip(request),
+        db=db,
+    )
 
     # Get template from our remediation data
     template = get_template(technique_id)
@@ -272,7 +292,11 @@ async def get_technique_detail(
 @router.get(
     "",
     response_model=list[TechniqueSummaryResponse],
-    dependencies=[Depends(require_scope("read:techniques"))],
+    dependencies=[
+        Depends(require_scope("read:techniques")),
+        # Rate limit: 10 requests per minute (this returns all techniques)
+        Depends(RateLimiter(times=10, seconds=60)),
+    ],
 )
 async def list_techniques_with_templates(
     db: AsyncSession = Depends(get_db),
@@ -280,7 +304,10 @@ async def list_techniques_with_templates(
         require_role(UserRole.MEMBER, UserRole.VIEWER, UserRole.ADMIN, UserRole.OWNER)
     ),
 ) -> list[TechniqueSummaryResponse]:
-    """List all techniques that have remediation templates available."""
+    """List all techniques that have remediation templates available.
+
+    Rate limited to 10 requests per minute as this returns the full list.
+    """
     from app.data.remediation_templates.template_loader import TEMPLATES
 
     techniques = []
