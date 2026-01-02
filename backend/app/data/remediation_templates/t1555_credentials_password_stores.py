@@ -662,6 +662,9 @@ resource "google_monitoring_alert_policy" "secret_access" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Secret Manager access detected. Verify access was authorised and investigate if suspicious."

@@ -449,8 +449,8 @@ resource "google_logging_metric" "successful_logins" {
 
 # Alert policy for unusual login frequency
 resource "google_monitoring_alert_policy" "anomalous_logins" {
-  display_name = "Anomalous Account Login Activity"
   project      = var.project_id
+  display_name = "Anomalous Account Login Activity"
   combiner     = "OR"
 
   conditions {
@@ -497,8 +497,8 @@ resource "google_logging_metric" "failed_logins" {
 
 # Alert for credential stuffing attacks
 resource "google_monitoring_alert_policy" "credential_stuffing" {
-  display_name = "Potential Credential Stuffing Attack"
   project      = var.project_id
+  display_name = "Potential Credential Stuffing Attack"
   combiner     = "OR"
 
   conditions {
@@ -518,6 +518,13 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
   }
 
   notification_channels = [google_monitoring_notification_channel.security_email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Anomalous Account Activity Detected",

@@ -636,6 +636,13 @@ resource "google_monitoring_alert_policy" "storage_downloads" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious Tool Downloaded from Cloud Storage",

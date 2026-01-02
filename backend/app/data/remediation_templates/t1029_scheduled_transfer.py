@@ -739,10 +739,7 @@ output "alert_topic_arn" {
                 gcp_logging_query="""resource.type="gcs_bucket"
 protoPayload.methodName="storage.objects.create"
 protoPayload.serviceName="storage.googleapis.com"
-| extract timestamp, hour from @timestamp
-| stats count() as upload_count, sum(protoPayload.response.size) as total_bytes
-  by protoPayload.authenticationInfo.principalEmail, resource.labels.bucket_name, hour
-| upload_count > 10""",
+  by protoPayload.authenticationInfo.principalEmail, resource.labels.bucket_name, hour""",
                 gcp_terraform_template="""# GCP: Detect recurring scheduled Cloud Storage transfers
 
 variable "project_id" {
@@ -757,6 +754,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Scheduled Transfer Alerts"
   type         = "email"
   labels = {
@@ -766,6 +764,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for recurring GCS uploads
 resource "google_logging_metric" "recurring_gcs_upload" {
+  project = var.project_id
   name   = "recurring-gcs-uploads"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -796,6 +795,7 @@ resource "google_logging_metric" "recurring_gcs_upload" {
 
 # Step 3: Alert policy for recurring upload patterns
 resource "google_monitoring_alert_policy" "recurring_upload_alert" {
+  project      = var.project_id
   display_name = "Scheduled Transfer Pattern Detected"
   combiner     = "OR"
 
@@ -819,6 +819,9 @@ resource "google_monitoring_alert_policy" "recurring_upload_alert" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -896,6 +899,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Scheduled Task Monitoring"
   type         = "email"
   labels = {
@@ -905,6 +909,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for scheduler and function changes
 resource "google_logging_metric" "scheduled_task_changes" {
+  project = var.project_id
   name   = "scheduled-task-modifications"
   filter = <<-EOT
     (resource.type="cloud_scheduler_job" OR resource.type="cloud_function")
@@ -939,6 +944,7 @@ resource "google_logging_metric" "scheduled_task_changes" {
 
 # Step 3: Alert policy for scheduled task creation
 resource "google_monitoring_alert_policy" "scheduled_task_alert" {
+  project      = var.project_id
   display_name = "Cloud Scheduler or Function Modified"
   combiner     = "OR"
 
@@ -960,6 +966,9 @@ resource "google_monitoring_alert_policy" "scheduled_task_alert" {
 
   alert_strategy {
     auto_close = "3600s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1018,10 +1027,7 @@ output "alert_policy_name" {
                 gcp_logging_query="""resource.type="gce_subnetwork"
 logName:"vpc_flows"
 jsonPayload.bytes_sent > 1048576
-| extract hour from timestamp
-| stats count() as transfer_count, sum(jsonPayload.bytes_sent) as total_bytes
-  by jsonPayload.connection.src_ip, jsonPayload.connection.dest_ip, hour
-| transfer_count > 5""",
+  by jsonPayload.connection.src_ip, jsonPayload.connection.dest_ip, hour""",
                 gcp_terraform_template="""# GCP: Detect time-based network transfer patterns
 
 variable "project_id" {
@@ -1036,6 +1042,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Network Transfer Timing Alerts"
   type         = "email"
   labels = {
@@ -1045,6 +1052,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for time-based transfers
 resource "google_logging_metric" "timed_transfers" {
+  project = var.project_id
   name   = "time-based-network-transfers"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -1076,6 +1084,7 @@ resource "google_logging_metric" "timed_transfers" {
 
 # Step 3: Alert policy for recurring transfer patterns
 resource "google_monitoring_alert_policy" "timed_transfer_alert" {
+  project      = var.project_id
   display_name = "Time-Based Transfer Pattern Detected"
   combiner     = "OR"
 
@@ -1099,6 +1108,9 @@ resource "google_monitoring_alert_policy" "timed_transfer_alert" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

@@ -473,6 +473,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -482,6 +483,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for storage uploads
 resource "google_logging_metric" "storage_staging" {
+  project = var.project_id
   name   = "gcs-data-staging"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -496,6 +498,7 @@ resource "google_logging_metric" "storage_staging" {
 
 # Step 3: Alert policy for high upload volume
 resource "google_monitoring_alert_policy" "staging_alert" {
+  project      = var.project_id
   display_name = "GCS Data Staging Activity"
   combiner     = "OR"
 
@@ -580,6 +583,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -589,6 +593,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for disk operations
 resource "google_logging_metric" "disk_staging" {
+  project = var.project_id
   name   = "gce-disk-staging"
   filter = <<-EOT
     resource.type=("gce_disk" OR "gce_instance")
@@ -604,6 +609,7 @@ resource "google_logging_metric" "disk_staging" {
 
 # Step 3: Alert policy for unusual disk activity
 resource "google_monitoring_alert_policy" "disk_staging_alert" {
+  project      = var.project_id
   display_name = "GCE Disk Staging Activity"
   combiner     = "OR"
 

@@ -645,8 +645,8 @@ resource "google_logging_metric" "iam_binding" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "iam_binding" {
-  display_name = "Privileged IAM Binding Changed"
   project      = var.project_id
+  display_name = "Privileged IAM Binding Changed"
   combiner     = "OR"
 
   conditions {
@@ -749,8 +749,8 @@ resource "google_logging_metric" "sa_impersonation" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "sa_impersonation" {
-  display_name = "Service Account Impersonation Enabled"
   project      = var.project_id
+  display_name = "Service Account Impersonation Enabled"
   combiner     = "OR"
 
   conditions {

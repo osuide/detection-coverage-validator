@@ -497,6 +497,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -506,6 +507,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for Windows service discovery
 resource "google_logging_metric" "windows_service_discovery" {
+  project = var.project_id
   name   = "windows-service-discovery"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -529,6 +531,7 @@ resource "google_logging_metric" "windows_service_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "windows_service_discovery" {
+  project      = var.project_id
   display_name = "Windows Service Discovery Detected"
   combiner     = "OR"
 
@@ -550,6 +553,9 @@ resource "google_monitoring_alert_policy" "windows_service_discovery" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",
@@ -620,6 +626,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -629,6 +636,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for Linux service discovery
 resource "google_logging_metric" "linux_service_discovery" {
+  project = var.project_id
   name   = "linux-service-discovery"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -652,6 +660,7 @@ resource "google_logging_metric" "linux_service_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "linux_service_discovery" {
+  project      = var.project_id
   display_name = "Linux Service Discovery Detected"
   combiner     = "OR"
 
@@ -673,6 +682,9 @@ resource "google_monitoring_alert_policy" "linux_service_discovery" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

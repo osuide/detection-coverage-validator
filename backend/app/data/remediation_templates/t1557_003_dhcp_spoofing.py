@@ -708,6 +708,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -717,6 +718,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for network changes
 resource "google_logging_metric" "network_changes" {
+  project = var.project_id
   name   = "vpc-network-dhcp-changes"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -732,6 +734,7 @@ resource "google_logging_metric" "network_changes" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "network_change" {
+  project      = var.project_id
   display_name = "VPC Network Configuration Modified"
   combiner     = "OR"
 
@@ -746,6 +749,13 @@ resource "google_monitoring_alert_policy" "network_change" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "VPC network or subnet configuration modified. Review for unauthorised DHCP or DNS changes."
@@ -834,6 +844,7 @@ resource "google_compute_subnetwork" "monitored" {
 
 # Step 2: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -869,6 +880,7 @@ resource "google_logging_metric" "dhcp_traffic" {
 
 # Alert policy
 resource "google_monitoring_alert_policy" "dhcp_anomaly" {
+  project      = var.project_id
   display_name = "Rogue DHCP Server Detected"
   combiner     = "OR"
 
@@ -889,6 +901,13 @@ resource "google_monitoring_alert_policy" "dhcp_anomaly" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Excessive DHCP traffic detected from source IP. Potential rogue DHCP server or spoofing attack."
@@ -948,6 +967,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -957,6 +977,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for DNS policy changes
 resource "google_logging_metric" "dns_policy" {
+  project = var.project_id
   name   = "dns-policy-changes"
   filter = <<-EOT
     protoPayload.serviceName="dns.googleapis.com"
@@ -971,6 +992,7 @@ resource "google_logging_metric" "dns_policy" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "dns_policy_change" {
+  project      = var.project_id
   display_name = "Cloud DNS Policy Modified"
   combiner     = "OR"
 
@@ -985,6 +1007,13 @@ resource "google_monitoring_alert_policy" "dns_policy_change" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Cloud DNS server policy modified. Review for unauthorised DNS server changes that could redirect traffic."

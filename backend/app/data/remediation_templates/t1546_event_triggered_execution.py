@@ -797,6 +797,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -806,6 +807,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for event-triggered functions
 resource "google_logging_metric" "function_trigger" {
+  project = var.project_id
   name   = "cloud-functions-event-triggers"
   filter = <<-EOT
     protoPayload.methodName=~"CloudFunctionsService.CreateFunction|FunctionService.CreateFunction"
@@ -820,6 +822,7 @@ resource "google_logging_metric" "function_trigger" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "function_trigger" {
+  project      = var.project_id
   display_name = "Cloud Function Event Trigger Created"
   combiner     = "OR"
 
@@ -834,6 +837,13 @@ resource "google_monitoring_alert_policy" "function_trigger" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Function with Event Trigger Created",
@@ -887,6 +897,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -896,6 +907,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for push subscriptions
 resource "google_logging_metric" "pubsub_push" {
+  project = var.project_id
   name   = "pubsub-push-subscription-creation"
   filter = <<-EOT
     protoPayload.methodName="google.pubsub.v1.Subscriber.CreateSubscription"
@@ -910,6 +922,7 @@ resource "google_logging_metric" "pubsub_push" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "pubsub_push" {
+  project      = var.project_id
   display_name = "Pub/Sub Push Subscription Created"
   combiner     = "OR"
 
@@ -924,6 +937,13 @@ resource "google_monitoring_alert_policy" "pubsub_push" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Pub/Sub Push Subscription Created",

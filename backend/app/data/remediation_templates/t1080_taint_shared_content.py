@@ -566,6 +566,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "T1080 Security Alerts"
   type         = "email"
   labels = {
@@ -603,8 +604,8 @@ resource "google_logging_metric" "suspicious_uploads" {
 
 # Step 3: Create alert policy to trigger on suspicious uploads
 resource "google_monitoring_alert_policy" "suspicious_uploads" {
-  display_name = "T1080: Suspicious Cloud Storage Upload"
   project      = var.project_id
+  display_name = "T1080: Suspicious Cloud Storage Upload"
   combiner     = "OR"
 
   conditions {

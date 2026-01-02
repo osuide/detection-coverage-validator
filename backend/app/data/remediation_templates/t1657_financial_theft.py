@@ -495,12 +495,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Financial Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "billing_changes" {
+  project = var.project_id
   name   = "billing-service-changes"
   filter = <<-EOT
     protoPayload.serviceName="cloudbilling.googleapis.com"
@@ -513,6 +515,7 @@ resource "google_logging_metric" "billing_changes" {
 }
 
 resource "google_monitoring_alert_policy" "billing_alerts" {
+  project      = var.project_id
   display_name = "Unusual Billing API Activity"
   combiner     = "OR"
   conditions {
@@ -574,12 +577,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Crypto Theft Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "crypto_access" {
+  project = var.project_id
   name   = "crypto-credential-access"
   filter = <<-EOT
     (protoPayload.serviceName="secretmanager.googleapis.com" AND protoPayload.methodName="AccessSecretVersion")
@@ -592,6 +597,7 @@ resource "google_logging_metric" "crypto_access" {
 }
 
 resource "google_monitoring_alert_policy" "crypto_access" {
+  project      = var.project_id
   display_name = "Cryptocurrency Credential Access"
   combiner     = "OR"
   conditions {
@@ -608,6 +614,13 @@ resource "google_monitoring_alert_policy" "crypto_access" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Cryptocurrency Credential Access Detected",

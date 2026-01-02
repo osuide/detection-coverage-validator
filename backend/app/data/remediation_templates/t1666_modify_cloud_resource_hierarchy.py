@@ -631,6 +631,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -640,6 +641,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for project movement
 resource "google_logging_metric" "project_move" {
+  project = var.project_id
   name   = "project-hierarchy-changes"
   filter = <<-EOT
     protoPayload.methodName="MoveProject" OR
@@ -654,6 +656,7 @@ resource "google_logging_metric" "project_move" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "project_move" {
+  project      = var.project_id
   display_name = "GCP Project Hierarchy Modified"
   combiner     = "OR"
 
@@ -668,6 +671,13 @@ resource "google_monitoring_alert_policy" "project_move" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Project Hierarchy Modified",
@@ -720,6 +730,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -729,6 +740,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for org policy changes
 resource "google_logging_metric" "org_policy_change" {
+  project = var.project_id
   name   = "organization-policy-changes"
   filter = <<-EOT
     protoPayload.serviceName="cloudresourcemanager.googleapis.com"
@@ -743,6 +755,7 @@ resource "google_logging_metric" "org_policy_change" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "org_policy" {
+  project      = var.project_id
   display_name = "GCP Organisation Policy Modified"
   combiner     = "OR"
 
@@ -757,6 +770,13 @@ resource "google_monitoring_alert_policy" "org_policy" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Organisation Policy Modified",

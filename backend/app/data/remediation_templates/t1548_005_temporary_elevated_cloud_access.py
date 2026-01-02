@@ -398,12 +398,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "sa_impersonation" {
+  project = var.project_id
   name   = "service-account-impersonation"
   filter = <<-EOT
     protoPayload.methodName=("GenerateAccessToken" OR "GenerateIdToken" OR "SignJwt" OR "SignBlob")
@@ -416,6 +418,7 @@ resource "google_logging_metric" "sa_impersonation" {
 }
 
 resource "google_monitoring_alert_policy" "sa_impersonation_alert" {
+  project      = var.project_id
   display_name = "Service Account Impersonation Detected"
   combiner     = "OR"
   conditions {
@@ -432,6 +435,13 @@ resource "google_monitoring_alert_policy" "sa_impersonation_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Service Account Impersonation",
@@ -478,12 +488,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "sa_user_role" {
+  project = var.project_id
   name   = "serviceaccount-user-role-assignment"
   filter = <<-EOT
     protoPayload.methodName="google.iam.admin.v1.SetIamPolicy"
@@ -496,6 +508,7 @@ resource "google_logging_metric" "sa_user_role" {
 }
 
 resource "google_monitoring_alert_policy" "sa_user_role_alert" {
+  project      = var.project_id
   display_name = "Service Account User Role Assignment"
   combiner     = "OR"
   conditions {
@@ -512,6 +525,13 @@ resource "google_monitoring_alert_policy" "sa_user_role_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Service Account User Role Assigned",

@@ -418,6 +418,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -427,6 +428,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for metadata access
 resource "google_logging_metric" "metadata_enum" {
+  project = var.project_id
   name   = "compute-metadata-enumeration"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -441,6 +443,7 @@ resource "google_logging_metric" "metadata_enum" {
 
 # Step 3: Alert policy for excessive metadata access
 resource "google_monitoring_alert_policy" "metadata_enum" {
+  project      = var.project_id
   display_name = "Compute Metadata Enumeration"
   combiner     = "OR"
 
@@ -455,6 +458,13 @@ resource "google_monitoring_alert_policy" "metadata_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Excessive access to Compute Engine metadata service detected. This may indicate malware profiling the environment for sandbox evasion."
@@ -515,6 +525,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -524,6 +535,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for system profiling
 resource "google_logging_metric" "system_profile" {
+  project = var.project_id
   name   = "system-profiling"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -538,6 +550,7 @@ resource "google_logging_metric" "system_profile" {
 
 # Step 3: Alert policy for rapid profiling
 resource "google_monitoring_alert_policy" "system_profile" {
+  project      = var.project_id
   display_name = "System Profiling for Sandbox Evasion"
   combiner     = "OR"
 
@@ -552,6 +565,13 @@ resource "google_monitoring_alert_policy" "system_profile" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Rapid sequence of system profiling API calls detected. This pattern is consistent with sandbox evasion techniques."

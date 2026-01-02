@@ -466,6 +466,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email_alerts" {
+  project      = var.project_id
   display_name = "Log Enumeration Alerts"
   type         = "email"
   labels = {
@@ -500,8 +501,8 @@ resource "google_logging_metric" "log_enumeration" {
 
 # Alert policy for excessive log enumeration
 resource "google_monitoring_alert_policy" "excessive_log_enumeration" {
-  display_name = "Excessive Log Enumeration"
   project      = var.project_id
+  display_name = "Excessive Log Enumeration"
   combiner     = "OR"
 
   conditions {
@@ -522,6 +523,9 @@ resource "google_monitoring_alert_policy" "excessive_log_enumeration" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -583,6 +587,7 @@ variable "alert_email" {
 
 # Notification channel
 resource "google_monitoring_notification_channel" "vm_log_access_alerts" {
+  project      = var.project_id
   display_name = "VM Log Access Alerts"
   type         = "email"
   labels = {
@@ -623,8 +628,8 @@ resource "google_logging_metric" "vm_log_access" {
 
 # Alert policy
 resource "google_monitoring_alert_policy" "excessive_vm_log_access" {
-  display_name = "Excessive VM Log File Access"
   project      = var.project_id
+  display_name = "Excessive VM Log File Access"
   combiner     = "OR"
 
   conditions {
@@ -642,6 +647,13 @@ resource "google_monitoring_alert_policy" "excessive_vm_log_access" {
   }
 
   notification_channels = [google_monitoring_notification_channel.vm_log_access_alerts.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Excessive system log file access detected on GCE instance. Investigate potential log enumeration activity."

@@ -639,6 +639,7 @@ resource "google_dns_managed_zone" "monitored_zone" {
 
 # Step 2: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -673,6 +674,7 @@ resource "google_logging_metric" "suspicious_dns" {
 
 # Alert policy
 resource "google_monitoring_alert_policy" "dns_anomaly" {
+  project      = var.project_id
   display_name = "DNS Anomaly Detected"
   combiner     = "OR"
 
@@ -691,6 +693,13 @@ resource "google_monitoring_alert_policy" "dns_anomaly" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Suspicious DNS query patterns detected. Potential DNS hijacking or cache poisoning."
@@ -751,6 +760,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -760,6 +770,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for certificate operations
 resource "google_logging_metric" "cert_operations" {
+  project = var.project_id
   name   = "lb-certificate-operations"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -775,6 +786,7 @@ resource "google_logging_metric" "cert_operations" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "cert_change" {
+  project      = var.project_id
   display_name = "Load Balancer Certificate Modified"
   combiner     = "OR"
 
@@ -789,6 +801,13 @@ resource "google_monitoring_alert_policy" "cert_change" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "SSL/TLS certificate modified on load balancer. Review for unauthorised changes."
@@ -877,6 +896,7 @@ resource "google_compute_subnetwork" "monitored" {
 
 # Step 2: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -911,6 +931,7 @@ resource "google_logging_metric" "suspicious_flows" {
 
 # Alert policy
 resource "google_monitoring_alert_policy" "flow_anomaly" {
+  project      = var.project_id
   display_name = "VPC Flow Anomaly Detected"
   combiner     = "OR"
 
@@ -931,6 +952,13 @@ resource "google_monitoring_alert_policy" "flow_anomaly" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Abnormal network flow patterns detected. Potential network interception or scanning."

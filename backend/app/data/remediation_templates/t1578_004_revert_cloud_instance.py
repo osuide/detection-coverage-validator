@@ -566,6 +566,9 @@ resource "google_monitoring_alert_policy" "snapshot_restore" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -670,6 +673,9 @@ resource "google_monitoring_alert_policy" "rapid_snapshot" {
 
   alert_strategy {
     auto_close = "3600s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

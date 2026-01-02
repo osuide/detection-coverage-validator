@@ -570,6 +570,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "T1480 Security Alerts"
   type         = "email"
   labels = {
@@ -579,6 +580,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for instance validation checks
 resource "google_logging_metric" "instance_validation" {
+  project = var.project_id
   name   = "t1480-gce-instance-validation"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -603,6 +605,7 @@ resource "google_logging_metric" "instance_validation" {
 
 # Step 3: Alert policy for unusual validation patterns
 resource "google_monitoring_alert_policy" "instance_validation" {
+  project      = var.project_id
   display_name = "T1480 - GCE Instance Validation Guardrails"
   combiner     = "OR"
 
@@ -621,6 +624,13 @@ resource "google_monitoring_alert_policy" "instance_validation" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = <<-EOT
@@ -697,6 +707,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "T1480 Function Alerts"
   type         = "email"
   labels = {
@@ -706,6 +717,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for environmental validation
 resource "google_logging_metric" "function_guardrails" {
+  project = var.project_id
   name   = "t1480-function-execution-guardrails"
   filter = <<-EOT
     resource.type="cloud_function"
@@ -730,6 +742,7 @@ resource "google_logging_metric" "function_guardrails" {
 
 # Step 3: Alert policy for execution guardrails
 resource "google_monitoring_alert_policy" "function_guardrails" {
+  project      = var.project_id
   display_name = "T1480 - Cloud Functions Execution Guardrails"
   combiner     = "OR"
 
@@ -750,6 +763,13 @@ resource "google_monitoring_alert_policy" "function_guardrails" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = <<-EOT

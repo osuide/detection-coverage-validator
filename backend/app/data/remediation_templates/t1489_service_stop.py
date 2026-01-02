@@ -311,12 +311,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "service_stop" {
+  project = var.project_id
   name   = "cloud-service-stops"
   filter = <<-EOT
     protoPayload.methodName=~"instances.stop|instances.delete|functions.delete"
@@ -329,6 +331,7 @@ resource "google_logging_metric" "service_stop" {
 }
 
 resource "google_monitoring_alert_policy" "service_stop" {
+  project      = var.project_id
   display_name = "Service Stop Alert"
   combiner     = "OR"
   conditions {
@@ -341,6 +344,13 @@ resource "google_monitoring_alert_policy" "service_stop" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Service Stops Detected",

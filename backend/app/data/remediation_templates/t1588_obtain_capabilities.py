@@ -417,6 +417,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Tool Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -424,6 +425,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for suspicious tools
 resource "google_logging_metric" "suspicious_tools" {
+  project = var.project_id
   name   = "suspicious-attack-tools"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -440,6 +442,7 @@ resource "google_logging_metric" "suspicious_tools" {
 
 # Step 3: Create alert policy for tool detection
 resource "google_monitoring_alert_policy" "tool_alerts" {
+  project      = var.project_id
   display_name = "Suspicious Attack Tool Detected"
   combiner     = "OR"
   conditions {
@@ -454,6 +457,9 @@ resource "google_monitoring_alert_policy" "tool_alerts" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="critical",

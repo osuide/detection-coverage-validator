@@ -600,6 +600,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -609,6 +610,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for phishing indicators
 resource "google_logging_metric" "phishing_activity" {
+  project = var.project_id
   name   = "workspace-phishing-indicators"
   filter = <<-EOT
     protoPayload.serviceName="admin.googleapis.com"
@@ -628,6 +630,7 @@ resource "google_logging_metric" "phishing_activity" {
 
 # Step 3: Create alert policy for phishing activity
 resource "google_monitoring_alert_policy" "phishing_alert" {
+  project      = var.project_id
   display_name = "Workspace Phishing Activity"
   combiner     = "OR"
 
@@ -706,6 +709,7 @@ resource "google_project_service" "webrisk" {
 
 # Step 2: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -715,6 +719,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 3: Create alert for malicious URL detections
 resource "google_logging_metric" "malicious_urls" {
+  project = var.project_id
   name   = "malicious-url-detections"
   filter = <<-EOT
     resource.type="cloud_function"
@@ -729,6 +734,7 @@ resource "google_logging_metric" "malicious_urls" {
 }
 
 resource "google_monitoring_alert_policy" "malicious_url_alert" {
+  project      = var.project_id
   display_name = "Malicious URL Detected"
   combiner     = "OR"
 
@@ -744,6 +750,13 @@ resource "google_monitoring_alert_policy" "malicious_url_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Malicious URL Detected via Web Risk",

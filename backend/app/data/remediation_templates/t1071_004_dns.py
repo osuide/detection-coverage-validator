@@ -1686,6 +1686,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 7: Alert policy for DNS blocks
 resource "google_monitoring_alert_policy" "dns_blocks" {
+  project      = var.project_id
   display_name = "DNS Response Policy Blocks Detected"
   combiner     = "OR"
   project      = var.project_id
@@ -1710,6 +1711,9 @@ resource "google_monitoring_alert_policy" "dns_blocks" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1921,6 +1925,7 @@ resource "google_logging_metric" "high_entropy_domains" {
 
 # Step 4: Alert policy for suspicious query types
 resource "google_monitoring_alert_policy" "suspicious_types" {
+  project      = var.project_id
   display_name = "DNS Tunnelling Pattern Detected - Suspicious Query Types"
   combiner     = "OR"
   project      = var.project_id
@@ -1945,6 +1950,9 @@ resource "google_monitoring_alert_policy" "suspicious_types" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1955,6 +1963,7 @@ resource "google_monitoring_alert_policy" "suspicious_types" {
 
 # Step 5: Alert policy for long DNS queries
 resource "google_monitoring_alert_policy" "long_queries" {
+  project      = var.project_id
   display_name = "DNS Tunnelling Pattern Detected - Long Queries"
   combiner     = "OR"
   project      = var.project_id
@@ -1979,6 +1988,9 @@ resource "google_monitoring_alert_policy" "long_queries" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1989,6 +2001,7 @@ resource "google_monitoring_alert_policy" "long_queries" {
 
 # Additional alert for high-entropy domains (DGA/C2)
 resource "google_monitoring_alert_policy" "high_entropy" {
+  project      = var.project_id
   display_name = "DNS High-Entropy Domains Detected (DGA/C2)"
   combiner     = "OR"
   project      = var.project_id
@@ -2013,6 +2026,9 @@ resource "google_monitoring_alert_policy" "high_entropy" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -2254,6 +2270,7 @@ resource "google_logging_metric" "scc_dns_threats" {
 
 # Step 4: Alert policy for DNS threats
 resource "google_monitoring_alert_policy" "scc_dns_threats" {
+  project      = var.project_id
   display_name = "SCC DNS Malware Detection"
   combiner     = "OR"
   project      = var.project_id

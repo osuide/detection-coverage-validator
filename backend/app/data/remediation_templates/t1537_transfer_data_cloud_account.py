@@ -584,6 +584,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -610,6 +611,7 @@ resource "google_pubsub_topic" "alerts" {
 
 # Step 4: Alert policy
 resource "google_monitoring_alert_policy" "crossproject" {
+  project      = var.project_id
   display_name = "Cross-Project Data Transfer"
   combiner     = "OR"
 
@@ -624,6 +626,13 @@ resource "google_monitoring_alert_policy" "crossproject" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Cross-Project Data Transfer",
@@ -674,6 +683,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -683,6 +693,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "image_sharing" {
+  project = var.project_id
   name   = "gce-image-disk-sharing"
   filter = <<-EOT
     resource.type=("gce_image" OR "gce_disk")
@@ -697,6 +708,7 @@ resource "google_logging_metric" "image_sharing" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "image_share" {
+  project      = var.project_id
   display_name = "GCE Image/Disk External Share"
   combiner     = "OR"
 
@@ -711,6 +723,13 @@ resource "google_monitoring_alert_policy" "image_share" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Compute Image/Disk Shared Externally",

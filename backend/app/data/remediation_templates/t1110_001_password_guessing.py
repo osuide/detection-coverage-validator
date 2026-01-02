@@ -1197,6 +1197,13 @@ resource "google_monitoring_alert_policy" "brute_force" {
 
   notification_channels = [google_monitoring_notification_channel.auth_email.id]
 
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
   documentation {
     content   = "Multiple authentication failures detected. Review Cloud Audit Logs for source IPs and targeted accounts."
     mime_type = "text/markdown"

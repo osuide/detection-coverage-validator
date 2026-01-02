@@ -1080,8 +1080,8 @@ resource "google_logging_metric" "osconfig_policy" {
 
 # Step 3: Alert on OS policy assignments
 resource "google_monitoring_alert_policy" "osconfig_policy" {
-  display_name = "OS Config Policy Assignment"
   project      = var.project_id
+  display_name = "OS Config Policy Assignment"
   combiner     = "OR"
 
   conditions {
@@ -1104,6 +1104,9 @@ resource "google_monitoring_alert_policy" "osconfig_policy" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1130,8 +1133,8 @@ resource "google_logging_metric" "patch_deployment" {
 }
 
 resource "google_monitoring_alert_policy" "patch_deployment" {
-  display_name = "OS Config Patch Deployment"
   project      = var.project_id
+  display_name = "OS Config Patch Deployment"
   combiner     = "OR"
 
   conditions {
@@ -1154,6 +1157,9 @@ resource "google_monitoring_alert_policy" "patch_deployment" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1180,8 +1186,8 @@ resource "google_logging_metric" "ssh_browser" {
 }
 
 resource "google_monitoring_alert_policy" "ssh_browser" {
-  display_name = "Compute Engine SSH Key Added"
   project      = var.project_id
+  display_name = "Compute Engine SSH Key Added"
   combiner     = "OR"
 
   conditions {
@@ -1204,6 +1210,9 @@ resource "google_monitoring_alert_policy" "ssh_browser" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

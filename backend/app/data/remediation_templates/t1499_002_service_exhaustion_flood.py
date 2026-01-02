@@ -574,6 +574,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -581,6 +582,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # High request rate alert
 resource "google_monitoring_alert_policy" "http_flood" {
+  project      = var.project_id
   display_name = "HTTP Request Flood"
   combiner     = "OR"
   conditions {
@@ -598,6 +600,13 @@ resource "google_monitoring_alert_policy" "http_flood" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content = "HTTP request flood detected - possible DoS attack"
   }
@@ -605,6 +614,7 @@ resource "google_monitoring_alert_policy" "http_flood" {
 
 # High 5xx error rate alert
 resource "google_monitoring_alert_policy" "high_5xx" {
+  project      = var.project_id
   display_name = "High 5xx Error Rate"
   combiner     = "OR"
   conditions {
@@ -622,10 +632,18 @@ resource "google_monitoring_alert_policy" "high_5xx" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }
 
 # Backend latency alert
 resource "google_monitoring_alert_policy" "backend_latency" {
+  project      = var.project_id
   display_name = "High Backend Latency"
   combiner     = "OR"
   conditions {
@@ -642,10 +660,18 @@ resource "google_monitoring_alert_policy" "backend_latency" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }
 
 # Log-based metric for flood detection
 resource "google_logging_metric" "http_errors" {
+  project = var.project_id
   name   = "http-load-balancer-errors"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -714,6 +740,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -721,6 +748,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for rate limit blocks
 resource "google_logging_metric" "rate_limit_blocks" {
+  project = var.project_id
   name   = "cloud-armor-rate-limit-blocks"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -743,6 +771,7 @@ resource "google_logging_metric" "rate_limit_blocks" {
 
 # Alert on excessive rate limiting
 resource "google_monitoring_alert_policy" "rate_limit_alert" {
+  project      = var.project_id
   display_name = "Cloud Armour Rate Limit Flood"
   combiner     = "OR"
   conditions {
@@ -760,6 +789,13 @@ resource "google_monitoring_alert_policy" "rate_limit_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content = "High volume of rate-limited requests detected - possible HTTP flood attack"
   }
@@ -767,6 +803,7 @@ resource "google_monitoring_alert_policy" "rate_limit_alert" {
 
 # Alert on throttled requests
 resource "google_monitoring_alert_policy" "throttle_alert" {
+  project      = var.project_id
   display_name = "Cloud Armour Throttling Active"
   combiner     = "OR"
   conditions {
@@ -784,6 +821,13 @@ resource "google_monitoring_alert_policy" "throttle_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Request Flood Rate Limited",
@@ -835,6 +879,7 @@ variable "alert_email" { type = string }
 variable "backend_service_name" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -842,6 +887,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Backend connection errors metric
 resource "google_logging_metric" "connection_errors" {
+  project = var.project_id
   name   = "backend-connection-errors"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -856,6 +902,7 @@ resource "google_logging_metric" "connection_errors" {
 
 # Alert on connection errors
 resource "google_monitoring_alert_policy" "connection_errors" {
+  project      = var.project_id
   display_name = "Backend Connection Errors"
   combiner     = "OR"
   conditions {
@@ -872,10 +919,18 @@ resource "google_monitoring_alert_policy" "connection_errors" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }
 
 # Backend request count alert
 resource "google_monitoring_alert_policy" "backend_requests" {
+  project      = var.project_id
   display_name = "High Backend Request Rate"
   combiner     = "OR"
   conditions {
@@ -893,6 +948,13 @@ resource "google_monitoring_alert_policy" "backend_requests" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Connection Exhaustion Attack",

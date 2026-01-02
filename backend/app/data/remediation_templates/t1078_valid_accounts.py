@@ -1301,6 +1301,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Valid Accounts"
   type         = "email"
   labels = {
@@ -1335,6 +1336,7 @@ resource "google_logging_metric" "login_activity" {
 
 # Step 3: Alert policy for suspicious login patterns
 resource "google_monitoring_alert_policy" "login_anomaly" {
+  project      = var.project_id
   display_name = "T1078: Suspicious Login Activity"
   combiner     = "OR"
   project      = var.project_id
@@ -1357,6 +1359,9 @@ resource "google_monitoring_alert_policy" "login_anomaly" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -1422,6 +1427,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Service Accounts"
   type         = "email"
   labels = {
@@ -1462,6 +1468,7 @@ resource "google_logging_metric" "sa_key_operations" {
 
 # Step 3: Alert policy for service account key operations
 resource "google_monitoring_alert_policy" "sa_key_alert" {
+  project      = var.project_id
   display_name = "T1078: Service Account Key Operations"
   combiner     = "OR"
   project      = var.project_id
@@ -1481,6 +1488,13 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Service account key operation detected. Review for unauthorised access."
@@ -2112,6 +2126,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Impossible Travel"
   type         = "email"
   labels = {
@@ -2840,6 +2855,7 @@ variable "trusted_workload_identity_pools" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Workload Identity Security Alerts"
   type         = "email"
   labels = {
@@ -2891,6 +2907,7 @@ resource "google_logging_metric" "workload_identity_usage" {
 
 # Step 3: Alert policy for workload identity abuse
 resource "google_monitoring_alert_policy" "workload_identity_abuse" {
+  project      = var.project_id
   display_name = "T1078: Workload Identity Federation Abuse"
   combiner     = "OR"
   project      = var.project_id
@@ -2912,6 +2929,13 @@ resource "google_monitoring_alert_policy" "workload_identity_abuse" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = <<-EOT
@@ -2935,6 +2959,9 @@ resource "google_monitoring_alert_policy" "workload_identity_abuse" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }
 

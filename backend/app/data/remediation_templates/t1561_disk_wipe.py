@@ -595,6 +595,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -604,6 +605,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for disk deletion
 resource "google_logging_metric" "disk_deletion" {
+  project = var.project_id
   name   = "persistent-disk-deletion"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.disks.delete|compute.snapshots.delete)"
@@ -618,6 +620,7 @@ resource "google_logging_metric" "disk_deletion" {
 
 # Alert policy for disk deletion
 resource "google_monitoring_alert_policy" "disk_deletion" {
+  project      = var.project_id
   display_name = "Persistent Disk Deletion"
   combiner     = "OR"
 
@@ -635,6 +638,9 @@ resource "google_monitoring_alert_policy" "disk_deletion" {
 
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="critical",
@@ -689,6 +695,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -698,6 +705,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Metric for bulk deletions
 resource "google_logging_metric" "bulk_deletion" {
+  project = var.project_id
   name   = "bulk-compute-deletion"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.disks.delete|compute.snapshots.delete|compute.instances.delete)"
@@ -712,6 +720,7 @@ resource "google_logging_metric" "bulk_deletion" {
 
 # Alert for bulk deletions (>3 in 10 minutes)
 resource "google_monitoring_alert_policy" "bulk_deletion" {
+  project      = var.project_id
   display_name = "Bulk Compute Resource Deletion"
   combiner     = "OR"
 
@@ -733,6 +742,9 @@ resource "google_monitoring_alert_policy" "bulk_deletion" {
 
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="critical",

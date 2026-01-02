@@ -370,6 +370,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "security_email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -380,6 +381,7 @@ resource "google_monitoring_notification_channel" "security_email" {
 
 # Step 2: Create log-based metric for failed authentication
 resource "google_logging_metric" "failed_auth" {
+  project = var.project_id
   name   = "failed-authentication-attempts"
   filter = <<-EOT
     protoPayload.authenticationInfo.principalEmail!=""
@@ -406,6 +408,7 @@ resource "google_logging_metric" "failed_auth" {
 
 # Step 3: Create alert policy for password spraying
 resource "google_monitoring_alert_policy" "password_spraying" {
+  project      = var.project_id
   display_name = "Password Spraying Detected"
   combiner     = "OR"
   conditions {
@@ -424,6 +427,9 @@ resource "google_monitoring_alert_policy" "password_spraying" {
   notification_channels = [google_monitoring_notification_channel.security_email.id]
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   project = var.project_id
 }""",
@@ -480,6 +486,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "workspace_alerts" {
+  project      = var.project_id
   display_name = "Workspace Security Alerts"
   type         = "email"
   labels = {
@@ -490,6 +497,7 @@ resource "google_monitoring_notification_channel" "workspace_alerts" {
 
 # Step 2: Create log-based metric for Workspace login failures
 resource "google_logging_metric" "workspace_login_failures" {
+  project = var.project_id
   name   = "workspace-login-failures"
   filter = <<-EOT
     resource.type="audited_resource"
@@ -507,6 +515,7 @@ resource "google_logging_metric" "workspace_login_failures" {
 
 # Step 3: Create alert policy for Workspace spraying
 resource "google_monitoring_alert_policy" "workspace_spraying" {
+  project      = var.project_id
   display_name = "Workspace Password Spraying"
   combiner     = "OR"
   conditions {
@@ -525,6 +534,9 @@ resource "google_monitoring_alert_policy" "workspace_spraying" {
   notification_channels = [google_monitoring_notification_channel.workspace_alerts.id]
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   project = var.project_id
 }""",

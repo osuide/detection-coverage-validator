@@ -629,6 +629,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alert Email"
   type         = "email"
   labels = {
@@ -638,6 +639,7 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 resource "google_logging_metric" "snapshot_delete" {
+  project = var.project_id
   name   = "snapshot-deletion-metric"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.snapshots.delete|compute.disks.delete|sqladmin.backupRuns.delete)"
@@ -654,6 +656,7 @@ resource "google_logging_metric" "snapshot_delete" {
 }
 
 resource "google_monitoring_alert_policy" "snapshot_delete" {
+  project      = var.project_id
   display_name = "GCP Snapshot/Backup Deletion"
   combiner     = "OR"
 
@@ -671,6 +674,9 @@ resource "google_monitoring_alert_policy" "snapshot_delete" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   project = var.project_id
@@ -726,6 +732,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alert Email"
   type         = "email"
   labels = {
@@ -735,6 +742,7 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 resource "google_logging_metric" "backup_policy_changes" {
+  project = var.project_id
   name   = "backup-policy-modification"
   filter = <<-EOT
     protoPayload.methodName=~"(sqladmin.instances.update|compute.resourcePolicies.delete)"
@@ -754,6 +762,7 @@ resource "google_logging_metric" "backup_policy_changes" {
 }
 
 resource "google_monitoring_alert_policy" "backup_policy_changes" {
+  project      = var.project_id
   display_name = "GCP Backup Policy Modified"
   combiner     = "OR"
 
@@ -771,6 +780,9 @@ resource "google_monitoring_alert_policy" "backup_policy_changes" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   project = var.project_id

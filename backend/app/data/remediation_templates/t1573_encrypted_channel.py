@@ -678,6 +678,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Encrypted C2"
   type         = "email"
   labels = {
@@ -687,6 +688,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for unusual encrypted connections
 resource "google_logging_metric" "encrypted_anomaly" {
+  project = var.project_id
   name   = "unusual-encrypted-connections"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -706,6 +708,7 @@ resource "google_logging_metric" "encrypted_anomaly" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "encrypted_c2" {
+  project      = var.project_id
   display_name = "Unusual Encrypted Connection Detected"
   combiner     = "OR"
 
@@ -727,6 +730,9 @@ resource "google_monitoring_alert_policy" "encrypted_c2" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -795,6 +801,7 @@ variable "alert_email" {
 
 # Step 2: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - SCC Encrypted C2"
   type         = "email"
   labels = {

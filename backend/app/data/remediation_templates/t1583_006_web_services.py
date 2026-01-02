@@ -352,12 +352,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Web Service Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "web_service_access" {
+  project = var.project_id
   name   = "suspicious-web-service-access"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -371,6 +373,7 @@ resource "google_logging_metric" "web_service_access" {
 }
 
 resource "google_monitoring_alert_policy" "web_service_abuse" {
+  project      = var.project_id
   display_name = "Suspicious Web Service Access"
   combiner     = "OR"
   conditions {
@@ -383,6 +386,13 @@ resource "google_monitoring_alert_policy" "web_service_abuse" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Web Service Access",
@@ -430,12 +440,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Network Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "web_service_traffic" {
+  project = var.project_id
   name   = "high-web-service-traffic"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -451,6 +463,7 @@ resource "google_logging_metric" "web_service_traffic" {
 }
 
 resource "google_monitoring_alert_policy" "high_traffic" {
+  project      = var.project_id
   display_name = "High Web Service Traffic"
   combiner     = "OR"
   conditions {
@@ -467,6 +480,13 @@ resource "google_monitoring_alert_policy" "high_traffic" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: High-Volume Web Service Traffic",

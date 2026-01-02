@@ -472,6 +472,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts Email"
   type         = "email"
   labels = {
@@ -511,6 +512,7 @@ resource "google_logging_metric" "accessibility_tamper" {
 
 # Alert policy for accessibility feature tampering
 resource "google_monitoring_alert_policy" "accessibility_tamper" {
+  project      = var.project_id
   display_name = "Windows Accessibility Feature Tampering"
   combiner     = "OR"
 
@@ -534,6 +536,9 @@ resource "google_monitoring_alert_policy" "accessibility_tamper" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

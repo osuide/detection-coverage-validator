@@ -772,8 +772,8 @@ resource "google_logging_metric" "interpreter_exec" {
 
 # Step 3: Create alert policy for detection
 resource "google_monitoring_alert_policy" "interpreter_alert" {
-  display_name = "T1059 - Suspicious Interpreter Execution"
   project      = var.project_id
+  display_name = "T1059 - Suspicious Interpreter Execution"
   combiner     = "OR"
 
   conditions {
@@ -914,8 +914,8 @@ resource "google_logging_metric" "function_exec" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "function_alert" {
-  display_name = "T1059 - Suspicious Cloud Function Execution"
   project      = var.project_id
+  display_name = "T1059 - Suspicious Cloud Function Execution"
   combiner     = "OR"
 
   conditions {
@@ -935,6 +935,13 @@ resource "google_monitoring_alert_policy" "function_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.functions_email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = <<-EOT
@@ -1050,8 +1057,8 @@ resource "google_logging_metric" "shell_usage" {
 
 # Step 3: Create alert for unusual Cloud Shell usage
 resource "google_monitoring_alert_policy" "shell_alert" {
-  display_name = "T1059 - Unusual Cloud Shell Activity"
   project      = var.project_id
+  display_name = "T1059 - Unusual Cloud Shell Activity"
   combiner     = "OR"
 
   conditions {
@@ -1073,6 +1080,13 @@ resource "google_monitoring_alert_policy" "shell_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.shell_email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = <<-EOT

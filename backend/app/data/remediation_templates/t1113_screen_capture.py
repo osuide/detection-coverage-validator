@@ -685,6 +685,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -694,6 +695,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for screenshot API
 resource "google_logging_metric" "compute_screenshot" {
+  project = var.project_id
   name   = "compute-screenshot-capture"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -708,6 +710,7 @@ resource "google_logging_metric" "compute_screenshot" {
 
 # Step 3: Alert policy for screenshot capture
 resource "google_monitoring_alert_policy" "compute_screenshot" {
+  project      = var.project_id
   display_name = "Compute Instance Screenshot Captured"
   combiner     = "OR"
 
@@ -722,6 +725,13 @@ resource "google_monitoring_alert_policy" "compute_screenshot" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Compute Engine screenshot captured - potential screen capture activity (T1113)"
@@ -788,6 +798,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -797,6 +808,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for remote desktop activity
 resource "google_logging_metric" "remote_desktop" {
+  project = var.project_id
   name   = "remote-desktop-activity"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -813,6 +825,7 @@ resource "google_logging_metric" "remote_desktop" {
 
 # Step 3: Alert policy for suspicious remote desktop usage
 resource "google_monitoring_alert_policy" "remote_desktop" {
+  project      = var.project_id
   display_name = "Suspicious Virtual Desktop Activity"
   combiner     = "OR"
 
@@ -831,6 +844,13 @@ resource "google_monitoring_alert_policy" "remote_desktop" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Suspicious remote desktop activity detected - potential screen capture threat (T1113)"

@@ -432,6 +432,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -441,6 +442,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for sensitive file access
 resource "google_logging_metric" "sensitive_file_access" {
+  project = var.project_id
   name   = "sensitive-file-access"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -457,6 +459,7 @@ resource "google_logging_metric" "sensitive_file_access" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "sensitive_file_alert" {
+  project      = var.project_id
   display_name = "Sensitive File Access Attempts"
   combiner     = "OR"
 
@@ -471,6 +474,13 @@ resource "google_monitoring_alert_policy" "sensitive_file_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Sensitive File Access Detected",

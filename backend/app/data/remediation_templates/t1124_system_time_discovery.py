@@ -526,8 +526,8 @@ resource "google_logging_metric" "time_discovery" {
 
 # Step 3: Alert policy for unusual time queries
 resource "google_monitoring_alert_policy" "time_discovery_alert" {
-  display_name = "System Time Discovery Detected"
   project      = var.project_id
+  display_name = "System Time Discovery Detected"
   combiner     = "OR"
 
   conditions {
@@ -548,6 +548,9 @@ resource "google_monitoring_alert_policy" "time_discovery_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="low",
@@ -640,8 +643,8 @@ resource "google_logging_metric" "oslogin_time_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "oslogin_time_alert" {
-  display_name = "Time Discovery via OS Login"
   project      = var.project_id
+  display_name = "Time Discovery via OS Login"
   combiner     = "OR"
 
   conditions {
@@ -662,6 +665,9 @@ resource "google_monitoring_alert_policy" "oslogin_time_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

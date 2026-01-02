@@ -818,6 +818,7 @@ variable "critical_bucket_prefix" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Team"
   type         = "email"
 
@@ -828,6 +829,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for storage modifications
 resource "google_logging_metric" "storage_modification" {
+  project = var.project_id
   name   = "storage-data-manipulation"
   filter = <<-EOT
     protoPayload.methodName=~"storage.objects.(create|update|patch|delete)"
@@ -858,6 +860,7 @@ resource "google_logging_metric" "storage_modification" {
 
 # Alert policy for storage modifications
 resource "google_monitoring_alert_policy" "storage_modification" {
+  project      = var.project_id
   display_name = "Cloud Storage Data Manipulation"
   combiner     = "OR"
 
@@ -881,6 +884,9 @@ resource "google_monitoring_alert_policy" "storage_modification" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -965,6 +971,7 @@ variable "alert_email" {
 
 # Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Database Security Team"
   type         = "email"
 
@@ -975,6 +982,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for Cloud SQL modifications
 resource "google_logging_metric" "sql_modification" {
+  project = var.project_id
   name   = "cloudsql-data-manipulation"
   filter = <<-EOT
     protoPayload.methodName=~"cloudsql.(instances|databases).(update|patch|delete)"
@@ -1004,6 +1012,7 @@ resource "google_logging_metric" "sql_modification" {
 
 # Alert policy for SQL modifications
 resource "google_monitoring_alert_policy" "sql_modification" {
+  project      = var.project_id
   display_name = "Cloud SQL Data Manipulation"
   combiner     = "OR"
 
@@ -1019,6 +1028,13 @@ resource "google_monitoring_alert_policy" "sql_modification" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Cloud SQL instance has been modified. Investigate for unauthorised database changes."

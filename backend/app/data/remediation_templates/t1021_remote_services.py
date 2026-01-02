@@ -580,12 +580,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "ssh_lateral" {
+  project = var.project_id
   name   = "ssh-lateral-movement"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -601,6 +603,7 @@ resource "google_logging_metric" "ssh_lateral" {
 }
 
 resource "google_monitoring_alert_policy" "ssh_lateral" {
+  project      = var.project_id
   display_name = "SSH Lateral Movement"
   combiner     = "OR"
   conditions {
@@ -613,6 +616,13 @@ resource "google_monitoring_alert_policy" "ssh_lateral" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: SSH Lateral Movement Detected",
@@ -661,12 +671,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "gke_exec" {
+  project = var.project_id
   name   = "gke-container-access"
   filter = <<-EOT
     resource.type="k8s_cluster"
@@ -680,6 +692,7 @@ resource "google_logging_metric" "gke_exec" {
 }
 
 resource "google_monitoring_alert_policy" "gke_exec" {
+  project      = var.project_id
   display_name = "GKE Container Access"
   combiner     = "OR"
   conditions {
@@ -692,6 +705,13 @@ resource "google_monitoring_alert_policy" "gke_exec" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: GKE Container Access Detected",

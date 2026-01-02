@@ -442,6 +442,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -451,6 +452,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for user discovery
 resource "google_logging_metric" "user_discovery" {
+  project = var.project_id
   name   = "user-activity-discovery"
   filter = <<-EOT
     protoPayload.serviceName="cloudresourcemanager.googleapis.com"
@@ -467,6 +469,7 @@ resource "google_logging_metric" "user_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "user_discovery" {
+  project      = var.project_id
   display_name = "User Activity Discovery Detected"
   combiner     = "OR"
 
@@ -481,6 +484,13 @@ resource "google_monitoring_alert_policy" "user_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: User Activity Discovery Detected",
@@ -533,6 +543,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -542,6 +553,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "instance_discovery" {
+  project = var.project_id
   name   = "compute-instance-discovery"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -558,6 +570,7 @@ resource "google_logging_metric" "instance_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "instance_discovery" {
+  project      = var.project_id
   display_name = "Compute Instance Discovery Detected"
   combiner     = "OR"
 
@@ -572,6 +585,13 @@ resource "google_monitoring_alert_policy" "instance_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Compute Instance Discovery",

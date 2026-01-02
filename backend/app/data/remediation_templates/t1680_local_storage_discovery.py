@@ -367,6 +367,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Storage Discovery Alerts"
   type         = "email"
   labels = {
@@ -375,6 +376,7 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 resource "google_logging_metric" "disk_enumeration" {
+  project = var.project_id
   name   = "disk-enumeration-count"
   filter = <<-EOT
     resource.type="gce_instance" OR resource.type="gce_disk"
@@ -388,6 +390,7 @@ resource "google_logging_metric" "disk_enumeration" {
 }
 
 resource "google_monitoring_alert_policy" "disk_enumeration" {
+  project      = var.project_id
   display_name = "GCP Disk Enumeration Alert"
   combiner     = "OR"
 
@@ -406,6 +409,13 @@ resource "google_monitoring_alert_policy" "disk_enumeration" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Disk Enumeration Detected",
@@ -457,6 +467,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "OS Storage Discovery Alerts"
   type         = "email"
   labels = {
@@ -465,6 +476,7 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 resource "google_logging_metric" "os_storage_commands" {
+  project = var.project_id
   name   = "os-storage-discovery-commands"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -478,6 +490,7 @@ resource "google_logging_metric" "os_storage_commands" {
 }
 
 resource "google_monitoring_alert_policy" "os_storage_discovery" {
+  project      = var.project_id
   display_name = "GCP OS Storage Discovery Alert"
   combiner     = "OR"
 
@@ -496,6 +509,13 @@ resource "google_monitoring_alert_policy" "os_storage_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: OS Storage Discovery Commands",

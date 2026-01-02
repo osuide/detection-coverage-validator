@@ -394,6 +394,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -403,6 +404,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "infra_enum" {
+  project = var.project_id
   name   = "infrastructure-enumeration"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.instances.list|compute.networks.list|cloudsql.instances.list)"
@@ -416,6 +418,7 @@ resource "google_logging_metric" "infra_enum" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "infra_enum" {
+  project      = var.project_id
   display_name = "Infrastructure Enumeration"
   combiner     = "OR"
 
@@ -430,6 +433,13 @@ resource "google_monitoring_alert_policy" "infra_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Infrastructure Enumeration",

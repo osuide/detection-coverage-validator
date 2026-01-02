@@ -732,6 +732,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Browser Discovery Security Alerts"
   type         = "email"
   labels = {
@@ -741,6 +742,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for browser file access
 resource "google_logging_metric" "browser_file_access" {
+  project = var.project_id
   name   = "browser-file-access-discovery"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -772,6 +774,7 @@ resource "google_logging_metric" "browser_file_access" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "browser_discovery" {
+  project      = var.project_id
   display_name = "Browser Information Discovery Detected"
   combiner     = "OR"
 
@@ -793,6 +796,9 @@ resource "google_monitoring_alert_policy" "browser_discovery" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -891,6 +897,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Browser Process Discovery Alerts"
   type         = "email"
   labels = {
@@ -900,6 +907,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for browser enumeration processes
 resource "google_logging_metric" "browser_enum_process" {
+  project = var.project_id
   name   = "browser-enumeration-process"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -930,6 +938,7 @@ resource "google_logging_metric" "browser_enum_process" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "browser_enum_process" {
+  project      = var.project_id
   display_name = "Browser Enumeration Process Detected"
   combiner     = "OR"
 
@@ -951,6 +960,9 @@ resource "google_monitoring_alert_policy" "browser_enum_process" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

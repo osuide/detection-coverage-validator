@@ -595,6 +595,9 @@ resource "google_monitoring_alert_policy" "vm_shutdown" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "GCE VM shutdown detected - T1529. Investigate if this was an authorised operation. Check for preceding destructive activity."

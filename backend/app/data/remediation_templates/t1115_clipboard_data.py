@@ -605,6 +605,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -614,6 +615,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for clipboard utilities
 resource "google_logging_metric" "clipboard_utils" {
+  project = var.project_id
   name   = "clipboard-utility-execution"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -631,6 +633,7 @@ resource "google_logging_metric" "clipboard_utils" {
 
 # Step 3: Alert policy for clipboard access
 resource "google_monitoring_alert_policy" "clipboard_access" {
+  project      = var.project_id
   display_name = "Clipboard Utility Execution Detected"
   combiner     = "OR"
 
@@ -649,6 +652,13 @@ resource "google_monitoring_alert_policy" "clipboard_access" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Clipboard data collection detected on GCE instance (T1115)"
@@ -718,6 +728,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -727,6 +738,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for container clipboard tools
 resource "google_logging_metric" "container_clipboard" {
+  project = var.project_id
   name   = "gke-container-clipboard-tools"
   filter = <<-EOT
     resource.type="k8s_container"
@@ -742,6 +754,7 @@ resource "google_logging_metric" "container_clipboard" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "container_clipboard" {
+  project      = var.project_id
   display_name = "GKE Container Clipboard Tool Detected"
   combiner     = "OR"
 
@@ -756,6 +769,13 @@ resource "google_monitoring_alert_policy" "container_clipboard" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Clipboard utility detected in GKE container - highly suspicious (T1115)"

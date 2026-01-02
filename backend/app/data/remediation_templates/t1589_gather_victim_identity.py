@@ -331,6 +331,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -367,8 +368,8 @@ resource "google_logging_metric" "identity_enum" {
 
 # Alert policy for enumeration detection
 resource "google_monitoring_alert_policy" "identity_enum_attack" {
-  display_name = "Identity Enumeration Detected"
   project      = var.project_id
+  display_name = "Identity Enumeration Detected"
   combiner     = "OR"
 
   conditions {
@@ -389,6 +390,9 @@ resource "google_monitoring_alert_policy" "identity_enum_attack" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

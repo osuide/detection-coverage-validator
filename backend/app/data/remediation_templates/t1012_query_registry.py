@@ -650,6 +650,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -659,6 +660,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for Registry queries
 resource "google_logging_metric" "registry_queries" {
+  project = var.project_id
   name   = "registry-query-detection"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -685,6 +687,7 @@ resource "google_logging_metric" "registry_queries" {
 
 # Step 3: Alert policy for Registry reconnaissance
 resource "google_monitoring_alert_policy" "registry_queries" {
+  project      = var.project_id
   display_name = "T1012: Registry Reconnaissance Detected"
   combiner     = "OR"
 
@@ -705,6 +708,9 @@ resource "google_monitoring_alert_policy" "registry_queries" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Suspicious Registry enumeration detected. Investigate for reconnaissance activity."

@@ -381,12 +381,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "gcs_list" {
+  project = var.project_id
   name   = "gcs-object-listing"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -400,6 +402,7 @@ resource "google_logging_metric" "gcs_list" {
 }
 
 resource "google_monitoring_alert_policy" "gcs_enum" {
+  project      = var.project_id
   display_name = "GCS Object Enumeration"
   combiner     = "OR"
 
@@ -414,6 +417,13 @@ resource "google_monitoring_alert_policy" "gcs_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: GCS Object Enumeration",

@@ -668,6 +668,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - BITS Jobs"
   type         = "email"
   labels = {
@@ -677,6 +678,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for BITS commands
 resource "google_logging_metric" "bits_jobs" {
+  project = var.project_id
   name   = "windows-bits-job-creation"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -701,6 +703,7 @@ resource "google_logging_metric" "bits_jobs" {
 
 # Step 3: Create alert policy for BITS job activity
 resource "google_monitoring_alert_policy" "bits_jobs" {
+  project      = var.project_id
   display_name = "T1197: BITS Job Detected on Windows Instance"
   combiner     = "OR"
 
@@ -722,6 +725,9 @@ resource "google_monitoring_alert_policy" "bits_jobs" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -790,6 +796,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - BITS Events"
   type         = "email"
   labels = {
@@ -799,6 +806,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for BITS-Client events
 resource "google_logging_metric" "bits_events" {
+  project = var.project_id
   name   = "windows-bits-client-events"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -829,6 +837,7 @@ resource "google_logging_metric" "bits_events" {
 
 # Step 3: Create alert policy for BITS events
 resource "google_monitoring_alert_policy" "bits_events" {
+  project      = var.project_id
   display_name = "T1197: BITS Client Activity Detected"
   combiner     = "OR"
 
@@ -850,6 +859,9 @@ resource "google_monitoring_alert_policy" "bits_events" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

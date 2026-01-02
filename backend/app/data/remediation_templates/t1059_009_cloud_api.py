@@ -1017,8 +1017,8 @@ resource "google_logging_metric" "cloudshell_usage" {
 
 # Step 3: Alert on Cloud Shell usage
 resource "google_monitoring_alert_policy" "cloudshell_alert" {
-  display_name = "Cloud Shell Session Started"
   project      = var.project_id
+  display_name = "Cloud Shell Session Started"
   combiner     = "OR"
 
   conditions {
@@ -1041,6 +1041,9 @@ resource "google_monitoring_alert_policy" "cloudshell_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1084,8 +1087,8 @@ resource "google_logging_metric" "api_enumeration" {
 
 # Step 5: Alert on high API enumeration volume
 resource "google_monitoring_alert_policy" "api_enum_alert" {
-  display_name = "API Enumeration Pattern Detected"
   project      = var.project_id
+  display_name = "API Enumeration Pattern Detected"
   combiner     = "OR"
 
   conditions {
@@ -1110,6 +1113,9 @@ resource "google_monitoring_alert_policy" "api_enum_alert" {
 
   alert_strategy {
     auto_close = "3600s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1136,8 +1142,8 @@ resource "google_logging_metric" "sensitive_api_calls" {
 }
 
 resource "google_monitoring_alert_policy" "sensitive_api_alert" {
-  display_name = "Sensitive GCP API Call"
   project      = var.project_id
+  display_name = "Sensitive GCP API Call"
   combiner     = "OR"
 
   conditions {
@@ -1160,6 +1166,9 @@ resource "google_monitoring_alert_policy" "sensitive_api_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

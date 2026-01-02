@@ -342,12 +342,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "lateral_access" {
+  project = var.project_id
   name   = "cloud-lateral-movement"
   filter = <<-EOT
     protoPayload.serviceName="iamcredentials.googleapis.com"
@@ -360,6 +362,7 @@ resource "google_logging_metric" "lateral_access" {
 }
 
 resource "google_monitoring_alert_policy" "lateral_access" {
+  project      = var.project_id
   display_name = "Cloud Lateral Movement"
   combiner     = "OR"
   conditions {
@@ -372,6 +375,13 @@ resource "google_monitoring_alert_policy" "lateral_access" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Lateral Movement Detected",

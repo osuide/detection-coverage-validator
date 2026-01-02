@@ -684,6 +684,13 @@ resource "google_monitoring_alert_policy" "vtpm_alert" {
 
   notification_channels = [google_monitoring_notification_channel.email.id]
 
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
   documentation {
     content   = "vTPM attestation failed. This may indicate firmware-level compromise or tampering."
     mime_type = "text/markdown"
@@ -799,6 +806,13 @@ resource "google_monitoring_alert_policy" "instance_launch_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "New instance created or started. Verify Shielded VM settings and boot integrity baseline."

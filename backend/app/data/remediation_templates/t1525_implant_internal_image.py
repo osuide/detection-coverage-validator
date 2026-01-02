@@ -489,12 +489,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "image_push" {
+  project = var.project_id
   name   = "container-image-push"
   filter = <<-EOT
     protoPayload.methodName=~"artifactregistry.*|docker.upload"
@@ -507,6 +509,7 @@ resource "google_logging_metric" "image_push" {
 }
 
 resource "google_monitoring_alert_policy" "image_push" {
+  project      = var.project_id
   display_name = "Container Image Push"
   combiner     = "OR"
   conditions {
@@ -519,6 +522,13 @@ resource "google_monitoring_alert_policy" "image_push" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Container Image Pushed",

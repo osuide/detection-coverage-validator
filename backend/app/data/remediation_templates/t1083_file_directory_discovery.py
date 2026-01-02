@@ -468,6 +468,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "File Discovery Alerts"
   type         = "email"
   labels = {
@@ -477,6 +478,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for file discovery
 resource "google_logging_metric" "file_discovery" {
+  project = var.project_id
   name   = "file-discovery-commands"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -492,6 +494,7 @@ resource "google_logging_metric" "file_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "file_discovery" {
+  project      = var.project_id
   display_name = "File Discovery Detected on GCE"
   combiner     = "OR"
 
@@ -513,6 +516,9 @@ resource "google_monitoring_alert_policy" "file_discovery" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",
@@ -575,6 +581,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "GCS Discovery Alerts"
   type         = "email"
   labels = {
@@ -584,6 +591,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for bucket enumeration
 resource "google_logging_metric" "gcs_enumeration" {
+  project = var.project_id
   name   = "gcs-bucket-enumeration"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -600,6 +608,7 @@ resource "google_logging_metric" "gcs_enumeration" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "gcs_enumeration" {
+  project      = var.project_id
   display_name = "GCS Bucket Enumeration Detected"
   combiner     = "OR"
 
@@ -621,6 +630,9 @@ resource "google_monitoring_alert_policy" "gcs_enumeration" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

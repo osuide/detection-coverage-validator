@@ -418,8 +418,8 @@ resource "google_logging_metric" "suspicious_file_execution" {
 
 # Step 3: Create alert policy for suspicious executions
 resource "google_monitoring_alert_policy" "suspicious_execution_alert" {
-  display_name = "Suspicious File Execution Detected"
   project      = var.project_id
+  display_name = "Suspicious File Execution Detected"
   combiner     = "OR"
 
   conditions {
@@ -440,6 +440,9 @@ resource "google_monitoring_alert_policy" "suspicious_execution_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",

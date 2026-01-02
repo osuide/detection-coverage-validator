@@ -513,6 +513,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Proxy Security Alerts"
   type         = "email"
   labels = {
@@ -521,6 +522,7 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 resource "google_logging_metric" "tor_connections" {
+  project = var.project_id
   name   = "tor-proxy-connections"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -544,6 +546,7 @@ resource "google_logging_metric" "tor_connections" {
 }
 
 resource "google_monitoring_alert_policy" "tor_detected" {
+  project      = var.project_id
   display_name = "Multi-hop Proxy (Tor) Traffic Detected"
   combiner     = "OR"
 
@@ -562,6 +565,13 @@ resource "google_monitoring_alert_policy" "tor_detected" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = <<-EOT
@@ -629,6 +639,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Proxy Chain Alerts"
   type         = "email"
   labels = {

@@ -671,12 +671,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "docker_build" {
+  project = var.project_id
   name   = "docker-build-activity"
   filter = <<-EOT
     protoPayload.methodName="google.devtools.cloudbuild.v1.CloudBuild.CreateBuild"
@@ -691,6 +693,7 @@ resource "google_logging_metric" "docker_build" {
 }
 
 resource "google_monitoring_alert_policy" "docker_build" {
+  project      = var.project_id
   display_name = "Docker Build Detection"
   combiner     = "OR"
 
@@ -705,6 +708,13 @@ resource "google_monitoring_alert_policy" "docker_build" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Docker build activity detected. Review for suspicious Dockerfile instructions."
@@ -755,12 +765,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "artifact_push" {
+  project = var.project_id
   name   = "artifact-registry-push"
   filter = <<-EOT
     protoPayload.methodName=~"artifactregistry.*Import|artifactregistry.*Upload"
@@ -774,6 +786,7 @@ resource "google_logging_metric" "artifact_push" {
 }
 
 resource "google_monitoring_alert_policy" "artifact_push" {
+  project      = var.project_id
   display_name = "Artifact Registry Push"
   combiner     = "OR"
 
@@ -788,6 +801,13 @@ resource "google_monitoring_alert_policy" "artifact_push" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Image pushed to Artifact Registry. Verify authorisation and scan for vulnerabilities."

@@ -577,6 +577,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Web Service C2"
   type         = "email"
   labels = {
@@ -586,6 +587,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for web service connections
 resource "google_logging_metric" "web_service_c2" {
+  project = var.project_id
   name   = "web-service-c2-activity"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -610,6 +612,7 @@ resource "google_logging_metric" "web_service_c2" {
 
 # Step 3: Create alert policy for web service activity
 resource "google_monitoring_alert_policy" "web_service_alert" {
+  project      = var.project_id
   display_name = "Web Service C2 Activity"
   combiner     = "OR"
 
@@ -631,6 +634,9 @@ resource "google_monitoring_alert_policy" "web_service_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -688,6 +694,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - DNS Queries"
   type         = "email"
   labels = {
@@ -697,6 +704,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for suspicious DNS queries
 resource "google_logging_metric" "dns_queries" {
+  project = var.project_id
   name   = "suspicious-dns-web-services"
   filter = <<-EOT
     resource.type="dns_query"
@@ -721,6 +729,7 @@ resource "google_logging_metric" "dns_queries" {
 
 # Step 3: Create alert for high-frequency DNS queries
 resource "google_monitoring_alert_policy" "dns_alert" {
+  project      = var.project_id
   display_name = "Suspicious Web Service DNS Queries"
   combiner     = "OR"
 
@@ -744,6 +753,9 @@ resource "google_monitoring_alert_policy" "dns_alert" {
 
   alert_strategy {
     auto_close = "3600s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

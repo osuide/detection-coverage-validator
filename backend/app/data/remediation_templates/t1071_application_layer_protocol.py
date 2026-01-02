@@ -725,6 +725,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - C2 Detection"
   type         = "email"
   labels = {
@@ -734,6 +735,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for beaconing patterns
 resource "google_logging_metric" "c2_beaconing" {
+  project = var.project_id
   name   = "c2-beaconing-pattern"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -752,6 +754,7 @@ resource "google_logging_metric" "c2_beaconing" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "c2_detection" {
+  project      = var.project_id
   display_name = "C2 Beaconing Pattern Detected"
   combiner     = "OR"
 
@@ -773,6 +776,9 @@ resource "google_monitoring_alert_policy" "c2_detection" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -838,6 +844,7 @@ variable "alert_email" {
 
 # Step 2: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - SCC"
   type         = "email"
   labels = {

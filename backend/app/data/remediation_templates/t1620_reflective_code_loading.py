@@ -421,12 +421,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "suspicious_memory" {
+  project = var.project_id
   name   = "suspicious-memory-operations"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -449,6 +451,7 @@ resource "google_logging_metric" "suspicious_memory" {
 }
 
 resource "google_monitoring_alert_policy" "reflective_loading" {
+  project      = var.project_id
   display_name = "Reflective Code Loading Detected"
   combiner     = "OR"
   conditions {
@@ -467,6 +470,9 @@ resource "google_monitoring_alert_policy" "reflective_loading" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -515,12 +521,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Container Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "container_memory_injection" {
+  project = var.project_id
   name   = "container-memory-injection"
   filter = <<-EOT
     resource.type="k8s_container"
@@ -549,6 +557,7 @@ resource "google_logging_metric" "container_memory_injection" {
 }
 
 resource "google_monitoring_alert_policy" "container_injection" {
+  project      = var.project_id
   display_name = "GKE Container Memory Injection"
   combiner     = "OR"
   conditions {
@@ -567,6 +576,13 @@ resource "google_monitoring_alert_policy" "container_injection" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GKE: Container Memory Injection Detected",

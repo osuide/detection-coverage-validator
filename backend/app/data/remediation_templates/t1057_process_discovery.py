@@ -437,6 +437,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -446,6 +447,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for process enumeration
 resource "google_logging_metric" "process_enum" {
+  project = var.project_id
   name   = "process-enumeration"
   filter = <<-EOT
     protoPayload.request.cmdline=~"(ps aux|ps -ef|top|htop|/proc/)"
@@ -460,6 +462,7 @@ resource "google_logging_metric" "process_enum" {
 
 # Step 3: Alert policy for process enumeration
 resource "google_monitoring_alert_policy" "process_enum" {
+  project      = var.project_id
   display_name = "Process Enumeration Detected"
   combiner     = "OR"
 
@@ -474,6 +477,13 @@ resource "google_monitoring_alert_policy" "process_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Process Enumeration Detected",
@@ -530,6 +540,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -539,6 +550,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for kubectl exec process enumeration
 resource "google_logging_metric" "gke_process_enum" {
+  project = var.project_id
   name   = "gke-process-enumeration"
   filter = <<-EOT
     resource.type="k8s_cluster"
@@ -554,6 +566,7 @@ resource "google_logging_metric" "gke_process_enum" {
 
 # Step 3: Alert policy for GKE process enumeration
 resource "google_monitoring_alert_policy" "gke_process_enum" {
+  project      = var.project_id
   display_name = "GKE Process Enumeration Detected"
   combiner     = "OR"
 
@@ -568,6 +581,13 @@ resource "google_monitoring_alert_policy" "gke_process_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GKE: Container Process Enumeration",

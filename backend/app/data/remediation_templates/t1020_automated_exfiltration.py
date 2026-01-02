@@ -862,6 +862,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alert Email"
   type         = "email"
   labels = {
@@ -871,6 +872,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for GCS uploads
 resource "google_logging_metric" "gcs_upload" {
+  project = var.project_id
   name   = "gcs-upload-frequency"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -895,6 +897,7 @@ resource "google_logging_metric" "gcs_upload" {
 
 # Step 3: Alert policy for high-frequency uploads
 resource "google_monitoring_alert_policy" "gcs_upload_alert" {
+  project      = var.project_id
   display_name = "Automated GCS Upload Detected"
   combiner     = "OR"
 
@@ -916,6 +919,9 @@ resource "google_monitoring_alert_policy" "gcs_upload_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -976,6 +982,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alert Email"
   type         = "email"
   labels = {
@@ -985,6 +992,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for function changes
 resource "google_logging_metric" "function_changes" {
+  project = var.project_id
   name   = "cloud-function-modifications"
   filter = <<-EOT
     resource.type="cloud_function"
@@ -1001,6 +1009,7 @@ resource "google_logging_metric" "function_changes" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "function_alert" {
+  project      = var.project_id
   display_name = "Cloud Function Modification Detected"
   combiner     = "OR"
 
@@ -1018,6 +1027,9 @@ resource "google_monitoring_alert_policy" "function_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -1075,6 +1087,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alert Email"
   type         = "email"
   labels = {
@@ -1084,6 +1097,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for scheduler jobs
 resource "google_logging_metric" "scheduler_jobs" {
+  project = var.project_id
   name   = "cloud-scheduler-job-changes"
   filter = <<-EOT
     resource.type="cloud_scheduler_job"
@@ -1100,6 +1114,7 @@ resource "google_logging_metric" "scheduler_jobs" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "scheduler_alert" {
+  project      = var.project_id
   display_name = "Cloud Scheduler Job Created or Modified"
   combiner     = "OR"
 
@@ -1117,6 +1132,9 @@ resource "google_monitoring_alert_policy" "scheduler_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

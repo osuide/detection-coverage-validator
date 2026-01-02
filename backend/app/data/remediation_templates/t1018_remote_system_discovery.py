@@ -465,6 +465,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "instance_discovery_email" {
+  project      = var.project_id
   display_name = "Instance Discovery Security Alerts"
   type         = "email"
 
@@ -475,6 +476,7 @@ resource "google_monitoring_notification_channel" "instance_discovery_email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "instance_discovery" {
+  project = var.project_id
   name   = "compute-instance-discovery"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -499,6 +501,7 @@ resource "google_logging_metric" "instance_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "instance_discovery" {
+  project      = var.project_id
   display_name = "Compute Instance Discovery Detected"
   combiner     = "OR"
 
@@ -522,6 +525,9 @@ resource "google_monitoring_alert_policy" "instance_discovery" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -588,6 +594,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "ssh_discovery_alerts" {
+  project      = var.project_id
   display_name = "SSH Access Discovery Alerts"
   type         = "email"
   labels = {
@@ -597,6 +604,7 @@ resource "google_monitoring_notification_channel" "ssh_discovery_alerts" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "ssh_discovery" {
+  project = var.project_id
   name   = "ssh-access-pattern-discovery"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -612,6 +620,7 @@ resource "google_logging_metric" "ssh_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "ssh_discovery" {
+  project      = var.project_id
   display_name = "SSH Access Pattern Discovery"
   combiner     = "OR"
 
@@ -632,6 +641,13 @@ resource "google_monitoring_alert_policy" "ssh_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.ssh_discovery_alerts.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "SSH access pattern discovery detected. Review for authorised administrative activity or potential reconnaissance."

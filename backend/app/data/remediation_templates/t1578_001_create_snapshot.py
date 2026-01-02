@@ -427,6 +427,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -436,6 +437,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "snapshot_create" {
+  project = var.project_id
   name   = "disk-snapshot-creation"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.disks.createSnapshot|compute.snapshots.insert)"
@@ -449,6 +451,7 @@ resource "google_logging_metric" "snapshot_create" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "snapshot_create" {
+  project      = var.project_id
   display_name = "Disk Snapshot Created"
   combiner     = "OR"
 
@@ -463,6 +466,13 @@ resource "google_monitoring_alert_policy" "snapshot_create" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Disk Snapshot Created",

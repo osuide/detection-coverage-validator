@@ -518,12 +518,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "remote_access" {
+  project = var.project_id
   name   = "external-remote-services"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -540,6 +542,7 @@ resource "google_logging_metric" "remote_access" {
 }
 
 resource "google_monitoring_alert_policy" "remote_access" {
+  project      = var.project_id
   display_name = "External Remote Service Access"
   combiner     = "OR"
   conditions {
@@ -552,6 +555,13 @@ resource "google_monitoring_alert_policy" "remote_access" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: External Remote Service Access",
@@ -602,12 +612,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "ssh_rdp_external" {
+  project = var.project_id
   name   = "external-ssh-rdp-access"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -623,6 +635,7 @@ resource "google_logging_metric" "ssh_rdp_external" {
 }
 
 resource "google_monitoring_alert_policy" "ssh_rdp_external" {
+  project      = var.project_id
   display_name = "External SSH/RDP Access"
   combiner     = "OR"
   conditions {
@@ -635,6 +648,13 @@ resource "google_monitoring_alert_policy" "ssh_rdp_external" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: External SSH/RDP Access",

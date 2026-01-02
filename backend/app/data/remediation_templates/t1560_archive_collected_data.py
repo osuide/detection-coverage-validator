@@ -695,6 +695,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Archive Detection Alerts"
   type         = "email"
   labels = {
@@ -704,6 +705,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for archive utility execution
 resource "google_logging_metric" "archive_utility" {
+  project = var.project_id
   name   = "archive-utility-executions"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -730,6 +732,7 @@ resource "google_logging_metric" "archive_utility" {
 
 # Step 3: Create alert policy for archive activity
 resource "google_monitoring_alert_policy" "archive_activity" {
+  project      = var.project_id
   display_name = "T1560 - Archive Utility Execution"
   combiner     = "OR"
 
@@ -751,6 +754,9 @@ resource "google_monitoring_alert_policy" "archive_activity" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -819,6 +825,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "GCS Archive Upload Alerts"
   type         = "email"
   labels = {
@@ -828,6 +835,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for archive uploads
 resource "google_logging_metric" "gcs_archive_upload" {
+  project = var.project_id
   name   = "gcs-archive-uploads"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -858,6 +866,7 @@ resource "google_logging_metric" "gcs_archive_upload" {
 
 # Step 3: Create alert policy for archive uploads
 resource "google_monitoring_alert_policy" "gcs_archive_upload" {
+  project      = var.project_id
   display_name = "T1560 - Archive Upload to Cloud Storage"
   combiner     = "OR"
 
@@ -876,6 +885,13 @@ resource "google_monitoring_alert_policy" "gcs_archive_upload" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Archive file uploaded to Cloud Storage. Verify this is authorised activity and not data exfiltration (MITRE ATT&CK T1560)."

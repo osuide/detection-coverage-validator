@@ -622,9 +622,7 @@ resource "aws_sns_topic_policy" "allow_events" {
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="http_load_balancer"
 httpRequest.requestUrl=~"[A-Za-z0-9+/]{100,}={0,2}"
-OR httpRequest.requestUrl=~"[A-Fa-f0-9]{100,}"
-| stats count() as encoded_requests by httpRequest.remoteIp, bin(5m)
-| encoded_requests > 20""",
+OR httpRequest.requestUrl=~"[A-Fa-f0-9]{100,}" """,
                 gcp_terraform_template="""# GCP: Detect encoded HTTP traffic
 
 variable "project_id" {
@@ -639,6 +637,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Encoding Detection"
   type         = "email"
   labels = {
@@ -648,6 +647,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for encoded HTTP traffic
 resource "google_logging_metric" "encoded_http" {
+  project = var.project_id
   name   = "encoded-http-traffic"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -663,6 +663,7 @@ resource "google_logging_metric" "encoded_http" {
 
 # Step 3: Alert policy for encoded traffic
 resource "google_monitoring_alert_policy" "encoded_http" {
+  project      = var.project_id
   display_name = "Encoded HTTP Traffic Detected"
   combiner     = "OR"
 
@@ -684,6 +685,9 @@ resource "google_monitoring_alert_policy" "encoded_http" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -731,12 +735,10 @@ resource "google_monitoring_alert_policy" "encoded_http" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="dns_query"
-(LENGTH(protoPayload.queryName) > 60
+(protoPayload.queryName=~".{60,}"
  OR protoPayload.queryName=~"[A-Za-z0-9]{40,}\\."
  OR protoPayload.queryName=~"[A-Fa-f0-9]{40,}\\.")
-| stats count() as query_count, avg(LENGTH(protoPayload.queryName)) as avg_length
-  by sourceIP, bin(5m)
-| query_count > 50 OR avg_length > 60""",
+  by sourceIP, bin(5m)""",
                 gcp_terraform_template="""# GCP: Detect encoded DNS queries
 
 variable "project_id" {
@@ -762,6 +764,7 @@ resource "google_dns_managed_zone" "monitored" {
 
 # Step 2: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - DNS Encoding"
   type         = "email"
   labels = {
@@ -771,10 +774,11 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 3: Log-based metric for encoded DNS queries
 resource "google_logging_metric" "encoded_dns" {
+  project = var.project_id
   name   = "encoded-dns-queries"
   filter = <<-EOT
     resource.type="dns_query"
-    (LENGTH(protoPayload.queryName) > 60
+    (protoPayload.queryName=~".{60,}"
      OR protoPayload.queryName=~"[A-Za-z0-9]{40,}\\."
      OR protoPayload.queryName=~"[A-Fa-f0-9]{40,}\\.")
   EOT
@@ -786,6 +790,7 @@ resource "google_logging_metric" "encoded_dns" {
 }
 
 resource "google_monitoring_alert_policy" "encoded_dns" {
+  project      = var.project_id
   display_name = "Encoded DNS Queries Detected"
   combiner     = "OR"
 
@@ -807,6 +812,9 @@ resource "google_monitoring_alert_policy" "encoded_dns" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -875,6 +883,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Encoding Tools"
   type         = "email"
   labels = {
@@ -884,6 +893,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for encoding tools
 resource "google_logging_metric" "encoding_tools" {
+  project = var.project_id
   name   = "encoding-utility-execution"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -904,6 +914,7 @@ resource "google_logging_metric" "encoding_tools" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "encoding_tools" {
+  project      = var.project_id
   display_name = "Encoding Utility Execution Detected"
   combiner     = "OR"
 
@@ -925,6 +936,9 @@ resource "google_monitoring_alert_policy" "encoding_tools" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

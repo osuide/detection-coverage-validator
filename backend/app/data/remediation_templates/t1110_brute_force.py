@@ -689,6 +689,13 @@ resource "google_monitoring_alert_policy" "brute_force" {
 
   notification_channels = [google_monitoring_notification_channel.email.name]
 
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
   documentation {
     content   = "Potential brute force attack detected. Multiple failed authentication attempts from the same principal."
     mime_type = "text/markdown"
@@ -749,6 +756,13 @@ resource "google_monitoring_alert_policy" "ssh_brute_force" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.name]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "SSH brute force attack detected against Compute Engine instance."

@@ -403,6 +403,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -413,6 +414,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for IAM condition changes
 resource "google_logging_metric" "iam_condition_changes" {
+  project = var.project_id
   name   = "iam-condition-modifications"
   filter = <<-EOT
     protoPayload.methodName=~"SetIamPolicy|UpdateIamPolicy"
@@ -438,6 +440,7 @@ resource "google_logging_metric" "iam_condition_changes" {
 
 # Alert policy for IAM condition modifications
 resource "google_monitoring_alert_policy" "iam_condition_alerts" {
+  project      = var.project_id
   display_name = "IAM Condition Policy Modifications"
   combiner     = "OR"
 
@@ -521,6 +524,7 @@ variable "alert_email" {
 
 # Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "CAA Policy Alerts"
   type         = "email"
   labels = {
@@ -531,6 +535,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for CAA policy changes
 resource "google_logging_metric" "caa_policy_changes" {
+  project = var.project_id
   name   = "context-aware-access-modifications"
   filter = <<-EOT
     resource.type="access_policy"
@@ -562,6 +567,7 @@ resource "google_logging_metric" "caa_policy_changes" {
 
 # Alert policy for CAA modifications
 resource "google_monitoring_alert_policy" "caa_modifications" {
+  project      = var.project_id
   display_name = "Context-Aware Access Policy Changes"
   combiner     = "OR"
 
@@ -584,6 +590,9 @@ resource "google_monitoring_alert_policy" "caa_modifications" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   project = var.project_id

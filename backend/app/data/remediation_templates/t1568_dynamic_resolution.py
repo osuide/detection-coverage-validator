@@ -809,6 +809,7 @@ resource "google_dns_managed_zone" "monitored" {
 
 # Step 2: Create log metric for DGA patterns
 resource "google_logging_metric" "dga_detection" {
+  project = var.project_id
   name   = "dga-domain-queries"
   filter = <<-EOT
     resource.type="dns_query"
@@ -825,6 +826,7 @@ resource "google_logging_metric" "dga_detection" {
 
 # Step 3: Create notification channel and alert policy
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - DGA Detection"
   type         = "email"
   labels = {
@@ -833,6 +835,7 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 resource "google_monitoring_alert_policy" "dga_detection" {
+  project      = var.project_id
   display_name = "DGA or Dynamic DNS Activity Detected"
   combiner     = "OR"
 
@@ -854,6 +857,9 @@ resource "google_monitoring_alert_policy" "dga_detection" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -922,6 +928,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - SCC C2 Detection"
   type         = "email"
   labels = {

@@ -409,6 +409,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "DDoS Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -417,6 +418,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for rate-based bans
 resource "google_logging_metric" "armor_rate_bans" {
+  project = var.project_id
   name   = "cloud-armor-rate-bans"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -439,6 +441,7 @@ resource "google_logging_metric" "armor_rate_bans" {
 
 # Step 3: Create alert policy for DDoS detection
 resource "google_monitoring_alert_policy" "ddos_detection" {
+  project      = var.project_id
   display_name = "Cloud Armor DDoS Attack Detected"
   combiner     = "OR"
   conditions {
@@ -457,6 +460,9 @@ resource "google_monitoring_alert_policy" "ddos_detection" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   project = var.project_id
 }""",
@@ -513,6 +519,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Network Flood Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -544,6 +551,7 @@ resource "google_logging_metric" "high_network_traffic" {
 
 # Step 3: Create alert for network flood detection
 resource "google_monitoring_alert_policy" "network_flood" {
+  project      = var.project_id
   display_name = "Network Flood Attack Detected"
   combiner     = "OR"
   conditions {
@@ -562,6 +570,9 @@ resource "google_monitoring_alert_policy" "network_flood" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   project = var.project_id
 }""",

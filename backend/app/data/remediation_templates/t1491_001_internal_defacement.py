@@ -390,6 +390,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -426,8 +427,8 @@ resource "google_logging_metric" "website_modifications" {
 }
 
 resource "google_monitoring_alert_policy" "website_defacement" {
-  display_name = "GCP Storage Website Defacement Alert"
   project      = var.project_id
+  display_name = "GCP Storage Website Defacement Alert"
   combiner     = "OR"
 
   conditions {
@@ -448,6 +449,9 @@ resource "google_monitoring_alert_policy" "website_defacement" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -506,6 +510,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -531,8 +536,8 @@ resource "google_logging_metric" "instance_modifications" {
 }
 
 resource "google_monitoring_alert_policy" "instance_changes" {
-  display_name = "GCE Instance Suspicious Modifications"
   project      = var.project_id
+  display_name = "GCE Instance Suspicious Modifications"
   combiner     = "OR"
 
   conditions {
@@ -549,6 +554,9 @@ resource "google_monitoring_alert_policy" "instance_changes" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }
 

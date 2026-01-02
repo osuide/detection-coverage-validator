@@ -711,6 +711,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alert Email"
   type         = "email"
   labels = {
@@ -720,6 +721,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for uniform GCS uploads
 resource "google_logging_metric" "chunked_upload" {
+  project = var.project_id
   name   = "gcs-chunked-uploads"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -746,6 +748,7 @@ resource "google_logging_metric" "chunked_upload" {
 
 # Step 3: Alert policy for frequent uniform uploads
 resource "google_monitoring_alert_policy" "chunked_upload" {
+  project      = var.project_id
   display_name = "GCS Chunked Upload Pattern Detected"
   combiner     = "OR"
 
@@ -767,6 +770,9 @@ resource "google_monitoring_alert_policy" "chunked_upload" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -829,6 +835,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alert Email"
   type         = "email"
   labels = {
@@ -864,6 +871,7 @@ resource "google_logging_metric" "network_chunks" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "network_chunks" {
+  project      = var.project_id
   display_name = "VPC Uniform Transfer Pattern Detected"
   combiner     = "OR"
 
@@ -885,6 +893,9 @@ resource "google_monitoring_alert_policy" "network_chunks" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -945,6 +956,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alert Email"
   type         = "email"
   labels = {
@@ -954,6 +966,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for function invocations
 resource "google_logging_metric" "function_frequency" {
+  project = var.project_id
   name   = "function-invocation-frequency"
   filter = <<-EOT
     resource.type="cloud_function"
@@ -977,6 +990,7 @@ resource "google_logging_metric" "function_frequency" {
 
 # Step 3: Alert policy for frequent executions
 resource "google_monitoring_alert_policy" "function_frequency" {
+  project      = var.project_id
   display_name = "Cloud Function Frequent Execution Detected"
   combiner     = "OR"
 
@@ -998,6 +1012,9 @@ resource "google_monitoring_alert_policy" "function_frequency" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

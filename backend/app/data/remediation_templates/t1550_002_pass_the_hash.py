@@ -519,6 +519,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Pass the Hash Alerts"
   type         = "email"
   labels = {
@@ -528,6 +529,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for NTLM authentication
 resource "google_logging_metric" "ntlm_logons" {
+  project = var.project_id
   name   = "suspicious-ntlm-logons"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -553,6 +555,7 @@ resource "google_logging_metric" "ntlm_logons" {
 
 # Step 3: Create alert policy for excessive NTLM authentication
 resource "google_monitoring_alert_policy" "ntlm_alert" {
+  project      = var.project_id
   display_name = "T1550.002 - Pass the Hash Detection"
   combiner     = "OR"
 
@@ -576,6 +579,9 @@ resource "google_monitoring_alert_policy" "ntlm_alert" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

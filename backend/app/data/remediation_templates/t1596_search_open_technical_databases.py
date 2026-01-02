@@ -368,6 +368,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Reconnaissance Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -375,6 +376,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Monitor DNS query patterns
 resource "google_logging_metric" "suspicious_dns" {
+  project = var.project_id
   name   = "suspicious-dns-queries"
   filter = <<-EOT
     resource.type="cloud_dns_query"
@@ -387,6 +389,7 @@ resource "google_logging_metric" "suspicious_dns" {
 }
 
 resource "google_monitoring_alert_policy" "dns_reconnaissance" {
+  project      = var.project_id
   display_name = "DNS Reconnaissance Activity"
   combiner     = "OR"
   conditions {
@@ -399,10 +402,18 @@ resource "google_monitoring_alert_policy" "dns_reconnaissance" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }
 
 # Monitor Cloud DNS operations
 resource "google_logging_metric" "dns_changes" {
+  project = var.project_id
   name   = "dns-configuration-changes"
   filter = <<-EOT
     resource.type="dns_managed_zone"
@@ -415,6 +426,7 @@ resource "google_logging_metric" "dns_changes" {
 }
 
 resource "google_monitoring_alert_policy" "dns_changes" {
+  project      = var.project_id
   display_name = "DNS Configuration Changes"
   combiner     = "OR"
   conditions {
@@ -427,6 +439,13 @@ resource "google_monitoring_alert_policy" "dns_changes" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Potential DNS Reconnaissance",
@@ -556,6 +575,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Exposure Prevention Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -583,6 +603,7 @@ resource "google_project_organization_policy" "sql_external_ip" {
 
 # Monitor for publicly accessible resources
 resource "google_logging_metric" "public_exposure" {
+  project = var.project_id
   name   = "public-resource-exposure"
   filter = <<-EOT
     protoPayload.methodName=~"storage.setIamPermissions|sql.instances.patch"
@@ -595,6 +616,7 @@ resource "google_logging_metric" "public_exposure" {
 }
 
 resource "google_monitoring_alert_policy" "exposure_alert" {
+  project      = var.project_id
   display_name = "Public Resource Exposure"
   combiner     = "OR"
   conditions {
@@ -607,6 +629,13 @@ resource "google_monitoring_alert_policy" "exposure_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="Public Resource Exposure Detected",

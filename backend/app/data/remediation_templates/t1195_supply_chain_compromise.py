@@ -939,6 +939,9 @@ resource "google_monitoring_alert_policy" "build_compromise" {
 
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -982,6 +985,13 @@ resource "google_monitoring_alert_policy" "suspicious_source" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Cloud Build Configuration Compromised",
@@ -1095,6 +1105,13 @@ resource "google_monitoring_alert_policy" "gcr_activity" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Container image pushed to GCR. Verify authorisation and scan for vulnerabilities. Consider migrating to Artifact Registry for enhanced security features."

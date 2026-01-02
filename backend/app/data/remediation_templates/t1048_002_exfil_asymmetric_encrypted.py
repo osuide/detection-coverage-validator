@@ -772,6 +772,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -779,6 +780,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for large HTTPS transfers
 resource "google_logging_metric" "https_exfil" {
+  project = var.project_id
   name   = "large-https-exfiltration"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -797,6 +799,7 @@ resource "google_logging_metric" "https_exfil" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "https_exfil" {
+  project      = var.project_id
   display_name = "HTTPS Exfiltration Detected"
   combiner     = "OR"
   conditions {
@@ -809,6 +812,13 @@ resource "google_monitoring_alert_policy" "https_exfil" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Large HTTPS Exfiltration Detected",
@@ -849,9 +859,8 @@ resource "google_monitoring_alert_policy" "https_exfil" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""protoPayload.methodName="storage.objects.get"
-protoPayload.authenticationInfo.principalEmail!=""
-| stats count() as access_count by protoPayload.authenticationInfo.principalEmail, protoPayload.requestMetadata.callerIp
-| access_count > 20""",
+protoPayload.authenticationInfo.principalEmail!="""
+                "",
                 gcp_terraform_template="""# GCP: Detect Cloud Storage access before exfiltration
 
 variable "project_id" { type = string }
@@ -859,6 +868,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -866,6 +876,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create metric for rapid storage access
 resource "google_logging_metric" "storage_access" {
+  project = var.project_id
   name   = "rapid-storage-access"
   filter = <<-EOT
     protoPayload.methodName="storage.objects.get"
@@ -879,6 +890,7 @@ resource "google_logging_metric" "storage_access" {
 
 # Step 3: Alert on unusual access patterns
 resource "google_monitoring_alert_policy" "storage_access" {
+  project      = var.project_id
   display_name = "Rapid Cloud Storage Access"
   combiner     = "OR"
   conditions {
@@ -895,6 +907,13 @@ resource "google_monitoring_alert_policy" "storage_access" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Rapid Cloud Storage Access Detected",

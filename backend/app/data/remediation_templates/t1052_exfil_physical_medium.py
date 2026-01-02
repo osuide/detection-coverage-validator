@@ -792,6 +792,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Exfiltration Alerts (Cloud Disk)"
   type         = "email"
   labels = {
@@ -819,8 +820,8 @@ resource "google_logging_metric" "disk_attach" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "disk_attach" {
-  display_name = "External Disk Attachment (Cloud API)"
   project      = var.project_id
+  display_name = "External Disk Attachment (Cloud API)"
   combiner     = "OR"
 
   conditions {
@@ -841,6 +842,9 @@ resource "google_monitoring_alert_policy" "disk_attach" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -924,6 +928,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "File Staging Alerts (OS Logs)"
   type         = "email"
   labels = {
@@ -933,6 +938,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create metric for large file operations
 resource "google_logging_metric" "file_staging" {
+  project = var.project_id
   name   = "large-file-staging"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -951,6 +957,7 @@ resource "google_logging_metric" "file_staging" {
 
 # Step 3: Create alert for suspicious file operations
 resource "google_monitoring_alert_policy" "file_staging" {
+  project      = var.project_id
   display_name = "Large File Staging Activity (OS Logs)"
   combiner     = "OR"
 
@@ -969,6 +976,13 @@ resource "google_monitoring_alert_policy" "file_staging" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = <<-EOT

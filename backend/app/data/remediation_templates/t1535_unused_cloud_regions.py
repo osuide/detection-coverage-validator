@@ -285,12 +285,14 @@ variable "allowed_regions" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "unused_region" {
+  project = var.project_id
   name   = "unused-region-activity"
   filter = <<-EOT
     protoPayload.methodName="compute.instances.insert"
@@ -303,6 +305,7 @@ resource "google_logging_metric" "unused_region" {
 }
 
 resource "google_monitoring_alert_policy" "unused_region" {
+  project      = var.project_id
   display_name = "Unused Region Activity"
   combiner     = "OR"
   conditions {
@@ -315,6 +318,13 @@ resource "google_monitoring_alert_policy" "unused_region" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Activity in Unused Region",

@@ -402,12 +402,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "suspicious_instance_creation" {
+  project = var.project_id
   name   = "suspicious-instance-creation"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -422,6 +424,7 @@ resource "google_logging_metric" "suspicious_instance_creation" {
 }
 
 resource "google_monitoring_alert_policy" "compromised_instance" {
+  project      = var.project_id
   display_name = "Compromised GCP Instance Activity"
   combiner     = "OR"
   conditions {
@@ -434,6 +437,13 @@ resource "google_monitoring_alert_policy" "compromised_instance" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Compromised Instance Detected",
@@ -480,12 +490,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "dns_tunnel" {
+  project = var.project_id
   name   = "dns-tunnelling-attempts"
   filter = <<-EOT
     resource.type="dns_query"
@@ -499,6 +511,7 @@ resource "google_logging_metric" "dns_tunnel" {
 }
 
 resource "google_monitoring_alert_policy" "dns_c2" {
+  project      = var.project_id
   display_name = "DNS Tunnelling Detected"
   combiner     = "OR"
   conditions {
@@ -511,6 +524,13 @@ resource "google_monitoring_alert_policy" "dns_c2" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: DNS Tunnelling Detected",

@@ -1017,9 +1017,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="dns_query"
-(queryName=~".{50,}" OR queryType="TXT")
-| stats count() as query_count, avg(len(queryName)) as avg_length by sourceIP
-| query_count > 100 OR avg_length > 40""",
+(queryName=~".{50,}" OR queryType="TXT")""",
                 gcp_terraform_template="""# GCP: DNS tunnelling detection
 
 variable "project_id" { type = string }
@@ -1038,10 +1036,11 @@ resource "google_dns_managed_zone" "monitored" {
 
 # Step 2: Create log metric for suspicious patterns
 resource "google_logging_metric" "dns_tunnel" {
+  project = var.project_id
   name   = "dns-tunnelling"
   filter = <<-EOT
     resource.type="dns_query"
-    (LENGTH(protoPayload.queryName) > 50 OR protoPayload.queryType="TXT")
+    (protoPayload.queryName=~".{50,}" OR protoPayload.queryType="TXT")
   EOT
   metric_descriptor {
     metric_kind = "DELTA"
@@ -1051,12 +1050,14 @@ resource "google_logging_metric" "dns_tunnel" {
 
 # Step 3: Alert on threshold
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_monitoring_alert_policy" "dns_tunnel" {
+  project      = var.project_id
   display_name = "DNS Tunnelling Detected"
   combiner     = "OR"
   conditions {
@@ -1069,6 +1070,13 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: DNS Tunnelling Activity Detected",
@@ -1118,6 +1126,7 @@ variable "alert_email" { type = string }
 
 # Step 2: Create metric for suspicious protocols
 resource "google_logging_metric" "alt_protocol" {
+  project = var.project_id
   name   = "alternative-protocol-transfer"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -1138,12 +1147,14 @@ resource "google_logging_metric" "alt_protocol" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_monitoring_alert_policy" "alt_protocol" {
+  project      = var.project_id
   display_name = "Alternative Protocol Exfiltration"
   combiner     = "OR"
   conditions {
@@ -1156,6 +1167,13 @@ resource "google_monitoring_alert_policy" "alt_protocol" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Alternative Protocol Transfer Detected",

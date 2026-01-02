@@ -1253,6 +1253,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Hardware Addition Alerts (Cloud API)"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -1260,6 +1261,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for disk attachments
 resource "google_logging_metric" "disk_attachment" {
+  project = var.project_id
   name   = "gce-disk-attachment-api-calls"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -1275,6 +1277,7 @@ resource "google_logging_metric" "disk_attachment" {
 
 # Step 3: Alert policy for disk attachments
 resource "google_monitoring_alert_policy" "disk_attachment_alert" {
+  project      = var.project_id
   display_name = "GCP Disk/Network Attachment (Cloud API)"
   combiner     = "OR"
 
@@ -1292,6 +1295,9 @@ resource "google_monitoring_alert_policy" "disk_attachment_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

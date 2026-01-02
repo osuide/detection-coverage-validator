@@ -374,6 +374,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Share Discovery Security Alerts"
   type         = "email"
   labels = {
@@ -406,6 +407,7 @@ resource "google_logging_metric" "smb_connections" {
 
 # Alert policy for excessive SMB enumeration
 resource "google_monitoring_alert_policy" "smb_enum_alert" {
+  project      = var.project_id
   display_name = "Network Share Enumeration Detected"
   combiner     = "OR"
   conditions {
@@ -424,6 +426,9 @@ resource "google_monitoring_alert_policy" "smb_enum_alert" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

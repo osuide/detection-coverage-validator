@@ -216,6 +216,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -234,6 +235,7 @@ resource "google_logging_metric" "external_image" {
 }
 
 resource "google_monitoring_alert_policy" "external_image" {
+  project      = var.project_id
   display_name = "External Image Usage"
   combiner     = "OR"
   conditions {
@@ -246,6 +248,13 @@ resource "google_monitoring_alert_policy" "external_image" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Unapproved Image Used",

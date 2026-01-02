@@ -710,8 +710,8 @@ resource "google_logging_metric" "kerberoasting_attempts" {
 
 # Alert policy for authentication failures
 resource "google_monitoring_alert_policy" "auth_failure_alert" {
-  display_name = "Managed AD Authentication Failures"
   project      = var.project_id
+  display_name = "Managed AD Authentication Failures"
   combiner     = "OR"
 
   conditions {
@@ -744,8 +744,8 @@ resource "google_monitoring_alert_policy" "auth_failure_alert" {
 
 # Alert policy for Kerberoasting
 resource "google_monitoring_alert_policy" "kerberoasting_alert" {
-  display_name = "Kerberoasting Attack Detection"
   project      = var.project_id
+  display_name = "Kerberoasting Attack Detection"
   combiner     = "OR"
 
   conditions {
@@ -768,6 +768,9 @@ resource "google_monitoring_alert_policy" "kerberoasting_alert" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

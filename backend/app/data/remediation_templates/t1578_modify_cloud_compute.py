@@ -758,6 +758,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -767,6 +768,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "instance_modification" {
+  project = var.project_id
   name   = "compute-instance-modifications"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.instances.insert|compute.instances.delete|compute.instances.stop|compute.instances.setMetadata|compute.instances.setMachineType)"
@@ -780,6 +782,7 @@ resource "google_logging_metric" "instance_modification" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "instance_modification" {
+  project      = var.project_id
   display_name = "Compute Instance Modification"
   combiner     = "OR"
 
@@ -794,6 +797,13 @@ resource "google_monitoring_alert_policy" "instance_modification" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Compute Instance Modified",

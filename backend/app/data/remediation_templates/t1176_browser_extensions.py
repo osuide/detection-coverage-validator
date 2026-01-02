@@ -775,6 +775,9 @@ resource "google_monitoring_alert_policy" "extension_alert" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Browser extension installation detected on GCE instance. Investigate for malicious extensions."
@@ -906,6 +909,9 @@ resource "google_monitoring_alert_policy" "policy_alert" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "3600s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Browser extension policy modification detected in Workspace. Review for unauthorised changes."

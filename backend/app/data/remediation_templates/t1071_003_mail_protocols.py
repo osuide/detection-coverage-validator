@@ -459,6 +459,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Email Protocol C2 Alerts"
   type         = "email"
   labels = {
@@ -497,6 +498,7 @@ resource "google_logging_metric" "email_protocol" {
 
 # Step 3: Create alert policy for suspicious email protocol activity
 resource "google_monitoring_alert_policy" "email_protocol" {
+  project      = var.project_id
   display_name = "Unauthorised Email Protocol Traffic"
   combiner     = "OR"
 
@@ -520,6 +522,9 @@ resource "google_monitoring_alert_policy" "email_protocol" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   project = var.project_id
@@ -586,6 +591,7 @@ variable "alert_email" {
 
 # Step 2: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "SCC Email Protocol Alerts"
   type         = "email"
   labels = {

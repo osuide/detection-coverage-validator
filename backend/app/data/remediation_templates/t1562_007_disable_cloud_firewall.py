@@ -560,6 +560,9 @@ resource "google_monitoring_alert_policy" "firewall_modification_alert" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",

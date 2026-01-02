@@ -722,6 +722,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Hybrid Identity Security Alerts"
   type         = "email"
   labels = {
@@ -731,6 +732,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for SSO config changes
 resource "google_logging_metric" "sso_config_changes" {
+  project = var.project_id
   name   = "hybrid-identity-sso-changes"
   filter = <<-EOT
     protoPayload.serviceName="admin.googleapis.com"
@@ -746,6 +748,7 @@ resource "google_logging_metric" "sso_config_changes" {
 
 # Step 3: Alert policy for SSO changes
 resource "google_monitoring_alert_policy" "sso_config" {
+  project      = var.project_id
   display_name = "Hybrid Identity SSO Configuration Changed"
   combiner     = "OR"
 
@@ -760,6 +763,13 @@ resource "google_monitoring_alert_policy" "sso_config" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Hybrid identity or SAML SSO configuration was modified. Verify this change was authorised."

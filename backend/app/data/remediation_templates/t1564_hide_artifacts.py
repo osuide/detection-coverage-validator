@@ -525,6 +525,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -534,6 +535,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for suspicious instance creation
 resource "google_logging_metric" "hidden_instances" {
+  project = var.project_id
   name   = "hidden-compute-instances"
   filter = <<-EOT
     protoPayload.methodName="v1.compute.instances.insert"
@@ -551,6 +553,7 @@ resource "google_logging_metric" "hidden_instances" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "hidden_instances" {
+  project      = var.project_id
   display_name = "Hidden Compute Instance Detected"
   combiner     = "OR"
 
@@ -568,6 +571,9 @@ resource "google_monitoring_alert_policy" "hidden_instances" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -631,6 +637,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -640,6 +647,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for Cloud Run service creation
 resource "google_logging_metric" "cloudrun_creation" {
+  project = var.project_id
   name   = "cloudrun-service-creation"
   filter = <<-EOT
     protoPayload.methodName=~"google.cloud.run.*.services.create"
@@ -654,6 +662,7 @@ resource "google_logging_metric" "cloudrun_creation" {
 
 # Step 3: Alert policy for unusual Cloud Run deployments
 resource "google_monitoring_alert_policy" "cloudrun_alert" {
+  project      = var.project_id
   display_name = "Cloud Run Service Created"
   combiner     = "OR"
 
@@ -671,6 +680,9 @@ resource "google_monitoring_alert_policy" "cloudrun_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

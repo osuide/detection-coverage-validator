@@ -543,6 +543,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Malicious Link Alerts"
   type         = "email"
   labels = {
@@ -552,6 +553,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for suspicious URL access
 resource "google_logging_metric" "malicious_link_activity" {
+  project = var.project_id
   name   = "malicious-link-activity"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -578,6 +580,7 @@ resource "google_logging_metric" "malicious_link_activity" {
 
 # Step 3: Create alert policy for suspicious activity
 resource "google_monitoring_alert_policy" "malicious_link_alert" {
+  project      = var.project_id
   display_name = "Malicious Link Activity Detected"
   combiner     = "OR"
 
@@ -601,6 +604,9 @@ resource "google_monitoring_alert_policy" "malicious_link_alert" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -659,6 +665,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Safe Browsing Alerts"
   type         = "email"
   labels = {
@@ -668,6 +675,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for Safe Browsing threats
 resource "google_logging_metric" "safe_browsing_threats" {
+  project = var.project_id
   name   = "safe-browsing-threats"
   filter = <<-EOT
     resource.type="cloud_function"
@@ -692,6 +700,7 @@ resource "google_logging_metric" "safe_browsing_threats" {
 
 # Step 3: Create alert for malicious URL detection
 resource "google_monitoring_alert_policy" "safe_browsing_alert" {
+  project      = var.project_id
   display_name = "Malicious URL Detected"
   combiner     = "OR"
 
@@ -712,6 +721,13 @@ resource "google_monitoring_alert_policy" "safe_browsing_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Malicious URL accessed by user. Safe Browsing API detected threat. Investigate immediately for potential compromise."

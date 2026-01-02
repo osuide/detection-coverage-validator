@@ -480,12 +480,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "gce_create" {
+  project = var.project_id
   name   = "gce-instance-creation"
   filter = "protoPayload.methodName=\"compute.instances.insert\""
   metric_descriptor {
@@ -495,6 +497,7 @@ resource "google_logging_metric" "gce_create" {
 }
 
 resource "google_monitoring_alert_policy" "gce_create" {
+  project      = var.project_id
   display_name = "GCE Instance Created"
   combiner     = "OR"
 
@@ -509,6 +512,13 @@ resource "google_monitoring_alert_policy" "gce_create" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: GCE Instance Created",

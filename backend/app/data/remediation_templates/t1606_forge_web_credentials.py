@@ -604,6 +604,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -613,6 +614,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for token anomalies
 resource "google_logging_metric" "token_anomaly" {
+  project = var.project_id
   name   = "forged-token-detection"
   filter = <<-EOT
     protoPayload.methodName=~"google.iam.admin.v1.CreateServiceAccountKey"
@@ -629,6 +631,7 @@ resource "google_logging_metric" "token_anomaly" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "token_alert" {
+  project      = var.project_id
   display_name = "Forged Token Detection"
   combiner     = "OR"
 
@@ -643,6 +646,13 @@ resource "google_monitoring_alert_policy" "token_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Forged Token Activity Detected",
@@ -696,6 +706,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -705,6 +716,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for session anomalies
 resource "google_logging_metric" "session_anomaly" {
+  project = var.project_id
   name   = "console-session-anomaly"
   filter = <<-EOT
     protoPayload.serviceName="login.googleapis.com"
@@ -720,6 +732,7 @@ resource "google_logging_metric" "session_anomaly" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "session_alert" {
+  project      = var.project_id
   display_name = "Console Session Anomaly"
   combiner     = "OR"
 
@@ -734,6 +747,13 @@ resource "google_monitoring_alert_policy" "session_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Console Session Anomaly",

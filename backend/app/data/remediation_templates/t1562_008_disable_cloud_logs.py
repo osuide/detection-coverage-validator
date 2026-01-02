@@ -1053,8 +1053,8 @@ resource "google_logging_metric" "log_sink_changes" {
 
 # Step 3: Alert on log sink modifications
 resource "google_monitoring_alert_policy" "log_sink_alert" {
-  display_name = "CRITICAL: Log Sink Modified or Deleted"
   project      = var.project_id
+  display_name = "CRITICAL: Log Sink Modified or Deleted"
   combiner     = "OR"
 
   conditions {
@@ -1077,6 +1077,9 @@ resource "google_monitoring_alert_policy" "log_sink_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1104,8 +1107,8 @@ resource "google_logging_metric" "data_access_config" {
 
 # Step 5: Alert on Data Access audit config changes
 resource "google_monitoring_alert_policy" "data_access_alert" {
-  display_name = "Data Access Audit Configuration Changed"
   project      = var.project_id
+  display_name = "Data Access Audit Configuration Changed"
   combiner     = "OR"
 
   conditions {
@@ -1128,6 +1131,9 @@ resource "google_monitoring_alert_policy" "data_access_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1154,8 +1160,8 @@ resource "google_logging_metric" "logging_bucket_changes" {
 }
 
 resource "google_monitoring_alert_policy" "logging_bucket_alert" {
-  display_name = "CRITICAL: Logging Bucket Modified or Deleted"
   project      = var.project_id
+  display_name = "CRITICAL: Logging Bucket Modified or Deleted"
   combiner     = "OR"
 
   conditions {
@@ -1178,6 +1184,9 @@ resource "google_monitoring_alert_policy" "logging_bucket_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

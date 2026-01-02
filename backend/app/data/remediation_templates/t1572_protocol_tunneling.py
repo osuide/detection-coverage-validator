@@ -610,6 +610,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -619,6 +620,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for SSH firewall changes
 resource "google_logging_metric" "ssh_tunnel" {
+  project = var.project_id
   name   = "ssh-tunnel-config"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -635,6 +637,7 @@ resource "google_logging_metric" "ssh_tunnel" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "ssh_tunnel" {
+  project      = var.project_id
   display_name = "SSH Tunnelling Configuration Detected"
   combiner     = "OR"
 
@@ -649,6 +652,13 @@ resource "google_monitoring_alert_policy" "ssh_tunnel" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: SSH Tunnelling Configuration Detected",
@@ -705,6 +715,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -714,6 +725,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for non-standard port traffic
 resource "google_logging_metric" "tunnel_traffic" {
+  project = var.project_id
   name   = "non-standard-encrypted-traffic"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -732,6 +744,7 @@ resource "google_logging_metric" "tunnel_traffic" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "tunnel_traffic" {
+  project      = var.project_id
   display_name = "Unusual Encrypted Traffic Detected"
   combiner     = "OR"
 
@@ -746,6 +759,13 @@ resource "google_monitoring_alert_policy" "tunnel_traffic" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Unusual Encrypted Traffic Pattern Detected",
@@ -801,6 +821,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -810,6 +831,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for VPN tunnel creation
 resource "google_logging_metric" "vpn_tunnel" {
+  project = var.project_id
   name   = "vpn-tunnel-creation"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -825,6 +847,7 @@ resource "google_logging_metric" "vpn_tunnel" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "vpn_tunnel" {
+  project      = var.project_id
   display_name = "Cloud VPN Tunnel Created"
   combiner     = "OR"
 
@@ -839,6 +862,13 @@ resource "google_monitoring_alert_policy" "vpn_tunnel" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud VPN Tunnel Created",

@@ -448,6 +448,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Binary Alerts"
   type         = "email"
   labels = {
@@ -458,6 +459,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for binary modifications
 resource "google_logging_metric" "binary_modifications" {
+  project = var.project_id
   name   = "system-binary-modifications"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -484,6 +486,7 @@ resource "google_logging_metric" "binary_modifications" {
 
 # Step 3: Alert policy for binary modifications
 resource "google_monitoring_alert_policy" "binary_alert" {
+  project      = var.project_id
   display_name = "System Binary Modified"
   combiner     = "OR"
   project      = var.project_id
@@ -506,6 +509,9 @@ resource "google_monitoring_alert_policy" "binary_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -573,6 +579,7 @@ variable "inventory_bucket" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Binary Hash Alerts"
   type         = "email"
   labels = {

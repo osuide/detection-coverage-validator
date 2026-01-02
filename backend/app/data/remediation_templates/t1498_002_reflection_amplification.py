@@ -497,6 +497,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "DDoS Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -504,6 +505,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Metric for Cloud Armor DDoS blocks
 resource "google_logging_metric" "ddos_blocks" {
+  project = var.project_id
   name   = "cloud-armor-ddos-blocks"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -526,6 +528,7 @@ resource "google_logging_metric" "ddos_blocks" {
 
 # Alert on high DDoS block rate
 resource "google_monitoring_alert_policy" "ddos_attack" {
+  project      = var.project_id
   display_name = "Cloud Armor DDoS Attack Detected"
   combiner     = "OR"
 
@@ -552,6 +555,7 @@ resource "google_monitoring_alert_policy" "ddos_attack" {
 
 # Monitor load balancer request count for anomalies
 resource "google_monitoring_alert_policy" "traffic_spike" {
+  project      = var.project_id
   display_name = "Abnormal Traffic Spike Detected"
   combiner     = "OR"
 
@@ -573,6 +577,13 @@ resource "google_monitoring_alert_policy" "traffic_spike" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: DDoS Attack Detected",
@@ -624,6 +635,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Amplification Attack Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -666,6 +678,7 @@ resource "google_logging_metric" "amplification_traffic" {
 
 # Alert on amplification traffic patterns
 resource "google_monitoring_alert_policy" "amplification_attack" {
+  project      = var.project_id
   display_name = "Reflection Amplification Attack Source Detected"
   combiner     = "OR"
 
@@ -686,6 +699,13 @@ resource "google_monitoring_alert_policy" "amplification_attack" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Potential reflection amplification attack originating from GCP instance. Investigate source VM immediately."

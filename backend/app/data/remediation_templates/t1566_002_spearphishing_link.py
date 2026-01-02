@@ -529,12 +529,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "phishing_links" {
+  project = var.project_id
   name   = "gmail-phishing-links"
   filter = <<-EOT
     resource.type="gmail_message"
@@ -549,6 +551,7 @@ resource "google_logging_metric" "phishing_links" {
 }
 
 resource "google_monitoring_alert_policy" "phishing_alerts" {
+  project      = var.project_id
   display_name = "Gmail Phishing Links"
   combiner     = "OR"
   conditions {
@@ -561,6 +564,13 @@ resource "google_monitoring_alert_policy" "phishing_alerts" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Phishing Link Detected in Gmail",
@@ -607,12 +617,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "oauth_consents" {
+  project = var.project_id
   name   = "oauth-consent-grants"
   filter = <<-EOT
     protoPayload.serviceName="login.googleapis.com"
@@ -634,6 +646,7 @@ resource "google_logging_metric" "oauth_consents" {
 }
 
 resource "google_monitoring_alert_policy" "oauth_phishing" {
+  project      = var.project_id
   display_name = "OAuth Consent Phishing"
   combiner     = "OR"
   conditions {
@@ -646,6 +659,13 @@ resource "google_monitoring_alert_policy" "oauth_phishing" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: OAuth Consent Phishing Detected",

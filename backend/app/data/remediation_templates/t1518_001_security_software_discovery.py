@@ -647,6 +647,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -656,6 +657,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for SCC enumeration
 resource "google_logging_metric" "scc_enum" {
+  project = var.project_id
   name   = "security-command-centre-enumeration"
   filter = <<-EOT
     protoPayload.methodName=~"(google.cloud.securitycenter.*.Get|google.cloud.securitycenter.*.List)"
@@ -670,6 +672,7 @@ resource "google_logging_metric" "scc_enum" {
 
 # Step 3: Alert policy for enumeration activity
 resource "google_monitoring_alert_policy" "scc_enum" {
+  project      = var.project_id
   display_name = "Security Command Centre Enumeration"
   combiner     = "OR"
 
@@ -684,6 +687,13 @@ resource "google_monitoring_alert_policy" "scc_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Security Command Centre Enumeration Detected",
@@ -737,6 +747,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -746,6 +757,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for monitoring agent queries
 resource "google_logging_metric" "monitoring_enum" {
+  project = var.project_id
   name   = "cloud-monitoring-agent-enumeration"
   filter = <<-EOT
     protoPayload.methodName=~"(monitoring.metricDescriptors.list|monitoring.timeSeries.list|compute.instances.getGuestAttributes)"
@@ -759,6 +771,7 @@ resource "google_logging_metric" "monitoring_enum" {
 
 # Step 3: Alert policy for agent enumeration
 resource "google_monitoring_alert_policy" "monitoring_enum" {
+  project      = var.project_id
   display_name = "Cloud Monitoring Agent Enumeration"
   combiner     = "OR"
 
@@ -773,6 +786,13 @@ resource "google_monitoring_alert_policy" "monitoring_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Monitoring Agent Enumeration Detected",

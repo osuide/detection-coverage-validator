@@ -401,12 +401,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "gcs_staging" {
+  project = var.project_id
   name   = "gcs-staging-activity"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -420,6 +422,7 @@ resource "google_logging_metric" "gcs_staging" {
 }
 
 resource "google_monitoring_alert_policy" "gcs_staging" {
+  project      = var.project_id
   display_name = "High GCS Staging Activity"
   combiner     = "OR"
   conditions {
@@ -432,6 +435,13 @@ resource "google_monitoring_alert_policy" "gcs_staging" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Potential Remote Data Staging",
@@ -478,12 +488,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "large_transfers" {
+  project = var.project_id
   name   = "large-instance-transfers"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -497,6 +509,7 @@ resource "google_logging_metric" "large_transfers" {
 }
 
 resource "google_monitoring_alert_policy" "large_transfers" {
+  project      = var.project_id
   display_name = "High Inter-Instance Transfer"
   combiner     = "OR"
   conditions {
@@ -509,6 +522,13 @@ resource "google_monitoring_alert_policy" "large_transfers" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Large Inter-Instance Transfer",

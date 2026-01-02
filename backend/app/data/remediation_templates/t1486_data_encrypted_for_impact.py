@@ -1587,6 +1587,7 @@ variable "threshold" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Ransomware"
   type         = "email"
   labels = {
@@ -1596,6 +1597,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for encrypted object creation
 resource "google_logging_metric" "storage_cmek_uploads" {
+  project = var.project_id
   name   = "storage-cmek-mass-uploads"
   filter = <<-EOT
     protoPayload.methodName="storage.objects.create"
@@ -1625,6 +1627,7 @@ resource "google_logging_metric" "storage_cmek_uploads" {
 
 # Step 3: Create alert policy for mass uploads
 resource "google_monitoring_alert_policy" "storage_ransomware" {
+  project      = var.project_id
   display_name = "Cloud Storage Mass CMEK Encryption - Ransomware Detection"
   combiner     = "OR"
 
@@ -1647,6 +1650,9 @@ resource "google_monitoring_alert_policy" "storage_ransomware" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1707,6 +1713,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Disk Encryption"
   type         = "email"
   labels = {
@@ -1716,6 +1723,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for disk encryption
 resource "google_logging_metric" "disk_encryption_cmek" {
+  project = var.project_id
   name   = "compute-disk-cmek-csek-creation"
   filter = <<-EOT
     protoPayload.methodName="v1.compute.disks.insert"
@@ -1745,6 +1753,7 @@ resource "google_logging_metric" "disk_encryption_cmek" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "disk_encryption_anomaly" {
+  project      = var.project_id
   display_name = "Compute Disk Encryption Anomaly Detection"
   combiner     = "OR"
 
@@ -1764,6 +1773,13 @@ resource "google_monitoring_alert_policy" "disk_encryption_anomaly" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Compute Engine disk created with customer-managed or customer-supplied encryption key. Verify this is authorised activity."
@@ -1822,6 +1838,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Cloud SQL"
   type         = "email"
   labels = {
@@ -1831,6 +1848,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric
 resource "google_logging_metric" "sql_config_changes" {
+  project = var.project_id
   name   = "cloudsql-encryption-backup-changes"
   filter = <<-EOT
     protoPayload.methodName="cloudsql.instances.update"
@@ -1860,6 +1878,7 @@ resource "google_logging_metric" "sql_config_changes" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "sql_changes" {
+  project      = var.project_id
   display_name = "Cloud SQL Encryption/Backup Configuration Changes"
   combiner     = "OR"
 
@@ -1879,6 +1898,13 @@ resource "google_monitoring_alert_policy" "sql_changes" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Cloud SQL instance encryption or backup configuration was modified. Verify this change is authorised."
@@ -1928,12 +1954,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "cmek_changes" {
+  project = var.project_id
   name   = "cmek-key-changes"
   filter = <<-EOT
     protoPayload.methodName=~"cloudkms.*Update|cloudkms.*Destroy"
@@ -1945,6 +1973,7 @@ resource "google_logging_metric" "cmek_changes" {
 }
 
 resource "google_monitoring_alert_policy" "cmek_changes" {
+  project      = var.project_id
   display_name = "CMEK Key Changes"
   combiner     = "OR"
   conditions {
@@ -1957,6 +1986,13 @@ resource "google_monitoring_alert_policy" "cmek_changes" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: CMEK Key Changed",

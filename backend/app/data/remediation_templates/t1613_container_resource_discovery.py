@@ -436,6 +436,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -445,6 +446,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "container_discovery" {
+  project = var.project_id
   name   = "container-resource-discovery"
   filter = <<-EOT
     protoPayload.methodName=~"(container.clusters.list|container.clusters.get|io.k8s.core.v1.pods.list|io.k8s.core.v1.nodes.list|io.k8s.apps.v1.deployments.list)"
@@ -458,6 +460,7 @@ resource "google_logging_metric" "container_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "container_discovery" {
+  project      = var.project_id
   display_name = "Container Resource Discovery"
   combiner     = "OR"
 
@@ -472,6 +475,13 @@ resource "google_monitoring_alert_policy" "container_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Container Resource Discovery",
@@ -527,6 +537,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -536,6 +547,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "k8s_discovery" {
+  project = var.project_id
   name   = "k8s-resource-discovery"
   filter = <<-EOT
     resource.type="k8s_cluster"
@@ -551,6 +563,7 @@ resource "google_logging_metric" "k8s_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "k8s_discovery" {
+  project      = var.project_id
   display_name = "Kubernetes Resource Discovery"
   combiner     = "OR"
 
@@ -565,6 +578,13 @@ resource "google_monitoring_alert_policy" "k8s_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Kubernetes Resource Discovery",

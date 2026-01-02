@@ -277,12 +277,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "account_removal" {
+  project = var.project_id
   name   = "account-access-removal"
   filter = <<-EOT
     protoPayload.methodName="google.iam.admin.v1.DeleteServiceAccount"
@@ -295,6 +297,7 @@ resource "google_logging_metric" "account_removal" {
 }
 
 resource "google_monitoring_alert_policy" "account_removal" {
+  project      = var.project_id
   display_name = "Account Access Removal"
   combiner     = "OR"
   conditions {
@@ -307,6 +310,13 @@ resource "google_monitoring_alert_policy" "account_removal" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Account Removed",

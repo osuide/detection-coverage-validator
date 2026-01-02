@@ -569,6 +569,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Remote Access Tools"
   type         = "email"
   labels = {
@@ -578,6 +579,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for remote access tools
 resource "google_logging_metric" "remote_tools" {
+  project = var.project_id
   name   = "vm-remote-access-tools"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -602,6 +604,7 @@ resource "google_logging_metric" "remote_tools" {
 
 # Step 3: Create alert policy for remote tool detection
 resource "google_monitoring_alert_policy" "remote_tool_alert" {
+  project      = var.project_id
   display_name = "GCE Remote Access Tool Detected"
   combiner     = "OR"
 
@@ -623,6 +626,9 @@ resource "google_monitoring_alert_policy" "remote_tool_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -684,6 +690,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Remote Ports"
   type         = "email"
   labels = {
@@ -718,6 +725,7 @@ resource "google_logging_metric" "remote_ports" {
 
 # Step 3: Create alert for remote port connections
 resource "google_monitoring_alert_policy" "remote_port_alert" {
+  project      = var.project_id
   display_name = "Remote Access Port Connections"
   combiner     = "OR"
 
@@ -739,6 +747,9 @@ resource "google_monitoring_alert_policy" "remote_port_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -798,6 +809,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "SCC Alerts - Remote Tools"
   type         = "email"
   labels = {

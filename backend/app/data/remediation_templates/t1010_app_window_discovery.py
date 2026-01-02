@@ -446,6 +446,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -455,6 +456,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for X11 window enumeration
 resource "google_logging_metric" "x11_window_enum" {
+  project = var.project_id
   name   = "x11-window-enumeration"
   filter = <<-EOT
     protoPayload.request.cmdline=~"(xdotool|wmctrl|xwininfo|xprop)"
@@ -469,6 +471,7 @@ resource "google_logging_metric" "x11_window_enum" {
 
 # Step 3: Alert policy for window enumeration
 resource "google_monitoring_alert_policy" "x11_window_enum" {
+  project      = var.project_id
   display_name = "X11 Window Enumeration Detected"
   combiner     = "OR"
 
@@ -483,6 +486,13 @@ resource "google_monitoring_alert_policy" "x11_window_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: X11 Window Enumeration Detected",
@@ -538,6 +548,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -547,6 +558,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for macOS window enumeration
 resource "google_logging_metric" "macos_window_enum" {
+  project = var.project_id
   name   = "macos-window-enumeration"
   filter = <<-EOT
     protoPayload.request.cmdline=~"(osascript|CGWindowListCopyWindowInfo|NSRunningApplication)"
@@ -561,6 +573,7 @@ resource "google_logging_metric" "macos_window_enum" {
 
 # Step 3: Alert policy for macOS window enumeration
 resource "google_monitoring_alert_policy" "macos_window_enum" {
+  project      = var.project_id
   display_name = "macOS Window Enumeration Detected"
   combiner     = "OR"
 
@@ -575,6 +588,13 @@ resource "google_monitoring_alert_policy" "macos_window_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: macOS Window Enumeration Detected",

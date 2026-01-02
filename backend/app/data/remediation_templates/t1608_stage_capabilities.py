@@ -451,12 +451,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "public_bucket" {
+  project = var.project_id
   name   = "public-storage-bucket"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -471,6 +473,7 @@ resource "google_logging_metric" "public_bucket" {
 }
 
 resource "google_monitoring_alert_policy" "storage_staging" {
+  project      = var.project_id
   display_name = "Cloud Storage Staging Detection"
   combiner     = "OR"
   conditions {
@@ -483,6 +486,13 @@ resource "google_monitoring_alert_policy" "storage_staging" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Storage Bucket Made Public",
@@ -528,12 +538,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "function_deploy" {
+  project = var.project_id
   name   = "cloud-function-deployments"
   filter = <<-EOT
     resource.type="cloud_function"
@@ -546,6 +558,7 @@ resource "google_logging_metric" "function_deploy" {
 }
 
 resource "google_monitoring_alert_policy" "function_staging" {
+  project      = var.project_id
   display_name = "Cloud Functions Staging Detection"
   combiner     = "OR"
   conditions {
@@ -562,6 +575,13 @@ resource "google_monitoring_alert_policy" "function_staging" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Cloud Functions Deployment",

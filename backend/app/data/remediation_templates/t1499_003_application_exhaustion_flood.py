@@ -504,6 +504,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "App Exhaustion Alerts"
   type         = "email"
   labels = {
@@ -513,6 +514,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Monitor slow requests indicating resource exhaustion
 resource "google_logging_metric" "slow_requests" {
+  project = var.project_id
   name   = "slow-requests-exhaustion"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -526,6 +528,7 @@ resource "google_logging_metric" "slow_requests" {
 }
 
 resource "google_monitoring_alert_policy" "slow_request_rate" {
+  project      = var.project_id
   display_name = "High Slow Request Rate"
   combiner     = "OR"
 
@@ -547,11 +550,15 @@ resource "google_monitoring_alert_policy" "slow_request_rate" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }
 
 # Monitor 5xx errors indicating exhaustion
 resource "google_logging_metric" "server_errors" {
+  project = var.project_id
   name   = "server-errors-exhaustion"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -565,6 +572,7 @@ resource "google_logging_metric" "server_errors" {
 }
 
 resource "google_monitoring_alert_policy" "server_error_rate" {
+  project      = var.project_id
   display_name = "High Server Error Rate"
   combiner     = "OR"
 
@@ -586,6 +594,9 @@ resource "google_monitoring_alert_policy" "server_error_rate" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -645,6 +656,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "GCE Exhaustion Alerts"
   type         = "email"
   labels = {
@@ -654,6 +666,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Monitor sustained high CPU usage
 resource "google_monitoring_alert_policy" "high_cpu" {
+  project      = var.project_id
   display_name = "GCE High CPU Exhaustion"
   combiner     = "OR"
 
@@ -677,6 +690,9 @@ resource "google_monitoring_alert_policy" "high_cpu" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -686,6 +702,7 @@ resource "google_monitoring_alert_policy" "high_cpu" {
 
 # Monitor memory usage patterns
 resource "google_monitoring_alert_policy" "high_memory" {
+  project      = var.project_id
   display_name = "GCE High Memory Exhaustion"
   combiner     = "OR"
 
@@ -709,6 +726,9 @@ resource "google_monitoring_alert_policy" "high_memory" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -718,6 +738,7 @@ resource "google_monitoring_alert_policy" "high_memory" {
 
 # Monitor autoscaling events
 resource "google_logging_metric" "autoscaling_events" {
+  project = var.project_id
   name   = "autoscaling-exhaustion-events"
   filter = <<-EOT
     resource.type="gce_autoscaler"
@@ -731,6 +752,7 @@ resource "google_logging_metric" "autoscaling_events" {
 }
 
 resource "google_monitoring_alert_policy" "rapid_autoscaling" {
+  project      = var.project_id
   display_name = "Rapid Autoscaling Activity"
   combiner     = "OR"
 
@@ -752,6 +774,9 @@ resource "google_monitoring_alert_policy" "rapid_autoscaling" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

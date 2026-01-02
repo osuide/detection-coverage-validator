@@ -394,8 +394,8 @@ resource "google_logging_metric" "gmail_bulk_access" {
 
 # Step 3: Create alert for bulk access
 resource "google_monitoring_alert_policy" "gmail_bulk_access" {
-  display_name = "T1114-Gmail-BulkAccess"
   project      = var.project_id
+  display_name = "T1114-Gmail-BulkAccess"
   combiner     = "OR"
 
   conditions {
@@ -416,6 +416,9 @@ resource "google_monitoring_alert_policy" "gmail_bulk_access" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -498,8 +501,8 @@ resource "google_logging_metric" "mailbox_export" {
 
 # Step 3: Alert on any export activity
 resource "google_monitoring_alert_policy" "mailbox_export" {
-  display_name = "T1114-Mailbox-Export"
   project      = var.project_id
+  display_name = "T1114-Mailbox-Export"
   combiner     = "OR"
 
   conditions {
@@ -513,6 +516,13 @@ resource "google_monitoring_alert_policy" "mailbox_export" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Workspace Mailbox Export",

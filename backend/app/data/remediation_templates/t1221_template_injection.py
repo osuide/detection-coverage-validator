@@ -589,6 +589,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for document uploads
 resource "google_logging_metric" "document_uploads" {
+  project = var.project_id
   name   = "malicious-document-uploads"
   filter = <<-EOT
     resource.type="gcs_bucket"

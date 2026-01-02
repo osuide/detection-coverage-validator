@@ -583,6 +583,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "DDoS Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -614,8 +615,8 @@ resource "google_logging_metric" "ddos_blocks" {
 
 # Alert on DDoS detection
 resource "google_monitoring_alert_policy" "ddos_attack" {
-  display_name = "DDoS Attack Detected"
   project      = var.project_id
+  display_name = "DDoS Attack Detected"
   combiner     = "OR"
 
   conditions {
@@ -636,6 +637,9 @@ resource "google_monitoring_alert_policy" "ddos_attack" {
 
   alert_strategy {
     auto_close = "3600s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -687,6 +691,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Network Flood Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -718,8 +723,8 @@ resource "google_logging_metric" "high_traffic" {
 
 # Alert on network flood
 resource "google_monitoring_alert_policy" "network_flood" {
-  display_name = "Network Flood Detected"
   project      = var.project_id
+  display_name = "Network Flood Detected"
   combiner     = "OR"
 
   conditions {
@@ -737,6 +742,13 @@ resource "google_monitoring_alert_policy" "network_flood" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Network flood detected via VPC Flow Logs. Investigate source IPs and traffic patterns."

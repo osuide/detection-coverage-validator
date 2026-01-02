@@ -690,6 +690,7 @@ resource "google_compute_subnetwork" "monitored" {
 
 # Step 2: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -730,6 +731,7 @@ resource "google_logging_metric" "arp_anomaly" {
 
 # Alert policy
 resource "google_monitoring_alert_policy" "arp_attack" {
+  project      = var.project_id
   display_name = "ARP-Based Traffic Anomaly Detected"
   combiner     = "OR"
 
@@ -750,6 +752,13 @@ resource "google_monitoring_alert_policy" "arp_attack" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Unusual traffic pattern detected that may indicate ARP cache poisoning. Review VPC Flow Logs for traffic redirection."
@@ -809,6 +818,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -818,6 +828,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for network config changes
 resource "google_logging_metric" "network_config" {
+  project = var.project_id
   name   = "network-configuration-changes"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -843,6 +854,7 @@ resource "google_logging_metric" "network_config" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "network_change" {
+  project      = var.project_id
   display_name = "Network Configuration Modified"
   combiner     = "OR"
 
@@ -857,6 +869,13 @@ resource "google_monitoring_alert_policy" "network_change" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Network configuration change detected. Review for potential ARP spoofing enablement or malicious network modifications."

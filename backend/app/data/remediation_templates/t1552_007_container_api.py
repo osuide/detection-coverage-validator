@@ -398,12 +398,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "secret_access" {
+  project = var.project_id
   name   = "gke-secret-access"
   filter = <<-EOT
     resource.type="k8s_cluster"
@@ -425,6 +427,7 @@ resource "google_logging_metric" "secret_access" {
 }
 
 resource "google_monitoring_alert_policy" "secret_access" {
+  project      = var.project_id
   display_name = "GKE Secret Access Detected"
   combiner     = "OR"
   conditions {
@@ -443,6 +446,9 @@ resource "google_monitoring_alert_policy" "secret_access" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -489,12 +495,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "registry_access" {
+  project = var.project_id
   name   = "gcr-unauthorised-access"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -517,6 +525,7 @@ resource "google_logging_metric" "registry_access" {
 }
 
 resource "google_monitoring_alert_policy" "registry_access" {
+  project      = var.project_id
   display_name = "Container Registry Unauthorised Access"
   combiner     = "OR"
   conditions {
@@ -533,6 +542,13 @@ resource "google_monitoring_alert_policy" "registry_access" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Container Registry Access",

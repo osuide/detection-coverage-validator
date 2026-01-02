@@ -466,6 +466,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "session_alerts" {
+  project      = var.project_id
   display_name = "Session Cookie Anomaly Alerts"
   type         = "email"
 
@@ -476,6 +477,7 @@ resource "google_monitoring_notification_channel" "session_alerts" {
 
 # Step 2: Log-based metric for suspicious sessions
 resource "google_logging_metric" "suspicious_sessions" {
+  project = var.project_id
   name   = "workspace-suspicious-session-reuse"
   filter = <<-EOT
     protoPayload.serviceName="login.googleapis.com"
@@ -501,6 +503,7 @@ resource "google_logging_metric" "suspicious_sessions" {
 
 # Step 3: Alert policy for session anomalies
 resource "google_monitoring_alert_policy" "session_cookie_alert" {
+  project      = var.project_id
   display_name = "Workspace Session Cookie Anomaly"
   combiner     = "OR"
 
@@ -585,6 +588,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "useragent_alerts" {
+  project      = var.project_id
   display_name = "User Agent Anomaly Alerts"
   type         = "email"
 
@@ -595,6 +599,7 @@ resource "google_monitoring_notification_channel" "useragent_alerts" {
 
 # Step 2: Log-based metric for user agent changes
 resource "google_logging_metric" "useragent_anomalies" {
+  project = var.project_id
   name   = "session-useragent-anomalies"
   filter = <<-EOT
     protoPayload.requestMetadata.callerSuppliedUserAgent!=""
@@ -620,6 +625,7 @@ resource "google_logging_metric" "useragent_anomalies" {
 
 # Step 3: Alert policy for user agent anomalies
 resource "google_monitoring_alert_policy" "useragent_alert" {
+  project      = var.project_id
   display_name = "Session Cookie User Agent Anomaly"
   combiner     = "OR"
 

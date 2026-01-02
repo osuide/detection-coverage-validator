@@ -924,6 +924,9 @@ resource "google_monitoring_alert_policy" "log_deletion" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Audit log deletion or sink modification detected. This may indicate evidence tampering. Investigate immediately."
@@ -1039,6 +1042,9 @@ resource "google_monitoring_alert_policy" "history_clearing" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Bash history clearing detected on GCE instance. This may indicate evidence tampering. Investigate immediately."

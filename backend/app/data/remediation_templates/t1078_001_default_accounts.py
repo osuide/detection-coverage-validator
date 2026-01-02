@@ -503,6 +503,7 @@ resource "google_pubsub_topic" "default_sa_alerts" {
 
 # Step 3: Create alert notification channel and policy
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Default SA Alert Email"
   type         = "email"
 
@@ -512,6 +513,7 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 resource "google_monitoring_alert_policy" "default_sa_activity" {
+  project      = var.project_id
   display_name = "T1078.001 - Default Service Account Activity"
   combiner     = "OR"
 

@@ -556,6 +556,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "T1497 Security Alerts"
   type         = "email"
   labels = {
@@ -565,6 +566,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for metadata checks
 resource "google_logging_metric" "metadata_checks" {
+  project = var.project_id
   name   = "t1497-gce-metadata-checks"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -589,6 +591,7 @@ resource "google_logging_metric" "metadata_checks" {
 
 # Step 3: Alert policy for unusual query patterns
 resource "google_monitoring_alert_policy" "metadata_checks" {
+  project      = var.project_id
   display_name = "T1497 - GCE Environment Checks"
   combiner     = "OR"
 
@@ -607,6 +610,13 @@ resource "google_monitoring_alert_policy" "metadata_checks" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = <<-EOT
@@ -679,6 +689,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "T1497 Function Alerts"
   type         = "email"
   labels = {
@@ -688,6 +699,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for environment checks
 resource "google_logging_metric" "function_evasion" {
+  project = var.project_id
   name   = "t1497-function-sandbox-evasion"
   filter = <<-EOT
     resource.type="cloud_function"
@@ -712,6 +724,7 @@ resource "google_logging_metric" "function_evasion" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "function_evasion" {
+  project      = var.project_id
   display_name = "T1497 - Cloud Functions Sandbox Evasion"
   combiner     = "OR"
 
@@ -732,6 +745,13 @@ resource "google_monitoring_alert_policy" "function_evasion" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = <<-EOT

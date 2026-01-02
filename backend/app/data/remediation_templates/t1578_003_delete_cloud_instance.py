@@ -588,6 +588,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -597,6 +598,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for instance deletion
 resource "google_logging_metric" "gce_delete" {
+  project = var.project_id
   name   = "gce-instance-deletion"
   filter = "protoPayload.methodName=\"compute.instances.delete\""
 
@@ -608,6 +610,7 @@ resource "google_logging_metric" "gce_delete" {
 
 # Step 3: Alert policy for instance deletion
 resource "google_monitoring_alert_policy" "gce_delete" {
+  project      = var.project_id
   display_name = "GCE Instance Deleted"
   combiner     = "OR"
 
@@ -622,6 +625,13 @@ resource "google_monitoring_alert_policy" "gce_delete" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: GCE Instance Deleted",
@@ -673,6 +683,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -682,6 +693,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for mass deletion
 resource "google_logging_metric" "mass_delete" {
+  project = var.project_id
   name   = "mass-resource-deletion"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.instances.delete|compute.disks.delete|compute.snapshots.delete|storage.buckets.delete)"
@@ -695,6 +707,7 @@ resource "google_logging_metric" "mass_delete" {
 
 # Step 3: Alert policy for mass deletion (3+ in 5 minutes)
 resource "google_monitoring_alert_policy" "mass_delete" {
+  project      = var.project_id
   display_name = "Mass Resource Deletion"
   combiner     = "OR"
 
@@ -713,6 +726,13 @@ resource "google_monitoring_alert_policy" "mass_delete" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Mass Resource Deletion Detected",

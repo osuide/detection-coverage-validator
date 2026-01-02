@@ -398,6 +398,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Infrastructure Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -405,6 +406,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Detect GCE instance creation
 resource "google_logging_metric" "gce_creation" {
+  project = var.project_id
   name   = "unauthorised-gce-creation"
   filter = <<-EOT
     protoPayload.methodName="v1.compute.instances.insert"
@@ -417,6 +419,7 @@ resource "google_logging_metric" "gce_creation" {
 }
 
 resource "google_monitoring_alert_policy" "gce_provisioning" {
+  project      = var.project_id
   display_name = "Unauthorised GCE Provisioning"
   combiner     = "OR"
   conditions {
@@ -429,10 +432,18 @@ resource "google_monitoring_alert_policy" "gce_provisioning" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }
 
 # Detect Cloud Function creation
 resource "google_logging_metric" "function_creation" {
+  project = var.project_id
   name   = "unauthorised-function-creation"
   filter = <<-EOT
     protoPayload.methodName="google.cloud.functions.v1.CloudFunctionsService.CreateFunction"
@@ -445,6 +456,7 @@ resource "google_logging_metric" "function_creation" {
 }
 
 resource "google_monitoring_alert_policy" "function_provisioning" {
+  project      = var.project_id
   display_name = "Unauthorised Cloud Function Provisioning"
   combiner     = "OR"
   conditions {
@@ -457,6 +469,13 @@ resource "google_monitoring_alert_policy" "function_provisioning" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Unauthorised Compute Provisioning",
@@ -503,12 +522,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "VPC Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "high_egress" {
+  project = var.project_id
   name   = "high-vpc-egress"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -521,6 +542,7 @@ resource "google_logging_metric" "high_egress" {
 }
 
 resource "google_monitoring_alert_policy" "suspicious_egress" {
+  project      = var.project_id
   display_name = "Suspicious VPC Egress Traffic"
   combiner     = "OR"
   conditions {
@@ -537,6 +559,13 @@ resource "google_monitoring_alert_policy" "suspicious_egress" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious VPC Egress Traffic",

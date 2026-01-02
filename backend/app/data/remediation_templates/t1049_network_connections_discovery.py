@@ -582,6 +582,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -591,6 +592,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "network_discovery" {
+  project = var.project_id
   name   = "network-connection-discovery"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -608,6 +610,7 @@ resource "google_logging_metric" "network_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "network_discovery" {
+  project      = var.project_id
   display_name = "Network Discovery Activity"
   combiner     = "OR"
 
@@ -622,6 +625,13 @@ resource "google_monitoring_alert_policy" "network_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Network Connection Discovery Detected",
@@ -675,6 +685,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -684,6 +695,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for command execution
 resource "google_logging_metric" "os_network_enum" {
+  project = var.project_id
   name   = "os-network-enumeration"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -698,6 +710,7 @@ resource "google_logging_metric" "os_network_enum" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "os_network_enum" {
+  project      = var.project_id
   display_name = "OS Network Enumeration Commands"
   combiner     = "OR"
 
@@ -712,6 +725,13 @@ resource "google_monitoring_alert_policy" "os_network_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Network Enumeration Commands Detected",

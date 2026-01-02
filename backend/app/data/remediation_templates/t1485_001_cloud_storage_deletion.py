@@ -573,6 +573,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Storage Lifecycle Alerts"
   type         = "email"
   labels = {
@@ -583,6 +584,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for lifecycle changes
 resource "google_logging_metric" "lifecycle_policy" {
+  project = var.project_id
   name   = "storage-lifecycle-policy-changes"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -598,6 +600,7 @@ resource "google_logging_metric" "lifecycle_policy" {
 
 # Step 3: Create alert policy for lifecycle modifications
 resource "google_monitoring_alert_policy" "lifecycle_policy" {
+  project      = var.project_id
   display_name = "Storage Lifecycle Policy Modification"
   combiner     = "OR"
   conditions {
@@ -612,6 +615,9 @@ resource "google_monitoring_alert_policy" "lifecycle_policy" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   project = var.project_id
 }""",
@@ -670,6 +676,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Storage Deletion Alerts"
   type         = "email"
   labels = {
@@ -680,6 +687,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for object deletions
 resource "google_logging_metric" "mass_deletion" {
+  project = var.project_id
   name   = "storage-object-deletions"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -695,6 +703,7 @@ resource "google_logging_metric" "mass_deletion" {
 
 # Step 3: Create alert policy for high deletion rate
 resource "google_monitoring_alert_policy" "mass_deletion" {
+  project      = var.project_id
   display_name = "Storage Mass Object Deletion"
   combiner     = "OR"
   conditions {
@@ -713,6 +722,9 @@ resource "google_monitoring_alert_policy" "mass_deletion" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   project = var.project_id
 }""",

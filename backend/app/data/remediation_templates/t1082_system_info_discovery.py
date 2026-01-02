@@ -427,6 +427,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -436,6 +437,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for instance enumeration
 resource "google_logging_metric" "system_info" {
+  project = var.project_id
   name   = "system-information-discovery"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.instances.get|compute.instances.list|compute.zones.list|compute.machineTypes.list)"
@@ -449,6 +451,7 @@ resource "google_logging_metric" "system_info" {
 
 # Step 3: Alert policy for excessive queries
 resource "google_monitoring_alert_policy" "system_info" {
+  project      = var.project_id
   display_name = "System Information Discovery"
   combiner     = "OR"
 
@@ -463,6 +466,13 @@ resource "google_monitoring_alert_policy" "system_info" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="low",
                 alert_title="GCP: System Information Discovery",
@@ -514,6 +524,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -523,6 +534,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for inventory access
 resource "google_logging_metric" "os_inventory" {
+  project = var.project_id
   name   = "os-config-inventory-access"
   filter = <<-EOT
     protoPayload.methodName=~"(osconfig.*.Inventory|osconfig.*.PatchJob)"
@@ -537,6 +549,7 @@ resource "google_logging_metric" "os_inventory" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "os_inventory" {
+  project      = var.project_id
   display_name = "OS Config Inventory Access"
   combiner     = "OR"
 
@@ -551,6 +564,13 @@ resource "google_monitoring_alert_policy" "os_inventory" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: OS Inventory Access Detected",

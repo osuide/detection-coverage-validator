@@ -380,6 +380,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -387,6 +388,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Monitor for service account token usage from unusual sources
 resource "google_logging_metric" "token_usage" {
+  project = var.project_id
   name   = "sa-token-anomaly"
   filter = <<-EOT
     protoPayload.authenticationInfo.serviceAccountDelegationInfo:*
@@ -399,6 +401,7 @@ resource "google_logging_metric" "token_usage" {
 }
 
 resource "google_monitoring_alert_policy" "token_alert" {
+  project      = var.project_id
   display_name = "Service Account Token Anomaly"
   combiner     = "OR"
   conditions {
@@ -411,6 +414,13 @@ resource "google_monitoring_alert_policy" "token_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Token Anomaly Detected",

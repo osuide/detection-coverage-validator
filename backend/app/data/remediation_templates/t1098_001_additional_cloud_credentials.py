@@ -1197,6 +1197,13 @@ resource "google_monitoring_alert_policy" "sa_key" {
 
   notification_channels = [google_monitoring_notification_channel.email.id]
 
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
   documentation {
     content   = "A service account key was created. Verify this was authorised."
     mime_type = "text/markdown"

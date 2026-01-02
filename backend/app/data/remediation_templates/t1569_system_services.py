@@ -548,6 +548,7 @@ variable "alert_email" {
 
 # Notification channel for email alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Startup Scripts"
   type         = "email"
   labels = {
@@ -558,6 +559,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for startup script modifications
 resource "google_logging_metric" "startup_script_modification" {
+  project = var.project_id
   name   = "compute-startup-script-modification"
   filter = <<-EOT
     protoPayload.methodName="v1.compute.instances.setMetadata"
@@ -574,6 +576,7 @@ resource "google_logging_metric" "startup_script_modification" {
 
 # Alert policy for startup script modifications
 resource "google_monitoring_alert_policy" "startup_script_alert" {
+  project      = var.project_id
   display_name = "Compute Instance Startup Script Modified"
   combiner     = "OR"
 
@@ -591,6 +594,9 @@ resource "google_monitoring_alert_policy" "startup_script_alert" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   project = var.project_id
@@ -651,6 +657,7 @@ variable "alert_email" {
 
 # Notification channel for email alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Cloud Run"
   type         = "email"
   labels = {
@@ -661,6 +668,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for Cloud Run service deployments
 resource "google_logging_metric" "cloud_run_deployment" {
+  project = var.project_id
   name   = "cloud-run-service-deployment"
   filter = <<-EOT
     protoPayload.methodName=~"google.cloud.run.v1.Services.CreateService|google.cloud.run.v1.Services.ReplaceService"
@@ -676,6 +684,7 @@ resource "google_logging_metric" "cloud_run_deployment" {
 
 # Alert policy for Cloud Run deployments
 resource "google_monitoring_alert_policy" "cloud_run_alert" {
+  project      = var.project_id
   display_name = "Cloud Run Service Deployed"
   combiner     = "OR"
 
@@ -693,6 +702,9 @@ resource "google_monitoring_alert_policy" "cloud_run_alert" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   project = var.project_id

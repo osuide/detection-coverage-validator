@@ -670,6 +670,7 @@ resource "google_container_analysis_note" "note" {
 
 # Step 4: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -679,6 +680,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 5: Alert for critical vulnerabilities
 resource "google_logging_metric" "critical_vulns" {
+  project = var.project_id
   name   = "critical-container-vulnerabilities"
   filter = <<-EOT
     resource.type="container_analysis_note"
@@ -693,6 +695,7 @@ resource "google_logging_metric" "critical_vulns" {
 }
 
 resource "google_monitoring_alert_policy" "critical_vulns" {
+  project      = var.project_id
   display_name = "Critical Container Vulnerabilities"
   combiner     = "OR"
 
@@ -707,6 +710,13 @@ resource "google_monitoring_alert_policy" "critical_vulns" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Critical Vulnerabilities in Container Image",
@@ -766,6 +776,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -775,6 +786,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for metadata changes
 resource "google_logging_metric" "metadata_mod" {
+  project = var.project_id
   name   = "instance-metadata-modifications"
   filter = <<-EOT
     protoPayload.methodName=~"(setMetadata|setCommonInstanceMetadata)"
@@ -790,6 +802,7 @@ resource "google_logging_metric" "metadata_mod" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "metadata_mod" {
+  project      = var.project_id
   display_name = "Compute Instance Startup Script Modified"
   combiner     = "OR"
 
@@ -804,6 +817,13 @@ resource "google_monitoring_alert_policy" "metadata_mod" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = <<-EOT

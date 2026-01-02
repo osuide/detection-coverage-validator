@@ -233,12 +233,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "mfa_challenges" {
+  project = var.project_id
   name   = "mfa-challenge-attempts"
   filter = <<-EOT
     protoPayload.serviceName="login.googleapis.com"
@@ -251,6 +253,7 @@ resource "google_logging_metric" "mfa_challenges" {
 }
 
 resource "google_monitoring_alert_policy" "mfa_fatigue" {
+  project      = var.project_id
   display_name = "MFA Fatigue Attack"
   combiner     = "OR"
   conditions {
@@ -263,6 +266,13 @@ resource "google_monitoring_alert_policy" "mfa_fatigue" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: MFA Fatigue Attack",

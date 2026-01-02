@@ -674,6 +674,7 @@ variable "alert_email" {
 
 # Step 1: Create log-based metric for HTTP transfers
 resource "google_logging_metric" "http_exfil" {
+  project = var.project_id
   name   = "unencrypted-http-transfer"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -693,6 +694,7 @@ resource "google_logging_metric" "http_exfil" {
 
 # Step 2: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -702,6 +704,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "http_exfil" {
+  project      = var.project_id
   display_name = "Unencrypted HTTP Exfiltration"
   combiner     = "OR"
 
@@ -716,6 +719,13 @@ resource "google_monitoring_alert_policy" "http_exfil" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Large unencrypted HTTP transfer detected. Investigate source instance for potential data exfiltration."
@@ -765,7 +775,7 @@ resource "google_monitoring_alert_policy" "http_exfil" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query='''resource.type="dns_query"
-(LENGTH(protoPayload.queryName) > 50 OR protoPayload.queryType="TXT")
+(protoPayload.queryName=~".{50,}" OR protoPayload.queryType="TXT")
 protoPayload.responseCode="NOERROR"''',
                 gcp_terraform_template="""# GCP: DNS tunnelling detection
 
@@ -797,10 +807,11 @@ resource "google_dns_managed_zone" "monitored" {
 
 # Step 2: Create log-based metric for suspicious DNS patterns
 resource "google_logging_metric" "dns_tunnel" {
+  project = var.project_id
   name   = "dns-tunnelling-pattern"
   filter = <<-EOT
     resource.type="dns_query"
-    (LENGTH(protoPayload.queryName) > 50 OR protoPayload.queryType="TXT")
+    (protoPayload.queryName=~".{50,}" OR protoPayload.queryType="TXT")
     protoPayload.responseCode="NOERROR"
   EOT
 
@@ -813,6 +824,7 @@ resource "google_logging_metric" "dns_tunnel" {
 
 # Step 3: Create alert for DNS tunnelling
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -821,6 +833,7 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 resource "google_monitoring_alert_policy" "dns_tunnel" {
+  project      = var.project_id
   display_name = "DNS Tunnelling Detected"
   combiner     = "OR"
 
@@ -835,6 +848,13 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Suspicious DNS query patterns detected. Potential DNS tunnelling for data exfiltration."

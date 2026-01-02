@@ -532,8 +532,8 @@ resource "google_logging_metric" "non_mfa_login" {
 
 # Step 3: Create alert policy for suspicious logins
 resource "google_monitoring_alert_policy" "workspace_login_alert" {
-  display_name = "Workspace Suspicious Login"
   project      = var.project_id
+  display_name = "Workspace Suspicious Login"
   combiner     = "OR"
 
   conditions {
@@ -556,6 +556,9 @@ resource "google_monitoring_alert_policy" "workspace_login_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -653,8 +656,8 @@ resource "google_logging_metric" "auth_failures" {
 
 # Step 3: Create alert policy for authorisation anomalies
 resource "google_monitoring_alert_policy" "session_anomaly" {
-  display_name = "Session Authorisation Anomaly"
   project      = var.project_id
+  display_name = "Session Authorisation Anomaly"
   combiner     = "OR"
 
   conditions {
@@ -676,6 +679,13 @@ resource "google_monitoring_alert_policy" "session_anomaly" {
   }
 
   notification_channels = [google_monitoring_notification_channel.session_alerts.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Session Authorisation Anomaly",

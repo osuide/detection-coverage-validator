@@ -679,6 +679,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -688,6 +689,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for SSH sessions
 resource "google_logging_metric" "ssh_sessions" {
+  project = var.project_id
   name   = "gce-ssh-sessions"
   filter = <<-EOT
     (protoPayload.methodName="compute.instances.start"
@@ -705,6 +707,7 @@ resource "google_logging_metric" "ssh_sessions" {
 
 # Step 3: Create alert policy for SSH activity
 resource "google_monitoring_alert_policy" "ssh_alert" {
+  project      = var.project_id
   display_name = "GCE SSH Session Activity"
   combiner     = "OR"
 
@@ -786,6 +789,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -795,6 +799,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for Cloud Shell usage
 resource "google_logging_metric" "cloud_shell_activity" {
+  project = var.project_id
   name   = "cloud-shell-suspicious-activity"
   filter = <<-EOT
     resource.type="cloud_shell"
@@ -810,6 +815,7 @@ resource "google_logging_metric" "cloud_shell_activity" {
 
 # Step 3: Create alert policy for Cloud Shell activity
 resource "google_monitoring_alert_policy" "cloud_shell_alert" {
+  project      = var.project_id
   display_name = "Cloud Shell Suspicious Activity"
   combiner     = "OR"
 
@@ -897,6 +903,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -922,6 +929,7 @@ resource "google_logging_metric" "external_containers" {
 
 # Step 3: Create alert policy for external container usage
 resource "google_monitoring_alert_policy" "external_container_alert" {
+  project      = var.project_id
   display_name = "Cloud Run External Container Image"
   combiner     = "OR"
 

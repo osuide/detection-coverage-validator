@@ -651,6 +651,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -658,6 +659,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for Cloud Scheduler changes
 resource "google_logging_metric" "scheduler_changes" {
+  project = var.project_id
   name   = "cloud-scheduler-job-changes"
   filter = <<-EOT
     protoPayload.serviceName="cloudscheduler.googleapis.com"
@@ -681,6 +683,7 @@ resource "google_logging_metric" "scheduler_changes" {
 
 # Alert policy for scheduler changes
 resource "google_monitoring_alert_policy" "scheduler_changes" {
+  project      = var.project_id
   display_name = "Cloud Scheduler Job Created or Modified"
   combiner     = "OR"
 
@@ -695,6 +698,13 @@ resource "google_monitoring_alert_policy" "scheduler_changes" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Cloud Scheduler job was created or modified. Review job target and schedule for authorisation."
@@ -886,6 +896,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -893,6 +904,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for CronJob creation
 resource "google_logging_metric" "cronjob_creation" {
+  project = var.project_id
   name   = "gke-cronjob-creation"
   filter = <<-EOT
     resource.type="k8s_cluster"
@@ -923,6 +935,7 @@ resource "google_logging_metric" "cronjob_creation" {
 
 # Alert policy for CronJob creation
 resource "google_monitoring_alert_policy" "cronjob_creation" {
+  project      = var.project_id
   display_name = "GKE CronJob Created or Modified"
   combiner     = "OR"
 
@@ -937,6 +950,13 @@ resource "google_monitoring_alert_policy" "cronjob_creation" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Kubernetes CronJob was created or modified. Review schedule, container image, and service account for authorisation."

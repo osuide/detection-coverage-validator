@@ -611,9 +611,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.connection.dest_port:(80 OR 443 OR 8080 OR 8443)
-| stats count() as connections, count_distinct(jsonPayload.connection.dest_ip) as unique_destinations
-  by jsonPayload.connection.src_ip
-| connections > 5 AND unique_destinations > 3""",
+  by jsonPayload.connection.src_ip""",
                 gcp_terraform_template="""# GCP: Detect multi-stage C2 connections
 
 variable "project_id" {
@@ -628,6 +626,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Multi-Stage C2"
   type         = "email"
   labels = {
@@ -637,6 +636,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for multi-stage connections
 resource "google_logging_metric" "multi_stage_c2" {
+  project = var.project_id
   name   = "multi-stage-c2-connections"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -663,6 +663,7 @@ resource "google_logging_metric" "multi_stage_c2" {
 
 # Step 3: Create alert policy for multi-stage patterns
 resource "google_monitoring_alert_policy" "multi_stage_alert" {
+  project      = var.project_id
   display_name = "GCE Multi-Stage C2 Detected"
   combiner     = "OR"
 
@@ -684,6 +685,9 @@ resource "google_monitoring_alert_policy" "multi_stage_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -726,9 +730,7 @@ resource "google_monitoring_alert_policy" "multi_stage_alert" {
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="gce_instance"
 (jsonPayload.message=~"curl|wget|python.*requests|gcloud.*download" OR
- protoPayload.request.commands=~"curl|wget|python.*requests")
-| stats count() as command_count by resource.labels.instance_id
-| command_count > 2""",
+ protoPayload.request.commands=~"curl|wget|python.*requests")""",
                 gcp_terraform_template="""# GCP: Detect process network sequences on VMs
 
 variable "project_id" {
@@ -743,6 +745,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Process Sequences"
   type         = "email"
   labels = {
@@ -752,6 +755,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for process network sequences
 resource "google_logging_metric" "process_sequence" {
+  project = var.project_id
   name   = "process-network-sequence"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -776,6 +780,7 @@ resource "google_logging_metric" "process_sequence" {
 
 # Step 3: Create alert policy for suspicious sequences
 resource "google_monitoring_alert_policy" "process_sequence_alert" {
+  project      = var.project_id
   display_name = "GCE Process Network Sequence"
   combiner     = "OR"
 
@@ -797,6 +802,9 @@ resource "google_monitoring_alert_policy" "process_sequence_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",

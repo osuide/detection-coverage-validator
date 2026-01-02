@@ -1006,8 +1006,8 @@ resource "google_logging_metric" "function_create" {
 
 # Step 3: Alert on function creation
 resource "google_monitoring_alert_policy" "function_create" {
-  display_name = "Cloud Function Created"
   project      = var.project_id
+  display_name = "Cloud Function Created"
   combiner     = "OR"
 
   conditions {
@@ -1030,6 +1030,9 @@ resource "google_monitoring_alert_policy" "function_create" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1056,8 +1059,8 @@ resource "google_logging_metric" "function_update" {
 }
 
 resource "google_monitoring_alert_policy" "function_update" {
-  display_name = "Cloud Function Updated"
   project      = var.project_id
+  display_name = "Cloud Function Updated"
   combiner     = "OR"
 
   conditions {
@@ -1080,6 +1083,9 @@ resource "google_monitoring_alert_policy" "function_update" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -1106,8 +1112,8 @@ resource "google_logging_metric" "function_iam" {
 }
 
 resource "google_monitoring_alert_policy" "function_iam" {
-  display_name = "Cloud Function IAM Policy Changed"
   project      = var.project_id
+  display_name = "Cloud Function IAM Policy Changed"
   combiner     = "OR"
 
   conditions {
@@ -1130,6 +1136,9 @@ resource "google_monitoring_alert_policy" "function_iam" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

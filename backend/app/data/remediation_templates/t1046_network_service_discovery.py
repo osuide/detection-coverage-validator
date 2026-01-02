@@ -1011,10 +1011,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
                 gcp_logging_query="""resource.type="gce_subnetwork"
 logName="projects/PROJECT_ID/logs/compute.googleapis.com%2Fvpc_flows"
 jsonPayload.connection.dest_port>0
-jsonPayload.reporter="DEST"
-| filter jsonPayload.packets_sent < 5
-| stats count() as connectionAttempts, count(distinct(jsonPayload.connection.dest_port)) as uniquePorts by jsonPayload.connection.src_ip, jsonPayload.connection.dest_ip, window(5m)
-| filter uniquePorts > 20 and connectionAttempts > 50""",
+jsonPayload.reporter="DEST" """,
                 gcp_terraform_template="""# GCP: Detect port scanning in VPC Flow Logs
 
 variable "project_id" {
@@ -1027,6 +1024,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -1036,6 +1034,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for port scanning
 resource "google_logging_metric" "port_scan" {
+  project = var.project_id
   name   = "port-scanning-detection"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -1067,6 +1066,7 @@ resource "google_logging_metric" "port_scan" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "port_scan" {
+  project      = var.project_id
   display_name = "Port Scanning Activity Detected"
   combiner     = "OR"
 
@@ -1085,6 +1085,13 @@ resource "google_monitoring_alert_policy" "port_scan" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Port scanning activity detected. Multiple rejected connections from a single source indicate reconnaissance."
@@ -1131,9 +1138,7 @@ resource "google_monitoring_alert_policy" "port_scan" {
             implementation=DetectionImplementation(
                 gcp_logging_query="""protoPayload.serviceName="compute.googleapis.com"
 (protoPayload.methodName=~"list" OR protoPayload.methodName=~"get")
-(protoPayload.methodName=~"instances" OR protoPayload.methodName=~"firewalls" OR protoPayload.methodName=~"networks")
-| stats count() as apiCalls by protoPayload.authenticationInfo.principalEmail, protoPayload.requestMetadata.callerIp
-| filter apiCalls > 100""",
+(protoPayload.methodName=~"instances" OR protoPayload.methodName=~"firewalls" OR protoPayload.methodName=~"networks")""",
                 gcp_terraform_template="""# GCP: Detect compute resource enumeration
 
 variable "project_id" {
@@ -1146,6 +1151,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -1155,6 +1161,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for enumeration
 resource "google_logging_metric" "compute_enumeration" {
+  project = var.project_id
   name   = "compute-resource-enumeration"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -1181,6 +1188,7 @@ resource "google_logging_metric" "compute_enumeration" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "enumeration" {
+  project      = var.project_id
   display_name = "Excessive Compute Resource Enumeration"
   combiner     = "OR"
 
@@ -1199,6 +1207,13 @@ resource "google_monitoring_alert_policy" "enumeration" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Excessive compute resource enumeration detected. This may indicate reconnaissance activity."

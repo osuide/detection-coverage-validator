@@ -423,12 +423,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "artifact_uploads" {
+  project = var.project_id
   name   = "suspicious-artifact-uploads"
   filter = <<-EOT
     resource.type="artifact_registry_repository"
@@ -442,6 +444,7 @@ resource "google_logging_metric" "artifact_uploads" {
 }
 
 resource "google_monitoring_alert_policy" "artifact_upload_alert" {
+  project      = var.project_id
   display_name = "Suspicious Artifact Uploads"
   combiner     = "OR"
   conditions {
@@ -460,6 +463,9 @@ resource "google_monitoring_alert_policy" "artifact_upload_alert" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",
@@ -508,12 +514,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "suspicious_builds" {
+  project = var.project_id
   name   = "suspicious-cloud-builds"
   filter = <<-EOT
     resource.type="cloud_build"
@@ -534,6 +542,7 @@ resource "google_logging_metric" "suspicious_builds" {
 }
 
 resource "google_monitoring_alert_policy" "build_alert" {
+  project      = var.project_id
   display_name = "Suspicious Cloud Build Activity"
   combiner     = "OR"
   conditions {
@@ -550,6 +559,13 @@ resource "google_monitoring_alert_policy" "build_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious Cloud Build Activity",

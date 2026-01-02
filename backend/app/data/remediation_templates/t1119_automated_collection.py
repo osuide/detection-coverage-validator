@@ -543,6 +543,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -552,6 +553,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for storage enumeration
 resource "google_logging_metric" "gcs_enum" {
+  project = var.project_id
   name   = "gcs-enumeration"
   filter = <<-EOT
     protoPayload.methodName=~"storage\\..*\\.(list|get)"
@@ -566,6 +568,7 @@ resource "google_logging_metric" "gcs_enum" {
 
 # Step 3: Alert policy for bulk enumeration
 resource "google_monitoring_alert_policy" "gcs_enum" {
+  project      = var.project_id
   display_name = "Automated Storage Enumeration"
   combiner     = "OR"
 
@@ -584,6 +587,13 @@ resource "google_monitoring_alert_policy" "gcs_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Automated collection of Cloud Storage data detected (T1119)"
@@ -646,6 +656,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -655,6 +666,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for secret access
 resource "google_logging_metric" "secret_access" {
+  project = var.project_id
   name   = "secret-manager-bulk-access"
   filter = <<-EOT
     protoPayload.methodName=~"AccessSecretVersion|ListSecrets"
@@ -669,6 +681,7 @@ resource "google_logging_metric" "secret_access" {
 
 # Step 3: Alert policy for bulk access
 resource "google_monitoring_alert_policy" "secret_access" {
+  project      = var.project_id
   display_name = "Bulk Secret Access Detected"
   combiner     = "OR"
 
@@ -687,6 +700,13 @@ resource "google_monitoring_alert_policy" "secret_access" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Automated credential collection detected via Secret Manager (T1119)"

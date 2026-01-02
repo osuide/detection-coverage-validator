@@ -595,6 +595,7 @@ variable "alert_email" { type = string }
 
 # Step 2: Create metric for encrypted egress
 resource "google_logging_metric" "encrypted_egress" {
+  project = var.project_id
   name   = "encrypted-egress-traffic"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -613,12 +614,14 @@ resource "google_logging_metric" "encrypted_egress" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_monitoring_alert_policy" "encrypted_egress" {
+  project      = var.project_id
   display_name = "Encrypted Exfiltration Detected"
   combiner     = "OR"
   conditions {
@@ -631,6 +634,13 @@ resource "google_monitoring_alert_policy" "encrypted_egress" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Encrypted Exfiltration Detected",
@@ -682,6 +692,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create log metric for crypto tool usage
 resource "google_logging_metric" "crypto_tools" {
+  project = var.project_id
   name   = "crypto-tool-usage"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -699,6 +710,7 @@ resource "google_logging_metric" "crypto_tools" {
 
 # Step 2: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -706,6 +718,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "crypto_tools" {
+  project      = var.project_id
   display_name = "Encryption Tool Usage Detected"
   combiner     = "OR"
   conditions {
@@ -718,6 +731,13 @@ resource "google_monitoring_alert_policy" "crypto_tools" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Encryption Tool Usage Detected",

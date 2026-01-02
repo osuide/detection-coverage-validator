@@ -701,6 +701,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "T1189 DNS Security Alerts"
   type         = "email"
   labels = {
@@ -710,6 +711,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for suspicious DNS queries
 resource "google_logging_metric" "suspicious_dns" {
+  project = var.project_id
   name   = "t1189-suspicious-dns-queries"
   filter = <<-EOT
     resource.type="dns_query"
@@ -732,6 +734,7 @@ resource "google_logging_metric" "suspicious_dns" {
 
 # Step 3: Create alert policy for malicious DNS activity
 resource "google_monitoring_alert_policy" "dns_threats" {
+  project      = var.project_id
   display_name = "T1189: Drive-by Compromise DNS Indicators"
   combiner     = "OR"
   conditions {
@@ -816,6 +819,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Chrome Security Alerts"
   type         = "email"
   labels = {
@@ -825,6 +829,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for browser policy violations
 resource "google_logging_metric" "browser_violations" {
+  project = var.project_id
   name   = "t1189-chrome-policy-violations"
   filter = <<-EOT
     resource.type="chrome_policy"
@@ -841,6 +846,7 @@ resource "google_logging_metric" "browser_violations" {
 
 # Step 3: Alert on suspicious browser activity
 resource "google_monitoring_alert_policy" "browser_exploitation" {
+  project      = var.project_id
   display_name = "T1189: Browser Policy Violations"
   combiner     = "OR"
   conditions {
@@ -857,6 +863,13 @@ resource "google_monitoring_alert_policy" "browser_exploitation" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Browser Policy Violation - Potential Drive-by Attack",

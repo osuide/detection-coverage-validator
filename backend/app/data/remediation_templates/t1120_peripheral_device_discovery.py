@@ -390,6 +390,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -399,6 +400,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for disk enumeration
 resource "google_logging_metric" "peripheral_device" {
+  project = var.project_id
   name   = "peripheral-device-discovery"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.disks.list|compute.disks.get|compute.instances.getSerialPortOutput|compute.disks.aggregatedList|compute.diskTypes.list)"
@@ -412,6 +414,7 @@ resource "google_logging_metric" "peripheral_device" {
 
 # Step 3: Alert policy for excessive enumeration
 resource "google_monitoring_alert_policy" "peripheral_device" {
+  project      = var.project_id
   display_name = "Peripheral Device Discovery"
   combiner     = "OR"
 
@@ -426,6 +429,13 @@ resource "google_monitoring_alert_policy" "peripheral_device" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Peripheral Device Discovery",
@@ -480,6 +490,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -489,6 +500,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for storage discovery
 resource "google_logging_metric" "storage_discovery" {
+  project = var.project_id
   name   = "filestore-storage-discovery"
   filter = <<-EOT
     protoPayload.serviceName=~"(file.googleapis.com|storage.googleapis.com)"
@@ -503,6 +515,7 @@ resource "google_logging_metric" "storage_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "storage_discovery" {
+  project      = var.project_id
   display_name = "Filestore and Storage Discovery"
   combiner     = "OR"
 
@@ -517,6 +530,13 @@ resource "google_monitoring_alert_policy" "storage_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Storage Device Discovery Detected",

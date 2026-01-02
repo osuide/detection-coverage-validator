@@ -784,6 +784,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "IAM Conditional Policy Alerts"
   type         = "email"
   labels = {
@@ -793,6 +794,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for conditional policy changes
 resource "google_logging_metric" "conditional_policy_changes" {
+  project = var.project_id
   name   = "iam-conditional-policy-modifications"
   filter = <<-EOT
     protoPayload.methodName=~"SetIamPolicy|UpdateIamPolicy"
@@ -809,6 +811,7 @@ resource "google_logging_metric" "conditional_policy_changes" {
 
 # Step 3: Alert policy for conditional access changes
 resource "google_monitoring_alert_policy" "conditional_policy" {
+  project      = var.project_id
   display_name = "IAM Conditional Access Policy Modified"
   combiner     = "OR"
 
@@ -823,6 +826,13 @@ resource "google_monitoring_alert_policy" "conditional_policy" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "IAM conditional access policy was modified. This may indicate authentication bypass attempt. Verify changes were authorised."
@@ -887,6 +897,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Federation Security Alerts"
   type         = "email"
   labels = {
@@ -896,6 +907,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for federation changes
 resource "google_logging_metric" "federation_changes" {
+  project = var.project_id
   name   = "identity-federation-modifications"
   filter = <<-EOT
     protoPayload.serviceName="iam.googleapis.com"
@@ -910,6 +922,7 @@ resource "google_logging_metric" "federation_changes" {
 
 # Step 3: Alert policy for federation changes
 resource "google_monitoring_alert_policy" "federation_alert" {
+  project      = var.project_id
   display_name = "Identity Federation Configuration Modified"
   combiner     = "OR"
 
@@ -924,6 +937,13 @@ resource "google_monitoring_alert_policy" "federation_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Workforce identity federation provider was created, modified, or deleted. This could enable authentication bypass. Immediate investigation required."

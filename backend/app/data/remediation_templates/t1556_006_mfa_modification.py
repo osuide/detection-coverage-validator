@@ -662,6 +662,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "MFA Security Alerts"
   type         = "email"
   labels = {
@@ -671,6 +672,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for MFA changes
 resource "google_logging_metric" "mfa_policy_changes" {
+  project = var.project_id
   name   = "mfa-policy-modifications"
   filter = <<-EOT
     protoPayload.methodName=~"SetIamPolicy|UpdateUser"
@@ -686,6 +688,7 @@ resource "google_logging_metric" "mfa_policy_changes" {
 
 # Step 3: Alert policy for MFA changes
 resource "google_monitoring_alert_policy" "mfa_policy" {
+  project      = var.project_id
   display_name = "MFA Policy Modified"
   combiner     = "OR"
 
@@ -700,6 +703,13 @@ resource "google_monitoring_alert_policy" "mfa_policy" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "MFA enforcement policy was modified. Verify this change was authorised."
@@ -760,6 +770,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "2SV Security Alerts"
   type         = "email"
   labels = {
@@ -769,6 +780,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for 2SV changes
 resource "google_logging_metric" "two_sv_disabled" {
+  project = var.project_id
   name   = "two-step-verification-disabled"
   filter = <<-EOT
     protoPayload.serviceName="admin.googleapis.com"
@@ -784,6 +796,7 @@ resource "google_logging_metric" "two_sv_disabled" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "two_sv_alert" {
+  project      = var.project_id
   display_name = "2-Step Verification Disabled"
   combiner     = "OR"
 
@@ -798,6 +811,13 @@ resource "google_monitoring_alert_policy" "two_sv_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "2-Step Verification was disabled for a user account. Immediate investigation required."

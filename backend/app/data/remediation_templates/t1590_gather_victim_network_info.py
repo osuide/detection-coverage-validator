@@ -505,6 +505,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -533,6 +534,7 @@ resource "google_logging_metric" "port_scanning" {
 }
 
 resource "google_monitoring_alert_policy" "scanning_detection" {
+  project      = var.project_id
   display_name = "Network Scanning Detected"
   combiner     = "OR"
   conditions {
@@ -549,6 +551,13 @@ resource "google_monitoring_alert_policy" "scanning_detection" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Network Scanning Detected",
@@ -595,12 +604,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "dns_enumeration" {
+  project = var.project_id
   name   = "dns-enumeration-attempts"
   filter = <<-EOT
     resource.type="dns_query"
@@ -615,6 +626,7 @@ resource "google_logging_metric" "dns_enumeration" {
 }
 
 resource "google_monitoring_alert_policy" "dns_recon" {
+  project      = var.project_id
   display_name = "DNS Enumeration Detected"
   combiner     = "OR"
   conditions {
@@ -627,6 +639,13 @@ resource "google_monitoring_alert_policy" "dns_recon" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="low",
                 alert_title="GCP: DNS Enumeration Detected",

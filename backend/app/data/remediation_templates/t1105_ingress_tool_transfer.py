@@ -635,6 +635,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Downloads"
   type         = "email"
   labels = {
@@ -644,6 +645,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for download commands
 resource "google_logging_metric" "vm_downloads" {
+  project = var.project_id
   name   = "vm-suspicious-downloads"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -669,6 +671,7 @@ resource "google_logging_metric" "vm_downloads" {
 
 # Step 3: Create alert policy for download activity
 resource "google_monitoring_alert_policy" "download_alert" {
+  project      = var.project_id
   display_name = "GCE Suspicious Downloads"
   combiner     = "OR"
 
@@ -690,6 +693,9 @@ resource "google_monitoring_alert_policy" "download_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -750,6 +756,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - File Downloads"
   type         = "email"
   labels = {
@@ -759,6 +766,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for suspicious file downloads
 resource "google_logging_metric" "malicious_downloads" {
+  project = var.project_id
   name   = "malicious-file-downloads"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -776,6 +784,7 @@ resource "google_logging_metric" "malicious_downloads" {
 
 # Step 3: Create alert for file download patterns
 resource "google_monitoring_alert_policy" "download_alert" {
+  project      = var.project_id
   display_name = "Malicious File Downloads"
   combiner     = "OR"
 
@@ -794,6 +803,13 @@ resource "google_monitoring_alert_policy" "download_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Malicious File Download Detected",

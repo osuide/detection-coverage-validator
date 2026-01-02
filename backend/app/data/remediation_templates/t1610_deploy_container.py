@@ -524,6 +524,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -531,6 +532,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for suspicious pod deployments
 resource "google_logging_metric" "pod_deployment" {
+  project = var.project_id
   name   = "suspicious-pod-deployments"
   filter = <<-EOT
     resource.type="k8s_cluster"
@@ -555,6 +557,7 @@ resource "google_logging_metric" "pod_deployment" {
 
 # Alert policy for deployments
 resource "google_monitoring_alert_policy" "pod_deployment" {
+  project      = var.project_id
   display_name = "Suspicious GKE Pod Deployment"
   combiner     = "OR"
   conditions {
@@ -567,6 +570,13 @@ resource "google_monitoring_alert_policy" "pod_deployment" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content   = "Suspicious pod deployment detected. Investigate namespace and deploying user."
     mime_type = "text/markdown"
@@ -630,6 +640,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -637,6 +648,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for Cloud Run deployments
 resource "google_logging_metric" "cloud_run_deploy" {
+  project = var.project_id
   name   = "cloud-run-deployments"
   filter = <<-EOT
     protoPayload.serviceName="run.googleapis.com"
@@ -650,6 +662,7 @@ resource "google_logging_metric" "cloud_run_deploy" {
 
 # Alert on Cloud Run deployments
 resource "google_monitoring_alert_policy" "cloud_run_deploy" {
+  project      = var.project_id
   display_name = "Cloud Run Container Deployment"
   combiner     = "OR"
   conditions {
@@ -662,6 +675,13 @@ resource "google_monitoring_alert_policy" "cloud_run_deploy" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Cloud Run Container Deployed",

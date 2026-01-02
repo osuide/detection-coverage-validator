@@ -388,6 +388,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Email Bombing Security Alerts"
   type         = "email"
   labels = {
@@ -397,6 +398,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for high email rate
 resource "google_logging_metric" "high_email_rate" {
+  project = var.project_id
   name   = "high-inbound-email-rate"
   filter = <<-EOT
     resource.type="gmail_message"
@@ -422,6 +424,7 @@ resource "google_logging_metric" "high_email_rate" {
 
 # Alert policy for email bombing
 resource "google_monitoring_alert_policy" "email_bombing" {
+  project      = var.project_id
   display_name = "Email Bombing Detection"
   combiner     = "OR"
 
@@ -445,6 +448,9 @@ resource "google_monitoring_alert_policy" "email_bombing" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

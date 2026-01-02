@@ -553,8 +553,7 @@ resource "aws_cloudwatch_metric_alarm" "udp_traffic" {
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.connection.protocol=1
-jsonPayload.bytes_sent>1000
-| stats sum(bytes_sent) as total_bytes by src_instance, dest_ip""",
+jsonPayload.bytes_sent>1000""",
                 gcp_terraform_template="""# GCP: ICMP traffic anomaly detection
 
 variable "project_id" { type = string }
@@ -562,6 +561,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -569,6 +569,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for ICMP traffic
 resource "google_logging_metric" "icmp_traffic" {
+  project = var.project_id
   name   = "icmp-traffic-anomaly"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -584,6 +585,7 @@ resource "google_logging_metric" "icmp_traffic" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "icmp_traffic" {
+  project      = var.project_id
   display_name = "ICMP Tunnelling Detected"
   combiner     = "OR"
   conditions {
@@ -596,6 +598,13 @@ resource "google_monitoring_alert_policy" "icmp_traffic" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Suspicious ICMP Traffic Detected",
@@ -644,6 +653,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -651,6 +661,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create metric for unusual protocols
 resource "google_logging_metric" "unusual_protocol" {
+  project = var.project_id
   name   = "unusual-protocol-usage"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -668,6 +679,7 @@ resource "google_logging_metric" "unusual_protocol" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "unusual_protocol" {
+  project      = var.project_id
   display_name = "Non-Standard Protocol Usage Detected"
   combiner     = "OR"
   conditions {
@@ -680,6 +692,13 @@ resource "google_monitoring_alert_policy" "unusual_protocol" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Non-Standard Protocol Detected",

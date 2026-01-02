@@ -367,6 +367,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Reconnaissance Alerts"
   type         = "email"
   labels = {
@@ -377,6 +378,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for public bucket enumeration
 resource "google_logging_metric" "bucket_enumeration" {
+  project = var.project_id
   name   = "public-bucket-enumeration"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -402,6 +404,7 @@ resource "google_logging_metric" "bucket_enumeration" {
 
 # Alert policy for bucket enumeration
 resource "google_monitoring_alert_policy" "bucket_enumeration" {
+  project      = var.project_id
   display_name = "Public Bucket Enumeration Detected"
   combiner     = "OR"
   conditions {
@@ -420,6 +423,9 @@ resource "google_monitoring_alert_policy" "bucket_enumeration" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",
@@ -476,6 +482,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Directory Enumeration Alerts"
   type         = "email"
   labels = {
@@ -486,6 +493,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for directory enumeration
 resource "google_logging_metric" "directory_enum" {
+  project = var.project_id
   name   = "workspace-directory-enumeration"
   filter = <<-EOT
     resource.type="audited_resource"
@@ -513,6 +521,7 @@ resource "google_logging_metric" "directory_enum" {
 
 # Alert policy for directory enumeration
 resource "google_monitoring_alert_policy" "directory_enum" {
+  project      = var.project_id
   display_name = "Workspace Directory Enumeration"
   combiner     = "OR"
   conditions {
@@ -531,6 +540,9 @@ resource "google_monitoring_alert_policy" "directory_enum" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

@@ -900,8 +900,8 @@ resource "google_logging_metric" "secret_access" {
 
 # Step 3: Alert on secret access
 resource "google_monitoring_alert_policy" "secret_access" {
-  display_name = "Secret Manager Access Detected"
   project      = var.project_id
+  display_name = "Secret Manager Access Detected"
   combiner     = "OR"
 
   conditions {
@@ -937,8 +937,8 @@ resource "google_monitoring_alert_policy" "secret_access" {
 
 # Step 4: Bulk access detection (5+ secrets in 5 minutes)
 resource "google_monitoring_alert_policy" "bulk_secret_access" {
-  display_name = "CRITICAL: Bulk Secret Access Detected"
   project      = var.project_id
+  display_name = "CRITICAL: Bulk Secret Access Detected"
   combiner     = "OR"
 
   conditions {
@@ -963,6 +963,9 @@ resource "google_monitoring_alert_policy" "bulk_secret_access" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -990,8 +993,8 @@ resource "google_logging_metric" "cross_project_secret" {
 }
 
 resource "google_monitoring_alert_policy" "cross_project_secret" {
-  display_name = "Cross-Project Secret Access"
   project      = var.project_id
+  display_name = "Cross-Project Secret Access"
   combiner     = "OR"
 
   conditions {
@@ -1014,6 +1017,9 @@ resource "google_monitoring_alert_policy" "cross_project_secret" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

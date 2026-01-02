@@ -372,6 +372,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -400,6 +401,7 @@ resource "google_logging_metric" "vpc_scanning" {
 }
 
 resource "google_monitoring_alert_policy" "scanning_detected" {
+  project      = var.project_id
   display_name = "IP Scanning Activity Detected"
   combiner     = "OR"
   conditions {
@@ -416,6 +418,13 @@ resource "google_monitoring_alert_policy" "scanning_detected" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content = "VPC Flow Logs detected scanning activity from external source."
   }
@@ -485,12 +494,14 @@ resource "google_ids_endpoint" "scanning_detection" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_monitoring_alert_policy" "ids_alerts" {
+  project      = var.project_id
   display_name = "Cloud IDS Scanning Alerts"
   combiner     = "OR"
   conditions {
@@ -507,6 +518,13 @@ resource "google_monitoring_alert_policy" "ids_alerts" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content = "Cloud IDS detected reconnaissance or scanning activity."
   }

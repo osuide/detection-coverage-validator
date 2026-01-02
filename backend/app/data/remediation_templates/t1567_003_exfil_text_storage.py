@@ -635,6 +635,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -644,6 +645,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for text storage DNS queries
 resource "google_logging_metric" "text_storage_dns" {
+  project = var.project_id
   name   = "text-storage-dns-queries"
   filter = <<-EOT
     resource.type="dns_query"
@@ -658,6 +660,7 @@ resource "google_logging_metric" "text_storage_dns" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "text_storage_dns" {
+  project      = var.project_id
   display_name = "Text Storage Site DNS Queries"
   combiner     = "OR"
 
@@ -732,6 +735,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -759,6 +763,7 @@ resource "google_logging_metric" "large_https_upload" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "large_https_upload" {
+  project      = var.project_id
   display_name = "Large HTTPS Upload Detected"
   combiner     = "OR"
 
@@ -777,6 +782,13 @@ resource "google_monitoring_alert_policy" "large_https_upload" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Large HTTPS Upload Detected",

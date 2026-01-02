@@ -623,8 +623,8 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create alert policy for high CPU
 resource "google_monitoring_alert_policy" "high_cpu" {
-  display_name = "GCE-SustainedHighCPU"
   project      = var.project_id
+  display_name = "GCE-SustainedHighCPU"
   combiner     = "OR"
 
   conditions {
@@ -780,8 +780,8 @@ resource "google_logging_metric" "mining_pools" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "mining_detected" {
-  display_name = "Cryptocurrency Mining Pool Detected"
   project      = var.project_id
+  display_name = "Cryptocurrency Mining Pool Detected"
   combiner     = "OR"
 
   conditions {
@@ -801,6 +801,13 @@ resource "google_monitoring_alert_policy" "mining_detected" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Network connections to known cryptocurrency mining pools detected. Investigate immediately for potential resource hijacking."
@@ -874,8 +881,8 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Alert for sustained high container CPU
 resource "google_monitoring_alert_policy" "container_high_cpu" {
-  display_name = "GKE-Container-HighCPU"
   project      = var.project_id
+  display_name = "GKE-Container-HighCPU"
   combiner     = "OR"
 
   conditions {
@@ -906,6 +913,13 @@ resource "google_monitoring_alert_policy" "container_high_cpu" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Sustained high CPU usage in GKE container. Check for cryptomining activity."

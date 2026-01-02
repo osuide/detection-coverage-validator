@@ -571,6 +571,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "T1199 Security Alerts"
   type         = "email"
   labels = {
@@ -580,6 +581,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for shared VPC/partner access
 resource "google_logging_metric" "partner_access" {
+  project = var.project_id
   name   = "t1199-partner-network-access"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -595,6 +597,7 @@ resource "google_logging_metric" "partner_access" {
 
 # Step 3: Create alert policy for partner access
 resource "google_monitoring_alert_policy" "partner_access" {
+  project      = var.project_id
   display_name = "T1199: Trusted Relationship Network Access"
   combiner     = "OR"
   conditions {
@@ -676,6 +679,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Marketplace Security Alerts"
   type         = "email"
   labels = {
@@ -685,6 +689,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create metric for marketplace activity
 resource "google_logging_metric" "marketplace_apps" {
+  project = var.project_id
   name   = "t1199-marketplace-activity"
   filter = <<-EOT
     protoPayload.serviceName="serviceusage.googleapis.com"
@@ -701,6 +706,7 @@ resource "google_logging_metric" "marketplace_apps" {
 
 # Step 3: Alert on marketplace installations
 resource "google_monitoring_alert_policy" "marketplace_activity" {
+  project      = var.project_id
   display_name = "T1199: Third-Party Application Activity"
   combiner     = "OR"
   conditions {
@@ -713,6 +719,13 @@ resource "google_monitoring_alert_policy" "marketplace_activity" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Third-Party Application Activity",

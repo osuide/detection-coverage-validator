@@ -836,6 +836,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -843,6 +844,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for Cloud Run modifications
 resource "google_logging_metric" "cloud_run_mod" {
+  project = var.project_id
   name   = "cloud-run-service-modifications"
   filter = <<-EOT
     protoPayload.serviceName="run.googleapis.com"
@@ -864,6 +866,7 @@ resource "google_logging_metric" "cloud_run_mod" {
 
 # Alert policy for service modifications
 resource "google_monitoring_alert_policy" "cloud_run_mod" {
+  project      = var.project_id
   display_name = "Suspicious Cloud Run Service Modification"
   combiner     = "OR"
   conditions {
@@ -876,6 +879,13 @@ resource "google_monitoring_alert_policy" "cloud_run_mod" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content   = "Cloud Run service modification detected. Review service configuration changes."
     mime_type = "text/markdown"
@@ -929,6 +939,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -936,6 +947,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for system process creation
 resource "google_logging_metric" "system_process" {
+  project = var.project_id
   name   = "gke-system-process-creation"
   filter = <<-EOT
     resource.type="k8s_cluster"
@@ -959,6 +971,7 @@ resource "google_logging_metric" "system_process" {
 
 # Alert policy for system process creation
 resource "google_monitoring_alert_policy" "system_process" {
+  project      = var.project_id
   display_name = "Suspicious GKE System Process Creation"
   combiner     = "OR"
   conditions {
@@ -971,6 +984,13 @@ resource "google_monitoring_alert_policy" "system_process" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content   = "System process creation detected in GKE. Investigate pod and namespace."
     mime_type = "text/markdown"
@@ -1040,6 +1060,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -1047,6 +1068,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for Cloud Functions modifications
 resource "google_logging_metric" "function_mod" {
+  project = var.project_id
   name   = "cloud-functions-modifications"
   filter = <<-EOT
     protoPayload.serviceName="cloudfunctions.googleapis.com"
@@ -1068,6 +1090,7 @@ resource "google_logging_metric" "function_mod" {
 
 # Alert policy for function modifications
 resource "google_monitoring_alert_policy" "function_mod" {
+  project      = var.project_id
   display_name = "Cloud Functions Modification Detected"
   combiner     = "OR"
   conditions {
@@ -1080,6 +1103,13 @@ resource "google_monitoring_alert_policy" "function_mod" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content   = "Cloud Function modification detected. Review function configuration and code."
     mime_type = "text/markdown"

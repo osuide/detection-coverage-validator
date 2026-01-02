@@ -341,6 +341,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Trial Abuse Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -348,6 +349,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Detect rapid instance creation in trial accounts
 resource "google_logging_metric" "trial_instances" {
+  project = var.project_id
   name   = "trial-instance-creation"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -368,6 +370,7 @@ resource "google_logging_metric" "trial_instances" {
 }
 
 resource "google_monitoring_alert_policy" "trial_abuse" {
+  project      = var.project_id
   display_name = "GCP Trial Account Abuse"
   combiner     = "OR"
   conditions {
@@ -384,6 +387,13 @@ resource "google_monitoring_alert_policy" "trial_abuse" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP Trial Account Abuse Detected",

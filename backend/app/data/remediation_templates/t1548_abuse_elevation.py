@@ -801,6 +801,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -810,6 +811,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "sa_key_creation" {
+  project = var.project_id
   name   = "service-account-key-creation"
   filter = <<-EOT
     protoPayload.methodName="google.iam.admin.v1.CreateServiceAccountKey"
@@ -824,6 +826,7 @@ resource "google_logging_metric" "sa_key_creation" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "sa_key_creation" {
+  project      = var.project_id
   display_name = "Service Account Key Created"
   combiner     = "OR"
 
@@ -838,6 +841,13 @@ resource "google_monitoring_alert_policy" "sa_key_creation" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "A user created a service account key. Review to ensure authorised."
@@ -895,6 +905,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -904,6 +915,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "iam_escalation" {
+  project = var.project_id
   name   = "iam-privilege-escalation"
   filter = <<-EOT
     protoPayload.methodName="SetIamPolicy"
@@ -919,6 +931,7 @@ resource "google_logging_metric" "iam_escalation" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "iam_escalation" {
+  project      = var.project_id
   display_name = "IAM Privilege Escalation Detected"
   combiner     = "OR"
 
@@ -933,6 +946,13 @@ resource "google_monitoring_alert_policy" "iam_escalation" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Privileged IAM role was granted. Investigate for unauthorised privilege escalation."
@@ -990,6 +1010,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -999,6 +1020,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "sa_impersonation" {
+  project = var.project_id
   name   = "service-account-impersonation"
   filter = <<-EOT
     (protoPayload.methodName="GenerateAccessToken"
@@ -1014,6 +1036,7 @@ resource "google_logging_metric" "sa_impersonation" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "sa_impersonation" {
+  project      = var.project_id
   display_name = "Service Account Impersonation Detected"
   combiner     = "OR"
 
@@ -1028,6 +1051,13 @@ resource "google_monitoring_alert_policy" "sa_impersonation" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "A user generated tokens by impersonating a service account. Verify authorisation."

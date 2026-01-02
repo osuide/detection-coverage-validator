@@ -629,6 +629,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -638,6 +639,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for unusual port connections
 resource "google_logging_metric" "unusual_ports" {
+  project = var.project_id
   name   = "unusual-port-connections"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -655,6 +657,7 @@ resource "google_logging_metric" "unusual_ports" {
 
 # Step 3: Alert policy for non-standard ports
 resource "google_monitoring_alert_policy" "unusual_ports" {
+  project      = var.project_id
   display_name = "Non-Standard Port Usage Detected"
   combiner     = "OR"
 
@@ -672,6 +675,9 @@ resource "google_monitoring_alert_policy" "unusual_ports" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -728,6 +734,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -737,6 +744,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for firewall changes
 resource "google_logging_metric" "firewall_changes" {
+  project = var.project_id
   name   = "firewall-rule-changes"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -753,6 +761,7 @@ resource "google_logging_metric" "firewall_changes" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "firewall_changes" {
+  project      = var.project_id
   display_name = "Firewall Rule Modified"
   combiner     = "OR"
 
@@ -770,6 +779,9 @@ resource "google_monitoring_alert_policy" "firewall_changes" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

@@ -720,6 +720,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alert Email"
   type         = "email"
   labels = {
@@ -729,6 +730,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for network interface changes
 resource "google_logging_metric" "network_interface" {
+  project = var.project_id
   name   = "secondary-network-interface-changes"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -755,6 +757,7 @@ resource "google_logging_metric" "network_interface" {
 
 # Step 3: Alert policy for network interface changes
 resource "google_monitoring_alert_policy" "network_interface_alert" {
+  project      = var.project_id
   display_name = "Secondary Network Interface Detected"
   combiner     = "OR"
 
@@ -772,6 +775,9 @@ resource "google_monitoring_alert_policy" "network_interface_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -828,6 +834,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alert Email"
   type         = "email"
   labels = {
@@ -837,6 +844,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for large transfers
 resource "google_logging_metric" "large_transfer" {
+  project = var.project_id
   name   = "unusual-network-transfer"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -853,6 +861,7 @@ resource "google_logging_metric" "large_transfer" {
 
 # Step 3: Alert policy for large transfers
 resource "google_monitoring_alert_policy" "large_transfer_alert" {
+  project      = var.project_id
   display_name = "Unusual Network Traffic Pattern Detected"
   combiner     = "OR"
 
@@ -874,6 +883,9 @@ resource "google_monitoring_alert_policy" "large_transfer_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",

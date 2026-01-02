@@ -695,6 +695,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -704,6 +705,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for Filestore access
 resource "google_logging_metric" "filestore_access" {
+  project = var.project_id
   name   = "filestore-access-activity"
   filter = <<-EOT
     protoPayload.serviceName="file.googleapis.com"
@@ -718,6 +720,7 @@ resource "google_logging_metric" "filestore_access" {
 
 # Step 3: Alert policy for unusual Filestore access
 resource "google_monitoring_alert_policy" "filestore_alert" {
+  project      = var.project_id
   display_name = "Unusual Filestore Access Detected"
   combiner     = "OR"
 
@@ -797,6 +800,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -806,6 +810,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for SMB/NFS traffic
 resource "google_logging_metric" "share_access" {
+  project = var.project_id
   name   = "network-share-access"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -822,6 +827,7 @@ resource "google_logging_metric" "share_access" {
 
 # Step 3: Alert policy for unusual share access
 resource "google_monitoring_alert_policy" "share_access_alert" {
+  project      = var.project_id
   display_name = "Network Share Access Pattern Detected"
   combiner     = "OR"
 

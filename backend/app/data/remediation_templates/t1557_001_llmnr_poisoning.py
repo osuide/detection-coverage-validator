@@ -814,6 +814,7 @@ resource "google_compute_subnetwork" "monitored" {
 
 # Step 2: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -848,6 +849,7 @@ resource "google_logging_metric" "netbios_traffic" {
 
 # Alert policy
 resource "google_monitoring_alert_policy" "netbios_alert" {
+  project      = var.project_id
   display_name = "LLMNR/NetBIOS Poisoning Detected"
   combiner     = "OR"
 
@@ -868,6 +870,13 @@ resource "google_monitoring_alert_policy" "netbios_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Suspicious LLMNR (UDP 5355) or NetBIOS (UDP 137) traffic detected. Potential name resolution poisoning attack."
@@ -930,6 +939,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -939,6 +949,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for AD modifications
 resource "google_logging_metric" "ad_changes" {
+  project = var.project_id
   name   = "managed-ad-configuration-changes"
   filter = <<-EOT
     protoPayload.serviceName="managedidentities.googleapis.com"
@@ -954,6 +965,7 @@ resource "google_logging_metric" "ad_changes" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "ad_modification" {
+  project      = var.project_id
   display_name = "Managed AD Configuration Changed"
   combiner     = "OR"
 
@@ -968,6 +980,13 @@ resource "google_monitoring_alert_policy" "ad_modification" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Managed Service for Microsoft AD configuration changed. Review for unauthorised security modifications."

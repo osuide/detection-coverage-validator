@@ -670,6 +670,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Process Masquerading"
   type         = "email"
   labels = {
@@ -679,6 +680,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for suspicious processes
 resource "google_logging_metric" "suspicious_processes" {
+  project = var.project_id
   name   = "suspicious-process-names"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -705,6 +707,7 @@ resource "google_logging_metric" "suspicious_processes" {
 
 # Step 3: Create alert policy for suspicious processes
 resource "google_monitoring_alert_policy" "process_alert" {
+  project      = var.project_id
   display_name = "GCE Suspicious Process Masquerading"
   combiner     = "OR"
 
@@ -726,6 +729,9 @@ resource "google_monitoring_alert_policy" "process_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -795,6 +801,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Function Masquerading"
   type         = "email"
   labels = {
@@ -804,6 +811,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for suspicious function names
 resource "google_logging_metric" "suspicious_functions" {
+  project = var.project_id
   name   = "suspicious-cloud-function-names"
   filter = <<-EOT
     resource.type="cloud_function"
@@ -830,6 +838,7 @@ resource "google_logging_metric" "suspicious_functions" {
 
 # Step 3: Create alert for suspicious function names
 resource "google_monitoring_alert_policy" "function_alert" {
+  project      = var.project_id
   display_name = "Cloud Function Masquerading Detection"
   combiner     = "OR"
 
@@ -851,6 +860,9 @@ resource "google_monitoring_alert_policy" "function_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",
@@ -917,6 +929,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - GKE Masquerading"
   type         = "email"
   labels = {
@@ -926,6 +939,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for suspicious pod names
 resource "google_logging_metric" "suspicious_pods" {
+  project = var.project_id
   name   = "suspicious-gke-pod-names"
   filter = <<-EOT
     resource.type="k8s_pod"
@@ -958,6 +972,7 @@ resource "google_logging_metric" "suspicious_pods" {
 
 # Step 3: Create alert for suspicious pod names
 resource "google_monitoring_alert_policy" "pod_alert" {
+  project      = var.project_id
   display_name = "GKE Pod/Container Masquerading"
   combiner     = "OR"
 
@@ -979,6 +994,9 @@ resource "google_monitoring_alert_policy" "pod_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",

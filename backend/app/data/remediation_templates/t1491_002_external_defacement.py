@@ -699,6 +699,7 @@ variable "monitored_bucket" {
 
 # Step 1: Create notification channel for email alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Website Defacement Alerts"
   type         = "email"
   labels = {
@@ -738,8 +739,8 @@ resource "google_logging_metric" "website_content_modification" {
 
 # Step 3: Create alert policy for content modifications
 resource "google_monitoring_alert_policy" "defacement_detection" {
-  display_name = "Website Defacement Detection"
   project      = var.project_id
+  display_name = "Website Defacement Detection"
   combiner     = "OR"
 
   conditions {
@@ -762,6 +763,9 @@ resource "google_monitoring_alert_policy" "defacement_detection" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

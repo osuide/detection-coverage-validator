@@ -477,6 +477,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -486,6 +487,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for data collection commands
 resource "google_logging_metric" "cloud_shell_collection" {
+  project = var.project_id
   name   = "cloud-shell-data-collection"
   filter = <<-EOT
     resource.type="cloud_shell_instance"
@@ -502,6 +504,7 @@ resource "google_logging_metric" "cloud_shell_collection" {
 
 # Step 3: Alert policy for suspicious commands
 resource "google_monitoring_alert_policy" "shell_collection_alert" {
+  project      = var.project_id
   display_name = "Cloud Shell Data Collection Activity"
   combiner     = "OR"
 
@@ -593,6 +596,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -602,6 +606,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for file access
 resource "google_logging_metric" "vm_file_access" {
+  project = var.project_id
   name   = "gce-sensitive-file-access"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -627,6 +632,7 @@ resource "google_logging_metric" "vm_file_access" {
 
 # Step 3: Alert policy for suspicious file access
 resource "google_monitoring_alert_policy" "file_access_alert" {
+  project      = var.project_id
   display_name = "GCE Sensitive File Access"
   combiner     = "OR"
 

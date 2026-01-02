@@ -470,12 +470,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "lb_scanning" {
+  project = var.project_id
   name   = "wordlist-scanning"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -497,6 +499,7 @@ resource "google_logging_metric" "lb_scanning" {
 }
 
 resource "google_monitoring_alert_policy" "scanning_detected" {
+  project      = var.project_id
   display_name = "Wordlist Scanning Detected"
   combiner     = "OR"
   conditions {
@@ -513,6 +516,13 @@ resource "google_monitoring_alert_policy" "scanning_detected" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Wordlist Scanning Detected",
@@ -559,12 +569,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "bucket_enum" {
+  project = var.project_id
   name   = "gcs-bucket-enumeration"
   filter = <<-EOT
     protoPayload.methodName=("storage.buckets.get" OR "storage.buckets.list")
@@ -578,6 +590,7 @@ resource "google_logging_metric" "bucket_enum" {
 }
 
 resource "google_monitoring_alert_policy" "bucket_enum_detected" {
+  project      = var.project_id
   display_name = "GCS Bucket Enumeration Detected"
   combiner     = "OR"
   conditions {
@@ -594,6 +607,13 @@ resource "google_monitoring_alert_policy" "bucket_enum_detected" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: GCS Bucket Enumeration Detected",

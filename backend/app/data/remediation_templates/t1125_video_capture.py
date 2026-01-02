@@ -775,6 +775,9 @@ resource "google_monitoring_alert_policy" "camera_access" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Camera or video device access detected on GCE instance. Investigate for unauthorised video capture activity."
@@ -902,6 +905,9 @@ resource "google_monitoring_alert_policy" "video_uploads" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "3600s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Video files uploaded to Cloud Storage. Investigate for potential video capture and exfiltration activity."

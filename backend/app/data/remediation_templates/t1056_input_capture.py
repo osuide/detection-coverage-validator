@@ -691,8 +691,8 @@ resource "google_logging_metric" "failed_auth" {
 
 # Step 3: Create alert policy for multiple failures
 resource "google_monitoring_alert_policy" "failed_auth_alert" {
-  display_name = "T1056 - Multiple Failed Authentication Attempts"
   project      = var.project_id
+  display_name = "T1056 - Multiple Failed Authentication Attempts"
   combiner     = "OR"
 
   conditions {
@@ -713,6 +713,9 @@ resource "google_monitoring_alert_policy" "failed_auth_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -739,8 +742,8 @@ resource "google_logging_metric" "suspicious_login" {
 }
 
 resource "google_monitoring_alert_policy" "suspicious_login_alert" {
-  display_name = "T1056 - Suspicious Login Detected"
   project      = var.project_id
+  display_name = "T1056 - Suspicious Login Detected"
   combiner     = "OR"
 
   conditions {
@@ -757,6 +760,9 @@ resource "google_monitoring_alert_policy" "suspicious_login_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -868,8 +874,8 @@ resource "google_logging_metric" "token_generation" {
 
 # Step 3: Alert on unusual token generation volume
 resource "google_monitoring_alert_policy" "token_volume" {
-  display_name = "T1056 - Unusual OAuth Token Generation"
   project      = var.project_id
+  display_name = "T1056 - Unusual OAuth Token Generation"
   combiner     = "OR"
 
   conditions {
@@ -889,6 +895,13 @@ resource "google_monitoring_alert_policy" "token_volume" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "Unusual volume of OAuth token generation detected. This may indicate token harvesting after credential capture. Investigate the principal and recent authentication events."

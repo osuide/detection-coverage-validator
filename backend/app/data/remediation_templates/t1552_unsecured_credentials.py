@@ -549,8 +549,8 @@ resource "google_logging_metric" "secret_access" {
 
 # Step 3: Alert policy for unusual access
 resource "google_monitoring_alert_policy" "secret_access_alert" {
-  display_name = "T1552 - Unusual Secret Access"
   project      = var.project_id
+  display_name = "T1552 - Unusual Secret Access"
   combiner     = "OR"
 
   conditions {
@@ -568,6 +568,13 @@ resource "google_monitoring_alert_policy" "secret_access_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "High volume of Secret Manager or service account key access detected, indicating potential credential harvesting (MITRE T1552)."

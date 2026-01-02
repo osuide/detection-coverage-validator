@@ -748,6 +748,9 @@ resource "google_monitoring_alert_policy" "token_manipulation" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Access token manipulation detected on Windows GCE instance. Investigate for privilege escalation or defence evasion."

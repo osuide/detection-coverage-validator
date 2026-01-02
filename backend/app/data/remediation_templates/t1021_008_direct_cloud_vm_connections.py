@@ -445,6 +445,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Serial Console Security Alerts"
   type         = "email"
   labels = {
@@ -454,6 +455,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for serial console access
 resource "google_logging_metric" "serial_console_access" {
+  project = var.project_id
   name   = "serial-console-access"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -477,6 +479,7 @@ resource "google_logging_metric" "serial_console_access" {
 
 # Step 3: Create alert policy for serial console access
 resource "google_monitoring_alert_policy" "serial_console_alert" {
+  project      = var.project_id
   display_name = "Serial Console Access Detected"
   combiner     = "OR"
   conditions {
@@ -495,6 +498,9 @@ resource "google_monitoring_alert_policy" "serial_console_alert" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",
@@ -553,6 +559,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "IAP Tunnel Security Alerts"
   type         = "email"
   labels = {
@@ -562,6 +569,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for IAP tunnelling
 resource "google_logging_metric" "iap_tunnel_access" {
+  project = var.project_id
   name   = "iap-tcp-forwarding"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -590,6 +598,7 @@ resource "google_logging_metric" "iap_tunnel_access" {
 
 # Step 3: Create alert policy for IAP tunnelling
 resource "google_monitoring_alert_policy" "iap_tunnel_alert" {
+  project      = var.project_id
   display_name = "IAP TCP Forwarding Detected"
   combiner     = "OR"
   conditions {
@@ -608,6 +617,9 @@ resource "google_monitoring_alert_policy" "iap_tunnel_alert" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="low",

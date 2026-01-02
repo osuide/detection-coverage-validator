@@ -690,6 +690,9 @@ resource "google_monitoring_alert_policy" "compromised_credentials" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -800,6 +803,9 @@ resource "google_monitoring_alert_policy" "scc_credential_alerts" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="critical",

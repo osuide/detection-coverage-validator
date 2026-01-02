@@ -695,8 +695,8 @@ resource "google_logging_metric" "location_discovery" {
 
 # Step 3: Alert policy for unusual location queries
 resource "google_monitoring_alert_policy" "location_discovery_alert" {
-  display_name = "System Location Discovery Detected"
   project      = var.project_id
+  display_name = "System Location Discovery Detected"
   combiner     = "OR"
 
   conditions {
@@ -717,6 +717,9 @@ resource "google_monitoring_alert_policy" "location_discovery_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",
@@ -814,8 +817,8 @@ resource "google_logging_metric" "metadata_location" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "metadata_location_alert" {
-  display_name = "Metadata Location Discovery"
   project      = var.project_id
+  display_name = "Metadata Location Discovery"
   combiner     = "OR"
 
   conditions {
@@ -836,6 +839,9 @@ resource "google_monitoring_alert_policy" "metadata_location_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

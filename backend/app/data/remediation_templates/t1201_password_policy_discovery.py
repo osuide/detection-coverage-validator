@@ -440,6 +440,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Password Policy Discovery Alerts"
   type         = "email"
   labels = {
@@ -450,6 +451,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for policy discovery
 resource "google_logging_metric" "password_policy_discovery" {
+  project = var.project_id
   name   = "password-policy-discovery"
   filter = <<-EOT
     protoPayload.methodName=~"google.admin.AdminService.getPasswordPolicy|google.iam.admin.v1.GetIamPolicy"
@@ -470,6 +472,7 @@ resource "google_logging_metric" "password_policy_discovery" {
 
 # Step 3: Create alert policy for suspicious activity
 resource "google_monitoring_alert_policy" "password_policy_discovery" {
+  project      = var.project_id
   display_name = "Password Policy Discovery Detected"
   combiner     = "OR"
   conditions {
@@ -488,6 +491,9 @@ resource "google_monitoring_alert_policy" "password_policy_discovery" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",
@@ -543,6 +549,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Compute Password Discovery Alerts"
   type         = "email"
   labels = {
@@ -553,6 +560,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log-based metric for password commands
 resource "google_logging_metric" "password_commands" {
+  project = var.project_id
   name   = "password-policy-commands"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -575,6 +583,7 @@ resource "google_logging_metric" "password_commands" {
 
 # Step 3: Create alert policy for command execution
 resource "google_monitoring_alert_policy" "password_commands" {
+  project      = var.project_id
   display_name = "Password Policy Commands Detected"
   combiner     = "OR"
   conditions {
@@ -593,6 +602,9 @@ resource "google_monitoring_alert_policy" "password_commands" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

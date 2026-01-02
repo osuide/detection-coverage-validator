@@ -425,6 +425,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -434,6 +435,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for SA key usage
 resource "google_logging_metric" "sa_key_external" {
+  project = var.project_id
   name   = "external-sa-key-usage"
   filter = <<-EOT
     protoPayload.authenticationInfo.serviceAccountKeyName!=""
@@ -449,6 +451,7 @@ resource "google_logging_metric" "sa_key_external" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "sa_key_alert" {
+  project      = var.project_id
   display_name = "External SA Key Usage"
   combiner     = "OR"
 
@@ -463,6 +466,13 @@ resource "google_monitoring_alert_policy" "sa_key_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="Service Account Key Used Externally",
@@ -514,6 +524,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -523,6 +534,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "oauth_anomalies" {
+  project = var.project_id
   name   = "oauth-token-anomalies"
   filter = <<-EOT
     resource.type="audited_resource"
@@ -538,6 +550,7 @@ resource "google_logging_metric" "oauth_anomalies" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "oauth_alert" {
+  project      = var.project_id
   display_name = "OAuth Token Anomalies"
   combiner     = "OR"
 
@@ -552,6 +565,13 @@ resource "google_monitoring_alert_policy" "oauth_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: OAuth Token Anomaly",

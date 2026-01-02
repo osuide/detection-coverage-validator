@@ -885,6 +885,9 @@ resource "google_monitoring_alert_policy" "registry_modifications" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Suspicious Windows Registry modification detected. Registry changes may indicate persistence establishment, defence evasion, or security tool tampering. Investigate immediately."

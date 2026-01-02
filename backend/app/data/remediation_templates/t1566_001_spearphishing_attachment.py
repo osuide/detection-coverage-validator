@@ -483,6 +483,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Email Security Alerts"
   type         = "email"
   labels = {
@@ -492,6 +493,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for suspicious attachments
 resource "google_logging_metric" "suspicious_attachments" {
+  project = var.project_id
   name   = "suspicious-email-attachments"
   filter = <<-EOT
     resource.type="gmail_message"
@@ -516,6 +518,7 @@ resource "google_logging_metric" "suspicious_attachments" {
 
 # Alert policy for suspicious attachments
 resource "google_monitoring_alert_policy" "suspicious_attachments" {
+  project      = var.project_id
   display_name = "Suspicious Email Attachments"
   combiner     = "OR"
 
@@ -537,6 +540,9 @@ resource "google_monitoring_alert_policy" "suspicious_attachments" {
 
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -592,6 +598,7 @@ variable "alert_email" {
 
 # Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Chronicle Security Alerts"
   type         = "email"
   labels = {
@@ -601,6 +608,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for Chronicle detections
 resource "google_logging_metric" "email_attachment_exec" {
+  project = var.project_id
   name   = "email-attachment-execution"
   filter = <<-EOT
     resource.type="chronicle_rule_detection"
@@ -615,6 +623,7 @@ resource "google_logging_metric" "email_attachment_exec" {
 
 # Alert policy
 resource "google_monitoring_alert_policy" "email_attachment_exec" {
+  project      = var.project_id
   display_name = "Email Attachment Execution Detected"
   combiner     = "OR"
 
@@ -633,6 +642,13 @@ resource "google_monitoring_alert_policy" "email_attachment_exec" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Email Attachment Executed",

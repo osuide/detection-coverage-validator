@@ -377,6 +377,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Quota Alerts"
   type         = "email"
   labels = {
@@ -387,6 +388,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for quota changes
 resource "google_logging_metric" "quota_changes" {
+  project = var.project_id
   name   = "quota-modifications"
   filter = <<-EOT
     protoPayload.methodName=("cloudquotas.googleapis.com.QuotaPreference.CreateQuotaPreference" OR
@@ -402,6 +404,7 @@ resource "google_logging_metric" "quota_changes" {
 
 # Step 3: Create alert policy for quota modifications
 resource "google_monitoring_alert_policy" "quota_modification" {
+  project      = var.project_id
   display_name = "Quota Modification Detected"
   combiner     = "OR"
   conditions {
@@ -416,6 +419,9 @@ resource "google_monitoring_alert_policy" "quota_modification" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   project = var.project_id
 }""",
@@ -472,6 +478,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Compute Policy Alerts"
   type         = "email"
   labels = {
@@ -482,6 +489,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for policy changes
 resource "google_logging_metric" "compute_policy_changes" {
+  project = var.project_id
   name   = "compute-policy-modifications"
   filter = <<-EOT
     protoPayload.methodName="orgpolicy.googleapis.com.OrgPolicy.SetOrgPolicy"
@@ -496,6 +504,7 @@ resource "google_logging_metric" "compute_policy_changes" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "compute_policy_alert" {
+  project      = var.project_id
   display_name = "Compute Policy Modification"
   combiner     = "OR"
   conditions {
@@ -510,6 +519,9 @@ resource "google_monitoring_alert_policy" "compute_policy_alert" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   project = var.project_id
 }""",

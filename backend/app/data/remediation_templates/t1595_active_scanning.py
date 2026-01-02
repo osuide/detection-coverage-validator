@@ -493,6 +493,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -522,6 +523,7 @@ resource "google_logging_metric" "port_scanning" {
 }
 
 resource "google_monitoring_alert_policy" "port_scan_alert" {
+  project      = var.project_id
   display_name = "Port Scanning Detected"
   combiner     = "OR"
   conditions {
@@ -538,6 +540,13 @@ resource "google_monitoring_alert_policy" "port_scan_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Port Scanning Activity",
@@ -584,12 +593,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "scanner_detection" {
+  project = var.project_id
   name   = "cloud-armor-scanner-blocks"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -603,6 +614,7 @@ resource "google_logging_metric" "scanner_detection" {
 }
 
 resource "google_monitoring_alert_policy" "scanner_activity" {
+  project      = var.project_id
   display_name = "Web Scanner Activity Detected"
   combiner     = "OR"
   conditions {
@@ -615,6 +627,13 @@ resource "google_monitoring_alert_policy" "scanner_activity" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Web Scanner Detected",

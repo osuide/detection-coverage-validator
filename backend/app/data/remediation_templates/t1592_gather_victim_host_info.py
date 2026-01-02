@@ -414,6 +414,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Reconnaissance Alerts"
   type         = "email"
   labels = {
@@ -422,6 +423,7 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 resource "google_logging_metric" "instance_enumeration" {
+  project = var.project_id
   name   = "instance-enumeration"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -446,6 +448,7 @@ resource "google_logging_metric" "instance_enumeration" {
 }
 
 resource "google_monitoring_alert_policy" "excessive_enumeration" {
+  project      = var.project_id
   display_name = "Excessive GCE Instance Enumeration"
   combiner     = "OR"
 
@@ -467,11 +470,15 @@ resource "google_monitoring_alert_policy" "excessive_enumeration" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }
 
 # Monitor public IP assignments
 resource "google_logging_metric" "public_ip_assignments" {
+  project = var.project_id
   name   = "public-ip-assignments"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -486,6 +493,7 @@ resource "google_logging_metric" "public_ip_assignments" {
 }
 
 resource "google_monitoring_alert_policy" "public_instance_creation" {
+  project      = var.project_id
   display_name = "Public GCE Instance Created"
   combiner     = "OR"
 
@@ -500,6 +508,13 @@ resource "google_monitoring_alert_policy" "public_instance_creation" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Asset Enumeration Detected",

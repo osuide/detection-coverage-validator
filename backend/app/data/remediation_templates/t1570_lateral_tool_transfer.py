@@ -553,6 +553,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Lateral Transfer"
   type         = "email"
   labels = {
@@ -562,6 +563,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for tool transfers
 resource "google_logging_metric" "gcs_lateral_transfer" {
+  project = var.project_id
   name   = "gcs-lateral-tool-transfer"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -587,6 +589,7 @@ resource "google_logging_metric" "gcs_lateral_transfer" {
 
 # Step 3: Create alert policy for transfer activity
 resource "google_monitoring_alert_policy" "transfer_alert" {
+  project      = var.project_id
   display_name = "GCS Lateral Tool Transfer"
   combiner     = "OR"
 
@@ -608,6 +611,9 @@ resource "google_monitoring_alert_policy" "transfer_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -663,6 +669,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - SSH Transfer"
   type         = "email"
   labels = {
@@ -672,6 +679,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for SSH transfers
 resource "google_logging_metric" "ssh_transfers" {
+  project = var.project_id
   name   = "gce-internal-ssh-transfer"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -696,6 +704,7 @@ resource "google_logging_metric" "ssh_transfers" {
 
 # Step 3: Create alert for SSH transfer activity
 resource "google_monitoring_alert_policy" "ssh_alert" {
+  project      = var.project_id
   display_name = "GCE Internal SSH File Transfer"
   combiner     = "OR"
 
@@ -717,6 +726,9 @@ resource "google_monitoring_alert_policy" "ssh_alert" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

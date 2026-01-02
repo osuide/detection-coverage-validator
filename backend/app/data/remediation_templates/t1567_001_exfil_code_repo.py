@@ -576,6 +576,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -585,6 +586,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for repository API traffic
 resource "google_logging_metric" "repo_api" {
+  project = var.project_id
   name   = "repository-api-uploads"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -600,6 +602,7 @@ resource "google_logging_metric" "repo_api" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "repo_upload" {
+  project      = var.project_id
   display_name = "Code Repository Upload Detected"
   combiner     = "OR"
 
@@ -614,6 +617,13 @@ resource "google_monitoring_alert_policy" "repo_upload" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Code Repository Upload Detected",
@@ -667,6 +677,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -676,6 +687,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for git commands
 resource "google_logging_metric" "git_commands" {
+  project = var.project_id
   name   = "git-command-execution"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -691,6 +703,7 @@ resource "google_logging_metric" "git_commands" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "git_push" {
+  project      = var.project_id
   display_name = "Git Repository Exfiltration"
   combiner     = "OR"
 
@@ -705,6 +718,13 @@ resource "google_monitoring_alert_policy" "git_push" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Git Repository Command Detected",

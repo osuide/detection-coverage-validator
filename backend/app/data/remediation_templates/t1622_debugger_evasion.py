@@ -567,6 +567,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "T1622 Security Alerts"
   type         = "email"
   labels = {
@@ -576,6 +577,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for debugger detection
 resource "google_logging_metric" "function_debug_checks" {
+  project = var.project_id
   name   = "t1622-function-debugger-detection"
   filter = <<-EOT
     resource.type="cloud_function"
@@ -600,6 +602,7 @@ resource "google_logging_metric" "function_debug_checks" {
 
 # Step 3: Alert policy for anti-debugging behaviour
 resource "google_monitoring_alert_policy" "function_debug_checks" {
+  project      = var.project_id
   display_name = "T1622 - Cloud Functions Debugger Detection"
   combiner     = "OR"
 
@@ -620,6 +623,13 @@ resource "google_monitoring_alert_policy" "function_debug_checks" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = <<-EOT
@@ -699,6 +709,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "T1622 GCE Alerts"
   type         = "email"
   labels = {
@@ -708,6 +719,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for process inspection
 resource "google_logging_metric" "instance_debug_checks" {
+  project = var.project_id
   name   = "t1622-gce-debugger-detection"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -732,6 +744,7 @@ resource "google_logging_metric" "instance_debug_checks" {
 
 # Step 3: Alert policy for debugger detection
 resource "google_monitoring_alert_policy" "instance_debug_checks" {
+  project      = var.project_id
   display_name = "T1622 - GCE Debugger Detection"
   combiner     = "OR"
 
@@ -750,6 +763,13 @@ resource "google_monitoring_alert_policy" "instance_debug_checks" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = <<-EOT

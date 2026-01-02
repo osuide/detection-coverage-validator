@@ -357,6 +357,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "SAML Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -364,6 +365,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log-based metric for SAML authentication
 resource "google_logging_metric" "saml_auth" {
+  project = var.project_id
   name   = "saml-authentication-events"
   filter = <<-EOT
     protoPayload.methodName="google.login.LoginService.samlResponse"
@@ -385,6 +387,7 @@ resource "google_logging_metric" "saml_auth" {
 
 # Alert policy for suspicious SAML activity
 resource "google_monitoring_alert_policy" "saml_anomaly" {
+  project      = var.project_id
   display_name = "Suspicious SAML Authentication"
   combiner     = "OR"
   conditions {
@@ -403,6 +406,9 @@ resource "google_monitoring_alert_policy" "saml_anomaly" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="critical",

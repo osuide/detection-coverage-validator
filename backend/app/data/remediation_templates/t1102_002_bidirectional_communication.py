@@ -471,6 +471,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "storage_c2_email" {
+  project      = var.project_id
   display_name = "Cloud Storage C2 Alerts"
   type         = "email"
   labels = {
@@ -481,6 +482,7 @@ resource "google_monitoring_notification_channel" "storage_c2_email" {
 
 # Log-based metric for suspicious Cloud Storage access
 resource "google_logging_metric" "storage_c2_access" {
+  project = var.project_id
   name   = "cloud-storage-c2-access"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -508,6 +510,7 @@ resource "google_logging_metric" "storage_c2_access" {
 
 # Alert policy for high-volume Cloud Storage access
 resource "google_monitoring_alert_policy" "storage_c2_alerts" {
+  project      = var.project_id
   display_name = "Cloud Storage C2 Activity"
   combiner     = "OR"
   project      = var.project_id
@@ -530,6 +533,9 @@ resource "google_monitoring_alert_policy" "storage_c2_alerts" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -587,6 +593,7 @@ variable "alert_email" {
 
 # Notification channel
 resource "google_monitoring_notification_channel" "dns_c2_email" {
+  project      = var.project_id
   display_name = "DNS C2 Alerts"
   type         = "email"
   labels = {
@@ -597,6 +604,7 @@ resource "google_monitoring_notification_channel" "dns_c2_email" {
 
 # Log-based metric for DNS queries to web service domains
 resource "google_logging_metric" "dns_web_service_queries" {
+  project = var.project_id
   name   = "dns-web-service-c2-queries"
   filter = <<-EOT
     resource.type="dns_query"
@@ -629,6 +637,7 @@ resource "google_logging_metric" "dns_web_service_queries" {
 
 # Alert policy for suspicious DNS activity
 resource "google_monitoring_alert_policy" "dns_web_service_c2" {
+  project      = var.project_id
   display_name = "DNS Queries to Web Service C2 Domains"
   combiner     = "OR"
   project      = var.project_id
@@ -651,6 +660,9 @@ resource "google_monitoring_alert_policy" "dns_web_service_c2" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

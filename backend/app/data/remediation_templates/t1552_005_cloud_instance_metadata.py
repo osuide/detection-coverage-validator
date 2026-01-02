@@ -481,6 +481,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -490,6 +491,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for metadata access
 resource "google_logging_metric" "metadata_access" {
+  project = var.project_id
   name   = "suspicious-metadata-access"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -505,6 +507,7 @@ resource "google_logging_metric" "metadata_access" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "metadata_alert" {
+  project      = var.project_id
   display_name = "Suspicious Metadata Access"
   combiner     = "OR"
 
@@ -519,6 +522,13 @@ resource "google_monitoring_alert_policy" "metadata_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }
 
 # Step 4: Enforce metadata concealment (prevention)

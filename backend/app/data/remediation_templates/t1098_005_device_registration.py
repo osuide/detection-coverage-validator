@@ -450,6 +450,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -460,6 +461,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for device registration
 resource "google_logging_metric" "device_registration" {
+  project = var.project_id
   name   = "workspace-device-registration"
   filter = <<-EOT
     protoPayload.serviceName="admin.googleapis.com"
@@ -477,6 +479,7 @@ resource "google_logging_metric" "device_registration" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "device_registration" {
+  project      = var.project_id
   display_name = "Workspace Device Registration Alert"
   combiner     = "OR"
 
@@ -494,6 +497,9 @@ resource "google_monitoring_alert_policy" "device_registration" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -534,9 +540,7 @@ resource "google_monitoring_alert_policy" "device_registration" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""protoPayload.serviceName="admin.googleapis.com"
-protoPayload.methodName=~"device.register|mobile.register"
-| stats count() as device_count by protoPayload.authenticationInfo.principalEmail, timestamp
-| filter device_count > 3""",
+protoPayload.methodName=~"device.register|mobile.register" """,
                 gcp_terraform_template="""# GCP: Detect unusual device registration patterns
 
 variable "project_id" {
@@ -549,6 +553,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -559,6 +564,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for device registration volume
 resource "google_logging_metric" "device_reg_volume" {
+  project = var.project_id
   name   = "device-registration-volume"
   filter = <<-EOT
     protoPayload.serviceName="admin.googleapis.com"
@@ -582,6 +588,7 @@ resource "google_logging_metric" "device_reg_volume" {
 
 # Step 3: Alert for bulk registrations
 resource "google_monitoring_alert_policy" "bulk_registration" {
+  project      = var.project_id
   display_name = "Bulk Device Registration Pattern"
   combiner     = "OR"
 
@@ -600,6 +607,13 @@ resource "google_monitoring_alert_policy" "bulk_registration" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Bulk Device Registration Detected",

@@ -716,6 +716,9 @@ resource "google_monitoring_alert_policy" "audio_capture" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Audio capture activity detected on GCE instance. Investigate for unauthorised audio recording."
@@ -850,6 +853,9 @@ resource "google_monitoring_alert_policy" "audio_uploads" {
   notification_channels = [google_monitoring_notification_channel.email.id]
   alert_strategy {
     auto_close = "3600s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
   documentation {
     content   = "Multiple audio files uploaded to Cloud Storage by compute instance. Investigate for data exfiltration."

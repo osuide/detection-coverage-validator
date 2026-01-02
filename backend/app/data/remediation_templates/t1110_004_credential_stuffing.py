@@ -367,9 +367,7 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="gce_instance"
 protoPayload.methodName="login"
-protoPayload.status.message=~"authentication failed"
-| stats count() by protoPayload.requestMetadata.callerIp
-| filter count > 10""",
+protoPayload.status.message=~"authentication failed" """,
                 gcp_terraform_template="""# GCP: Detect credential stuffing via authentication failures
 
 variable "project_id" {
@@ -444,6 +442,9 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -549,6 +550,13 @@ resource "google_monitoring_alert_policy" "workspace_stuffing" {
   }
 
   notification_channels = [google_monitoring_notification_channel.workspace_alerts.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP Workspace: Credential Stuffing",

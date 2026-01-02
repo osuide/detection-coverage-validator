@@ -432,6 +432,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -441,6 +442,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for software enumeration
 resource "google_logging_metric" "software_enum" {
+  project = var.project_id
   name   = "instance-software-enumeration"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.instances.get|osconfig.patchDeployments.list|osconfig.patchJobs.list)"
@@ -454,6 +456,7 @@ resource "google_logging_metric" "software_enum" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "software_enum" {
+  project      = var.project_id
   display_name = "Instance Software Enumeration"
   combiner     = "OR"
 
@@ -468,6 +471,13 @@ resource "google_monitoring_alert_policy" "software_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Instance Software Enumeration Detected",
@@ -517,6 +527,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -526,6 +537,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "os_inventory" {
+  project = var.project_id
   name   = "os-inventory-enumeration"
   filter = <<-EOT
     protoPayload.methodName=~"osconfig.*Inventory|compute.instances.getGuestAttributes"
@@ -539,6 +551,7 @@ resource "google_logging_metric" "os_inventory" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "os_inventory" {
+  project      = var.project_id
   display_name = "OS Inventory Enumeration"
   combiner     = "OR"
 
@@ -553,6 +566,13 @@ resource "google_monitoring_alert_policy" "os_inventory" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: OS Inventory Enumeration Detected",

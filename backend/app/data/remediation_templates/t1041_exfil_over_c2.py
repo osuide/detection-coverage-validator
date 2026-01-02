@@ -556,6 +556,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "C2 Exfiltration Alerts"
   type         = "email"
   labels = {
@@ -565,6 +566,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for high egress traffic
 resource "google_logging_metric" "high_egress" {
+  project = var.project_id
   name   = "high-egress-traffic"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -593,6 +595,7 @@ resource "google_logging_metric" "high_egress" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "high_egress_alert" {
+  project      = var.project_id
   display_name = "C2 High-Volume Exfiltration Detected"
   combiner     = "OR"
 
@@ -614,6 +617,9 @@ resource "google_monitoring_alert_policy" "high_egress_alert" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -680,6 +686,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -689,6 +696,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for non-standard connections
 resource "google_logging_metric" "unusual_connections" {
+  project = var.project_id
   name   = "unusual-external-connections"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -709,6 +717,7 @@ resource "google_logging_metric" "unusual_connections" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "unusual_connections_alert" {
+  project      = var.project_id
   display_name = "Unusual External Connections Detected"
   combiner     = "OR"
 
@@ -730,6 +739,9 @@ resource "google_monitoring_alert_policy" "unusual_connections_alert" {
 
   alert_strategy {
     auto_close = "7200s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -787,6 +799,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Data Exfiltration Alerts"
   type         = "email"
   labels = {
@@ -796,6 +809,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Metric for sensitive data access
 resource "google_logging_metric" "sensitive_access" {
+  project = var.project_id
   name   = "sensitive-data-access"
   filter = <<-EOT
     (resource.type="gcs_bucket" AND
@@ -822,6 +836,7 @@ resource "google_logging_metric" "sensitive_access" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "data_access_alert" {
+  project      = var.project_id
   display_name = "Sensitive Data Access Pattern Detected"
   combiner     = "OR"
 
@@ -843,6 +858,9 @@ resource "google_monitoring_alert_policy" "data_access_alert" {
 
   alert_strategy {
     auto_close = "7200s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {

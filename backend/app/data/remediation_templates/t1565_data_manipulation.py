@@ -710,6 +710,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -717,6 +718,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for object modifications
 resource "google_logging_metric" "storage_modification" {
+  project = var.project_id
   name   = "storage-object-modification"
   filter = <<-EOT
     protoPayload.methodName=~"storage.objects.(update|patch|delete|rewrite)"
@@ -730,6 +732,7 @@ resource "google_logging_metric" "storage_modification" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "storage_modification" {
+  project      = var.project_id
   display_name = "GCS Object Modification"
   combiner     = "OR"
   conditions {
@@ -742,6 +745,13 @@ resource "google_monitoring_alert_policy" "storage_modification" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Storage Object Modified",
@@ -787,6 +797,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -794,6 +805,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for Cloud SQL modifications
 resource "google_logging_metric" "cloudsql_modification" {
+  project = var.project_id
   name   = "cloudsql-instance-modification"
   filter = <<-EOT
     protoPayload.serviceName="sqladmin.googleapis.com"
@@ -807,6 +819,7 @@ resource "google_logging_metric" "cloudsql_modification" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "cloudsql_modification" {
+  project      = var.project_id
   display_name = "Cloud SQL Instance Modified"
   combiner     = "OR"
   conditions {
@@ -819,6 +832,13 @@ resource "google_monitoring_alert_policy" "cloudsql_modification" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Cloud SQL Modified",
@@ -864,6 +884,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Critical Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -871,6 +892,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for logging tampering
 resource "google_logging_metric" "logging_tampering" {
+  project = var.project_id
   name   = "cloud-logging-tampering"
   filter = <<-EOT
     protoPayload.serviceName="logging.googleapis.com"
@@ -884,6 +906,7 @@ resource "google_logging_metric" "logging_tampering" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_alert_policy" "logging_tampering" {
+  project      = var.project_id
   display_name = "Cloud Logging Tampering Detected"
   combiner     = "OR"
   conditions {

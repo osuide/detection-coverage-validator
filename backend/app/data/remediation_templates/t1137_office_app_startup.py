@@ -400,6 +400,7 @@ variable "alert_email" {
 
 # Step 1: Create log-based metric for add-in installations
 resource "google_logging_metric" "office_addon" {
+  project = var.project_id
   name   = "workspace-office-addon-installs"
   filter = <<-EOT
     protoPayload.serviceName="admin.googleapis.com"
@@ -429,6 +430,7 @@ resource "google_logging_metric" "office_addon" {
 
 # Step 2: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Office Add-in Alerts"
   type         = "email"
   labels = {
@@ -438,6 +440,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 3: Create alert policy for suspicious add-in installations
 resource "google_monitoring_alert_policy" "office_addon" {
+  project      = var.project_id
   display_name = "T1137 - Suspicious Office Add-in Installation"
   combiner     = "OR"
 

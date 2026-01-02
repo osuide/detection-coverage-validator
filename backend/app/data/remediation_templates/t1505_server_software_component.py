@@ -501,12 +501,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "metadata_modification" {
+  project = var.project_id
   name   = "instance-metadata-modification"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -521,6 +523,7 @@ resource "google_logging_metric" "metadata_modification" {
 }
 
 resource "google_monitoring_alert_policy" "metadata_modification" {
+  project      = var.project_id
   display_name = "Instance Metadata Modification"
   combiner     = "OR"
   conditions {
@@ -533,6 +536,13 @@ resource "google_monitoring_alert_policy" "metadata_modification" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Instance Metadata Modified",
@@ -579,12 +589,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "app_engine_deploy" {
+  project = var.project_id
   name   = "app-engine-deployment"
   filter = <<-EOT
     resource.type="gae_app"
@@ -598,6 +610,7 @@ resource "google_logging_metric" "app_engine_deploy" {
 }
 
 resource "google_monitoring_alert_policy" "app_engine_deploy" {
+  project      = var.project_id
   display_name = "App Engine Deployment"
   combiner     = "OR"
   conditions {
@@ -610,6 +623,13 @@ resource "google_monitoring_alert_policy" "app_engine_deploy" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: App Engine Deployment Detected",

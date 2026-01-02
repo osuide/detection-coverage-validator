@@ -634,6 +634,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -641,6 +642,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for startup script changes
 resource "google_logging_metric" "startup_script" {
+  project = var.project_id
   name   = "startup-script-modifications"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -664,6 +666,7 @@ resource "google_logging_metric" "startup_script" {
 
 # Alert policy for startup script changes
 resource "google_monitoring_alert_policy" "startup_script" {
+  project      = var.project_id
   display_name = "Suspicious Startup Script Modification"
   combiner     = "OR"
   conditions {
@@ -676,6 +679,13 @@ resource "google_monitoring_alert_policy" "startup_script" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content   = "VM startup script modification detected. Review script content for persistence mechanisms."
     mime_type = "text/markdown"
@@ -727,6 +737,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -734,6 +745,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for instance template changes
 resource "google_logging_metric" "instance_template" {
+  project = var.project_id
   name   = "instance-template-modifications"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -755,6 +767,7 @@ resource "google_logging_metric" "instance_template" {
 
 # Alert policy for template changes
 resource "google_monitoring_alert_policy" "instance_template" {
+  project      = var.project_id
   display_name = "Instance Template Created or Modified"
   combiner     = "OR"
   conditions {
@@ -767,6 +780,13 @@ resource "google_monitoring_alert_policy" "instance_template" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content   = "Instance template modification detected. Review template configuration for persistence mechanisms."
     mime_type = "text/markdown"
@@ -820,6 +840,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -827,6 +848,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for MIG changes
 resource "google_logging_metric" "mig_changes" {
+  project = var.project_id
   name   = "managed-instance-group-changes"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -850,6 +872,7 @@ resource "google_logging_metric" "mig_changes" {
 
 # Alert policy for MIG changes
 resource "google_monitoring_alert_policy" "mig_changes" {
+  project      = var.project_id
   display_name = "Managed Instance Group Configuration Changed"
   combiner     = "OR"
   conditions {
@@ -862,6 +885,13 @@ resource "google_monitoring_alert_policy" "mig_changes" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content   = "Managed Instance Group configuration changed. Review template and instances for persistence."
     mime_type = "text/markdown"
@@ -913,6 +943,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -920,6 +951,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for SSH key additions
 resource "google_logging_metric" "ssh_key_add" {
+  project = var.project_id
   name   = "os-login-ssh-key-additions"
   filter = <<-EOT
     protoPayload.serviceName="oslogin.googleapis.com"
@@ -941,6 +973,7 @@ resource "google_logging_metric" "ssh_key_add" {
 
 # Alert policy for SSH key additions
 resource "google_monitoring_alert_policy" "ssh_key_add" {
+  project      = var.project_id
   display_name = "SSH Key Added via OS Login"
   combiner     = "OR"
   conditions {
@@ -953,6 +986,13 @@ resource "google_monitoring_alert_policy" "ssh_key_add" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content   = "SSH public key imported via OS Login. Verify authorisation and review for persistence."
     mime_type = "text/markdown"

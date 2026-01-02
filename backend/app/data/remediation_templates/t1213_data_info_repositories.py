@@ -641,6 +641,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -650,6 +651,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for storage access
 resource "google_logging_metric" "storage_access" {
+  project = var.project_id
   name   = "storage-repository-access"
   filter = <<-EOT
     protoPayload.methodName="storage.objects.get"
@@ -665,6 +667,7 @@ resource "google_logging_metric" "storage_access" {
 
 # Step 3: Alert policy for bulk access
 resource "google_monitoring_alert_policy" "storage_access" {
+  project      = var.project_id
   display_name = "Bulk Storage Repository Access"
   combiner     = "OR"
 
@@ -683,6 +686,13 @@ resource "google_monitoring_alert_policy" "storage_access" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Bulk access to storage repositories detected (T1213)"
@@ -749,6 +759,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -758,6 +769,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for BigQuery access
 resource "google_logging_metric" "bigquery_access" {
+  project = var.project_id
   name   = "bigquery-repository-access"
   filter = <<-EOT
     protoPayload.methodName=~"google.cloud.bigquery.v2.JobService.*"
@@ -772,6 +784,7 @@ resource "google_logging_metric" "bigquery_access" {
 
 # Step 3: Alert policy for excessive queries
 resource "google_monitoring_alert_policy" "bigquery_access" {
+  project      = var.project_id
   display_name = "Unusual BigQuery Repository Access"
   combiner     = "OR"
 
@@ -790,6 +803,13 @@ resource "google_monitoring_alert_policy" "bigquery_access" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Unusual BigQuery data repository access detected (T1213)"

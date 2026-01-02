@@ -749,6 +749,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -758,6 +759,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for IAM account enumeration
 resource "google_logging_metric" "iam_account_enum" {
+  project = var.project_id
   name   = "iam-account-enumeration"
   filter = <<-EOT
     protoPayload.methodName=~"(GetIamPolicy|ListServiceAccounts|testIamPermissions|iam.serviceAccounts.list|iam.serviceAccounts.get)"
@@ -771,6 +773,7 @@ resource "google_logging_metric" "iam_account_enum" {
 
 # Step 3: Alert policy for excessive enumeration
 resource "google_monitoring_alert_policy" "iam_account_enum" {
+  project      = var.project_id
   display_name = "IAM Account Enumeration Detected"
   combiner     = "OR"
 
@@ -785,6 +788,13 @@ resource "google_monitoring_alert_policy" "iam_account_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: IAM Account Enumeration Detected",
@@ -839,6 +849,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -848,6 +859,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for Workspace user enumeration
 resource "google_logging_metric" "workspace_enum" {
+  project = var.project_id
   name   = "workspace-account-enumeration"
   filter = <<-EOT
     protoPayload.serviceName="admin.googleapis.com"
@@ -862,6 +874,7 @@ resource "google_logging_metric" "workspace_enum" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "workspace_enum" {
+  project      = var.project_id
   display_name = "Workspace Account Enumeration"
   combiner     = "OR"
 
@@ -876,6 +889,13 @@ resource "google_monitoring_alert_policy" "workspace_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Workspace Account Enumeration Detected",
@@ -929,6 +949,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -938,6 +959,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for permission testing
 resource "google_logging_metric" "test_permissions" {
+  project = var.project_id
   name   = "iam-permission-testing"
   filter = <<-EOT
     protoPayload.methodName=~"testIamPermissions"
@@ -951,6 +973,7 @@ resource "google_logging_metric" "test_permissions" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "test_permissions" {
+  project      = var.project_id
   display_name = "IAM Permission Testing for Account Discovery"
   combiner     = "OR"
 
@@ -965,6 +988,13 @@ resource "google_monitoring_alert_policy" "test_permissions" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Permission Testing for Account Discovery",

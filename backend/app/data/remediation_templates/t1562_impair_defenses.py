@@ -738,6 +738,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -747,6 +748,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for SCC changes
 resource "google_logging_metric" "scc_mod" {
+  project = var.project_id
   name   = "scc-modifications"
   filter = <<-EOT
     protoPayload.serviceName="securitycenter.googleapis.com"
@@ -761,6 +763,7 @@ resource "google_logging_metric" "scc_mod" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "scc_mod" {
+  project      = var.project_id
   display_name = "Security Command Centre Modified"
   combiner     = "OR"
 
@@ -778,6 +781,9 @@ resource "google_monitoring_alert_policy" "scc_mod" {
 
   alert_strategy {
     auto_close = "604800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="critical",
@@ -836,6 +842,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -845,6 +852,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for agent stops
 resource "google_logging_metric" "agent_stop" {
+  project = var.project_id
   name   = "ops-agent-stops"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -859,6 +867,7 @@ resource "google_logging_metric" "agent_stop" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "agent_stop" {
+  project      = var.project_id
   display_name = "Ops Agent Stopped"
   combiner     = "OR"
 
@@ -873,6 +882,13 @@ resource "google_monitoring_alert_policy" "agent_stop" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Ops Agent Stopped or Disabled",
@@ -1140,6 +1156,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = { email_address = var.alert_email }
@@ -1147,6 +1164,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for security service state changes
 resource "google_logging_metric" "security_service_change" {
+  project = var.project_id
   name   = "security-service-state-changes"
   filter = <<-EOT
     protoPayload.serviceName=~"securitycenter.googleapis.com|logging.googleapis.com"
@@ -1161,6 +1179,7 @@ resource "google_logging_metric" "security_service_change" {
 
 # Step 3: Alert on state changes
 resource "google_monitoring_alert_policy" "service_state" {
+  project      = var.project_id
   display_name = "Security Service State Changed"
   combiner     = "OR"
 
@@ -1175,6 +1194,13 @@ resource "google_monitoring_alert_policy" "service_state" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="Security Service State Changed - Service Disabled",

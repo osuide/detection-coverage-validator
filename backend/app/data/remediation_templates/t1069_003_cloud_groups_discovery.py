@@ -249,6 +249,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -258,6 +259,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "group_enum" {
+  project = var.project_id
   name   = "group-enumeration"
   filter = <<-EOT
     protoPayload.methodName=~"(ListGroups|GetGroup|ListMembers|GetIamPolicy)"
@@ -271,6 +273,7 @@ resource "google_logging_metric" "group_enum" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "group_enum" {
+  project      = var.project_id
   display_name = "IAM Group Enumeration"
   combiner     = "OR"
 
@@ -285,6 +288,13 @@ resource "google_monitoring_alert_policy" "group_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: IAM Group Enumeration",

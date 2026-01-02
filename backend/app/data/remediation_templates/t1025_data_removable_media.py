@@ -669,6 +669,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -678,6 +679,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for disk attachments
 resource "google_logging_metric" "disk_attach" {
+  project = var.project_id
   name   = "gce-disk-attachments"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -693,6 +695,7 @@ resource "google_logging_metric" "disk_attach" {
 
 # Step 3: Alert policy for disk attachments
 resource "google_monitoring_alert_policy" "disk_attach_alert" {
+  project      = var.project_id
   display_name = "GCE Disk Attachment Activity"
   combiner     = "OR"
 
@@ -778,6 +781,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -787,6 +791,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for image imports
 resource "google_logging_metric" "image_import" {
+  project = var.project_id
   name   = "gce-image-imports"
   filter = <<-EOT
     resource.type="gce_image"
@@ -801,6 +806,7 @@ resource "google_logging_metric" "image_import" {
 
 # Step 3: Alert policy for image imports
 resource "google_monitoring_alert_policy" "image_import_alert" {
+  project      = var.project_id
   display_name = "GCE Image Import Activity"
   combiner     = "OR"
 

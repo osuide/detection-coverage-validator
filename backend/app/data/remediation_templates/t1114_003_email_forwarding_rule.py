@@ -171,12 +171,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "email_forward" {
+  project = var.project_id
   name   = "email-forwarding-rules"
   filter = <<-EOT
     protoPayload.methodName=~"gmail.*forward|CHANGE_EMAIL_SETTINGS"
@@ -189,6 +191,7 @@ resource "google_logging_metric" "email_forward" {
 }
 
 resource "google_monitoring_alert_policy" "email_forward" {
+  project      = var.project_id
   display_name = "Email Forwarding Rule"
   combiner     = "OR"
   conditions {
@@ -201,6 +204,13 @@ resource "google_monitoring_alert_policy" "email_forward" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Email Forwarding Rule Created",

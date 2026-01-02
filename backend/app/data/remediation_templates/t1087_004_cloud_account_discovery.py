@@ -450,6 +450,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -459,6 +460,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "iam_enum" {
+  project = var.project_id
   name   = "iam-enumeration"
   filter = <<-EOT
     protoPayload.methodName=~"(GetIamPolicy|ListServiceAccounts|testIamPermissions)"
@@ -472,6 +474,7 @@ resource "google_logging_metric" "iam_enum" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "iam_enum" {
+  project      = var.project_id
   display_name = "IAM Enumeration Detected"
   combiner     = "OR"
 
@@ -486,6 +489,13 @@ resource "google_monitoring_alert_policy" "iam_enum" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: IAM Enumeration Detected",
@@ -535,6 +545,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -544,6 +555,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "test_permissions" {
+  project = var.project_id
   name   = "iam-permission-testing"
   filter = <<-EOT
     protoPayload.methodName=~"testIamPermissions"
@@ -557,6 +569,7 @@ resource "google_logging_metric" "test_permissions" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "test_permissions" {
+  project      = var.project_id
   display_name = "IAM Permission Testing"
   combiner     = "OR"
 
@@ -571,6 +584,13 @@ resource "google_monitoring_alert_policy" "test_permissions" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Permission Testing Detected",

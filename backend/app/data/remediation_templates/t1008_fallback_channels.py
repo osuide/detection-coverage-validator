@@ -830,9 +830,7 @@ resource "aws_sns_topic_policy" "guardduty_publish" {
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.connection.protocol:(6 OR 17 OR 1)
-| stats count() as attempts, count_distinct(jsonPayload.connection.dest_port) as unique_ports,
-        count_distinct(jsonPayload.connection.protocol) as unique_protocols by jsonPayload.connection.src_ip
-| unique_ports > 5 OR unique_protocols > 2""",
+        count_distinct(jsonPayload.connection.protocol) as unique_protocols by jsonPayload.connection.src_ip""",
                 gcp_terraform_template="""# GCP: Detect protocol switching for C2 fallback
 
 variable "project_id" {
@@ -847,6 +845,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - C2 Fallback"
   type         = "email"
   labels = {
@@ -856,6 +855,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for protocol switching
 resource "google_logging_metric" "protocol_switching" {
+  project = var.project_id
   name   = "c2-protocol-switching"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -879,6 +879,7 @@ resource "google_logging_metric" "protocol_switching" {
 
 # Step 3: Create alert policy for protocol switching
 resource "google_monitoring_alert_policy" "protocol_switch" {
+  project      = var.project_id
   display_name = "C2 Fallback Channel Detection"
   combiner     = "OR"
 
@@ -900,6 +901,9 @@ resource "google_monitoring_alert_policy" "protocol_switch" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -939,10 +943,7 @@ resource "google_monitoring_alert_policy" "protocol_switch" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="dns_query"
-(protoPayload.queryType="TXT" OR protoPayload.queryType="NULL" OR LENGTH(protoPayload.queryName) > 50)
-| stats count() as queries, count_distinct(protoPayload.queryName) as unique_queries,
-        avg(LENGTH(protoPayload.queryName)) as avg_length by protoPayload.sourceIP
-| queries > 50 AND (avg_length > 40 OR unique_queries > 30)""",
+(protoPayload.queryType="TXT" OR protoPayload.queryType="NULL" OR protoPayload.queryName=~".{50,}")""",
                 gcp_terraform_template="""# GCP: Detect DNS fallback C2 channels
 
 variable "project_id" {
@@ -968,12 +969,13 @@ resource "google_dns_managed_zone" "monitored" {
 
 # Step 2: Create log metric for suspicious DNS patterns
 resource "google_logging_metric" "dns_fallback" {
+  project = var.project_id
   name   = "dns-fallback-c2"
   filter = <<-EOT
     resource.type="dns_query"
     (protoPayload.queryType="TXT" OR
      protoPayload.queryType="NULL" OR
-     LENGTH(protoPayload.queryName) > 50)
+     protoPayload.queryName=~".{50,}")
   EOT
 
   metric_descriptor {
@@ -993,6 +995,7 @@ resource "google_logging_metric" "dns_fallback" {
 
 # Step 3: Create alert for DNS fallback activity
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - DNS Fallback"
   type         = "email"
   labels = {
@@ -1001,6 +1004,7 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 resource "google_monitoring_alert_policy" "dns_fallback" {
+  project      = var.project_id
   display_name = "DNS Fallback C2 Channel"
   combiner     = "OR"
 
@@ -1022,6 +1026,9 @@ resource "google_monitoring_alert_policy" "dns_fallback" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",

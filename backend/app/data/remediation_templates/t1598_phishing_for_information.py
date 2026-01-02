@@ -487,12 +487,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "high_volume_emails" {
+  project = var.project_id
   name   = "high-volume-email-sending"
   filter = <<-EOT
     resource.type="audited_resource"
@@ -506,6 +508,7 @@ resource "google_logging_metric" "high_volume_emails" {
 }
 
 resource "google_monitoring_alert_policy" "phishing_campaign" {
+  project      = var.project_id
   display_name = "Phishing Campaign Detection"
   combiner     = "OR"
   conditions {
@@ -518,6 +521,13 @@ resource "google_monitoring_alert_policy" "phishing_campaign" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: High Volume Email Activity",
@@ -565,12 +575,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "workspace_security_events" {
+  project = var.project_id
   name   = "workspace-security-events"
   filter = <<-EOT
     resource.type="workspace_account"
@@ -585,6 +597,7 @@ resource "google_logging_metric" "workspace_security_events" {
 }
 
 resource "google_monitoring_alert_policy" "workspace_threats" {
+  project      = var.project_id
   display_name = "Workspace Security Threats"
   combiner     = "OR"
   conditions {
@@ -597,6 +610,13 @@ resource "google_monitoring_alert_policy" "workspace_threats" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Workspace Security Alert",

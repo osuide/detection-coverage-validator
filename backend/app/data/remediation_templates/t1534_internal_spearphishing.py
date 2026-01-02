@@ -409,6 +409,7 @@ variable "organization_domain" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -418,6 +419,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for internal spearphishing indicators
 resource "google_logging_metric" "internal_phishing" {
+  project = var.project_id
   name   = "workspace-internal-spearphishing"
   filter = <<-EOT
     protoPayload.serviceName="gmail.googleapis.com"
@@ -438,6 +440,7 @@ resource "google_logging_metric" "internal_phishing" {
 
 # Step 3: Create alert policy for internal spearphishing
 resource "google_monitoring_alert_policy" "internal_phishing_alert" {
+  project      = var.project_id
   display_name = "Internal Spearphishing Detected"
   combiner     = "OR"
 
@@ -517,6 +520,7 @@ variable "alert_email" { type = string }
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -526,6 +530,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Create log metric for suspicious Chat messages
 resource "google_logging_metric" "chat_suspicious_links" {
+  project = var.project_id
   name   = "workspace-chat-suspicious-messages"
   filter = <<-EOT
     protoPayload.serviceName="chat.googleapis.com"
@@ -553,6 +558,7 @@ resource "google_logging_metric" "chat_suspicious_links" {
 
 # Step 3: Create alert policy for suspicious messages
 resource "google_monitoring_alert_policy" "chat_phishing_alert" {
+  project      = var.project_id
   display_name = "Google Chat Suspicious Messages"
   combiner     = "OR"
 
@@ -572,6 +578,13 @@ resource "google_monitoring_alert_policy" "chat_phishing_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP Workspace: Suspicious Links in Google Chat",
@@ -637,6 +650,7 @@ resource "google_project_service" "webrisk" {
 
 # Step 2: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -646,6 +660,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 3: Create alert for malicious internal URLs
 resource "google_logging_metric" "malicious_internal_urls" {
+  project = var.project_id
   name   = "malicious-internal-link-detections"
   filter = <<-EOT
     resource.type="cloud_function"
@@ -661,6 +676,7 @@ resource "google_logging_metric" "malicious_internal_urls" {
 }
 
 resource "google_monitoring_alert_policy" "malicious_url_alert" {
+  project      = var.project_id
   display_name = "Malicious URL in Internal Communications"
   combiner     = "OR"
 
@@ -676,6 +692,13 @@ resource "google_monitoring_alert_policy" "malicious_url_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Malicious URL Detected in Internal Communications",

@@ -692,6 +692,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -701,6 +702,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for metadata access
 resource "google_logging_metric" "metadata_access" {
+  project = var.project_id
   name   = "metadata-service-credential-access"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -717,6 +719,7 @@ resource "google_logging_metric" "metadata_access" {
 
 # Step 3: Alert policy for unusual access
 resource "google_monitoring_alert_policy" "metadata_theft" {
+  project      = var.project_id
   display_name = "Metadata Service Credential Theft"
   combiner     = "OR"
 
@@ -738,6 +741,9 @@ resource "google_monitoring_alert_policy" "metadata_theft" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="critical",
@@ -808,6 +814,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -817,6 +824,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for outbound SMB
 resource "google_logging_metric" "outbound_smb" {
+  project = var.project_id
   name   = "outbound-smb-connections"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -836,6 +844,7 @@ resource "google_logging_metric" "outbound_smb" {
 
 # Step 3: Alert on outbound SMB connections
 resource "google_monitoring_alert_policy" "outbound_smb" {
+  project      = var.project_id
   display_name = "Outbound SMB Connections Detected"
   combiner     = "OR"
 
@@ -854,6 +863,13 @@ resource "google_monitoring_alert_policy" "outbound_smb" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="Outbound SMB Connections from GCP Instance",

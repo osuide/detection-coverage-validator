@@ -603,6 +603,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Proxy Detection"
   type         = "email"
   labels = {
@@ -612,6 +613,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for proxy deployment
 resource "google_logging_metric" "proxy_deployment" {
+  project = var.project_id
   name   = "proxy-service-deployment"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -629,6 +631,7 @@ resource "google_logging_metric" "proxy_deployment" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "proxy_deployment" {
+  project      = var.project_id
   display_name = "Proxy Service Deployment Detected"
   combiner     = "OR"
 
@@ -650,6 +653,9 @@ resource "google_monitoring_alert_policy" "proxy_deployment" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -710,6 +716,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Proxy Traffic"
   type         = "email"
   labels = {
@@ -719,6 +726,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for proxy port traffic
 resource "google_logging_metric" "proxy_ports" {
+  project = var.project_id
   name   = "proxy-port-traffic"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -736,6 +744,7 @@ resource "google_logging_metric" "proxy_ports" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "proxy_ports" {
+  project      = var.project_id
   display_name = "Proxy Port Traffic Detected"
   combiner     = "OR"
 
@@ -757,6 +766,9 @@ resource "google_monitoring_alert_policy" "proxy_ports" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",

@@ -643,6 +643,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -668,6 +669,7 @@ resource "google_logging_metric" "external_storage" {
 
 # Step 3: Alert policy for external uploads
 resource "google_monitoring_alert_policy" "external_upload" {
+  project      = var.project_id
   display_name = "External Cloud Storage Upload"
   combiner     = "OR"
 
@@ -746,6 +748,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -774,6 +777,7 @@ resource "google_logging_metric" "large_https" {
 
 # Step 3: Alert policy for excessive HTTPS uploads
 resource "google_monitoring_alert_policy" "https_upload" {
+  project      = var.project_id
   display_name = "Large HTTPS Upload Detected"
   combiner     = "OR"
 

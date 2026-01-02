@@ -439,6 +439,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Code Repository Security Alerts"
   type         = "email"
   labels = {
@@ -448,6 +449,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Detect bulk repository access
 resource "google_logging_metric" "bulk_repo_access" {
+  project = var.project_id
   name   = "cloud-source-repos-bulk-access"
   filter = <<-EOT
     resource.type="source.googleapis.com/Repository"
@@ -471,6 +473,7 @@ resource "google_logging_metric" "bulk_repo_access" {
 }
 
 resource "google_monitoring_alert_policy" "bulk_repo_access" {
+  project      = var.project_id
   display_name = "Cloud Source Repositories - Bulk Access"
   combiner     = "OR"
 
@@ -497,6 +500,7 @@ resource "google_monitoring_alert_policy" "bulk_repo_access" {
 
 # Detect repository access from unusual locations
 resource "google_logging_metric" "unusual_location_access" {
+  project = var.project_id
   name   = "cloud-source-repos-unusual-location"
   filter = <<-EOT
     resource.type="source.googleapis.com/Repository"
@@ -520,6 +524,7 @@ resource "google_logging_metric" "unusual_location_access" {
 }
 
 resource "google_monitoring_alert_policy" "unusual_location_access" {
+  project      = var.project_id
   display_name = "Cloud Source Repositories - Unusual Location"
   combiner     = "OR"
 
@@ -538,6 +543,13 @@ resource "google_monitoring_alert_policy" "unusual_location_access" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Anomalous Code Repository Access",
@@ -592,6 +604,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Repository-Secrets Correlation Alerts"
   type         = "email"
   labels = {
@@ -601,6 +614,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Detect Secret Manager access patterns
 resource "google_logging_metric" "secret_access" {
+  project = var.project_id
   name   = "secret-manager-access-pattern"
   filter = <<-EOT
     resource.type="secretmanager.googleapis.com/Secret"
@@ -623,6 +637,7 @@ resource "google_logging_metric" "secret_access" {
 }
 
 resource "google_monitoring_alert_policy" "secret_enumeration" {
+  project      = var.project_id
   display_name = "Secret Manager - Enumeration Detected"
   combiner     = "OR"
 
@@ -641,6 +656,13 @@ resource "google_monitoring_alert_policy" "secret_enumeration" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = "High volume of Secret Manager access detected. Investigate for potential credential harvesting."

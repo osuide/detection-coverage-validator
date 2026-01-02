@@ -672,6 +672,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - T1136"
   type         = "email"
   labels = {
@@ -681,6 +682,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for service account creation
 resource "google_logging_metric" "sa_creation" {
+  project = var.project_id
   name   = "service-account-creation"
   filter = <<-EOT
     protoPayload.methodName="google.iam.admin.v1.CreateServiceAccount"
@@ -704,6 +706,7 @@ resource "google_logging_metric" "sa_creation" {
 
 # Step 3: Alert policy for service account creation
 resource "google_monitoring_alert_policy" "sa_creation" {
+  project      = var.project_id
   display_name = "T1136: Service Account Created"
   combiner     = "OR"
 
@@ -722,6 +725,13 @@ resource "google_monitoring_alert_policy" "sa_creation" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = <<-EOT
@@ -797,6 +807,7 @@ variable "alert_email" {
 
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - Privileged Accounts"
   type         = "email"
   labels = {
@@ -806,6 +817,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for privileged role assignment
 resource "google_logging_metric" "privileged_sa" {
+  project = var.project_id
   name   = "privileged-service-account-creation"
   filter = <<-EOT
     protoPayload.methodName="SetIamPolicy"
@@ -837,6 +849,7 @@ resource "google_logging_metric" "privileged_sa" {
 
 # Step 3: Alert policy for privileged account creation
 resource "google_monitoring_alert_policy" "privileged_sa" {
+  project      = var.project_id
   display_name = "T1136: Privileged Service Account Created"
   combiner     = "OR"
 

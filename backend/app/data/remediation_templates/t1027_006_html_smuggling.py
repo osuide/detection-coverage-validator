@@ -513,12 +513,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "html_uploads" {
+  project = var.project_id
   name   = "suspicious-html-uploads"
   filter = <<-EOT
     resource.type="gcs_bucket"
@@ -532,6 +534,7 @@ resource "google_logging_metric" "html_uploads" {
 }
 
 resource "google_monitoring_alert_policy" "html_smuggling" {
+  project      = var.project_id
   display_name = "HTML Smuggling Detection"
   combiner     = "OR"
   conditions {
@@ -544,6 +547,13 @@ resource "google_monitoring_alert_policy" "html_smuggling" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Suspicious HTML File Upload",
@@ -592,12 +602,14 @@ variable "organization_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "html_attachments" {
+  project = var.project_id
   name   = "html-email-attachments"
   filter = <<-EOT
     log_name="organizations/${var.organization_id}/logs/gmail_log"
@@ -611,6 +623,7 @@ resource "google_logging_metric" "html_attachments" {
 }
 
 resource "google_monitoring_alert_policy" "html_email_smuggling" {
+  project      = var.project_id
   display_name = "HTML Email Smuggling Detection"
   combiner     = "OR"
   conditions {
@@ -623,6 +636,13 @@ resource "google_monitoring_alert_policy" "html_email_smuggling" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: HTML Email Attachment Detected",

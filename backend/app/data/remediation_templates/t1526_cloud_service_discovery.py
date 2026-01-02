@@ -380,12 +380,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "service_enum" {
+  project = var.project_id
   name   = "service-enumeration"
   filter = "protoPayload.methodName=~\"(list|get)\""
   metric_descriptor {
@@ -395,6 +397,7 @@ resource "google_logging_metric" "service_enum" {
 }
 
 resource "google_monitoring_alert_policy" "service_enum" {
+  project      = var.project_id
   display_name = "Service Enumeration"
   combiner     = "OR"
   conditions {
@@ -407,6 +410,13 @@ resource "google_monitoring_alert_policy" "service_enum" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Service Enumeration",

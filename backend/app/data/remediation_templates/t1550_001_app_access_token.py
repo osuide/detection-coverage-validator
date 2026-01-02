@@ -1074,6 +1074,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -1083,6 +1084,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for external SA token usage
 resource "google_logging_metric" "sa_token_external" {
+  project = var.project_id
   name   = "external-sa-token-usage"
   filter = <<-EOT
     protoPayload.authenticationInfo.principalEmail=~".*@.*iam.gserviceaccount.com"
@@ -1098,6 +1100,7 @@ resource "google_logging_metric" "sa_token_external" {
 
 # Step 3: Alert policy for external token usage
 resource "google_monitoring_alert_policy" "sa_token_alert" {
+  project      = var.project_id
   display_name = "Service Account Token Used Externally"
   combiner     = "OR"
 
@@ -1112,6 +1115,13 @@ resource "google_monitoring_alert_policy" "sa_token_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Service account token detected in use from external IP address. This may indicate stolen credentials."
@@ -1169,6 +1179,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -1178,6 +1189,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for OAuth anomalies
 resource "google_logging_metric" "oauth_anomalies" {
+  project = var.project_id
   name   = "oauth-token-anomalies"
   filter = <<-EOT
     resource.type="audited_resource"
@@ -1193,6 +1205,7 @@ resource "google_logging_metric" "oauth_anomalies" {
 
 # Step 3: Alert policy for OAuth anomalies
 resource "google_monitoring_alert_policy" "oauth_alert" {
+  project      = var.project_id
   display_name = "OAuth Token Anomalies Detected"
   combiner     = "OR"
 
@@ -1207,6 +1220,13 @@ resource "google_monitoring_alert_policy" "oauth_alert" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Unusual OAuth token activity detected. Review for potential token theft or abuse."
@@ -1823,6 +1843,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "OAuth Security Alerts"
   type         = "email"
   labels = {
@@ -1867,6 +1888,7 @@ resource "google_logging_metric" "oauth_consent_grants" {
 
 # Step 3: Alert policy for OAuth consent grant attacks
 resource "google_monitoring_alert_policy" "oauth_consent_attack" {
+  project      = var.project_id
   display_name = "T1550.001: OAuth Consent Grant Attack"
   combiner     = "OR"
   project      = var.project_id
@@ -1887,6 +1909,13 @@ resource "google_monitoring_alert_policy" "oauth_consent_attack" {
 
   notification_channels = [google_monitoring_notification_channel.email.id]
 
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
+
   documentation {
     content   = "OAuth consent grant attack detected. Review for unauthorised application authorisations."
     mime_type = "text/markdown"
@@ -1894,6 +1923,9 @@ resource "google_monitoring_alert_policy" "oauth_consent_attack" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",

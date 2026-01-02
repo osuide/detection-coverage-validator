@@ -726,6 +726,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "MFA Interception Alerts"
   type         = "email"
   labels = {
@@ -735,6 +736,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for SMS 2SV failures
 resource "google_logging_metric" "sms_2sv_attempts" {
+  project = var.project_id
   name   = "sms-2sv-interception-attempts"
   filter = <<-EOT
     protoPayload.serviceName="login.googleapis.com"
@@ -750,6 +752,7 @@ resource "google_logging_metric" "sms_2sv_attempts" {
 
 # Step 3: Alert policy for SMS interception
 resource "google_monitoring_alert_policy" "sms_interception" {
+  project      = var.project_id
   display_name = "SMS MFA Interception Detected"
   combiner     = "OR"
 
@@ -764,6 +767,13 @@ resource "google_monitoring_alert_policy" "sms_interception" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Multiple SMS-based 2-Step Verification attempts detected. Potential MFA code interception."
@@ -830,6 +840,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Phone Change Alerts"
   type         = "email"
   labels = {
@@ -839,6 +850,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for phone number changes
 resource "google_logging_metric" "phone_changes" {
+  project = var.project_id
   name   = "user-phone-number-changes"
   filter = <<-EOT
     protoPayload.serviceName="admin.googleapis.com"
@@ -854,6 +866,7 @@ resource "google_logging_metric" "phone_changes" {
 
 # Step 3: Alert policy for phone changes
 resource "google_monitoring_alert_policy" "phone_change" {
+  project      = var.project_id
   display_name = "User Phone Number Changed"
   combiner     = "OR"
 
@@ -868,6 +881,13 @@ resource "google_monitoring_alert_policy" "phone_change" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "User phone number changed. Verify legitimacy to prevent SMS MFA interception."
@@ -1232,6 +1252,13 @@ resource "google_monitoring_alert_policy" "mfa_fatigue" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.name]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content   = <<-EOT

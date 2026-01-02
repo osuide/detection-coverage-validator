@@ -389,6 +389,7 @@ variable "alert_email" {
 
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -399,6 +400,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for Deployment Manager operations
 resource "google_logging_metric" "deployment_manager_ops" {
+  project = var.project_id
   name   = "deployment-manager-operations"
   filter = <<-EOT
     resource.type="deploymentmanager.googleapis.com/Deployment"
@@ -425,6 +427,7 @@ resource "google_logging_metric" "deployment_manager_ops" {
 
 # Alert policy for suspicious deployments
 resource "google_monitoring_alert_policy" "deployment_manager_activity" {
+  project      = var.project_id
   display_name = "Suspicious Deployment Manager Activity"
   combiner     = "OR"
   project      = var.project_id
@@ -447,6 +450,9 @@ resource "google_monitoring_alert_policy" "deployment_manager_activity" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -502,6 +508,7 @@ variable "alert_email" {
 }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -512,6 +519,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Log metric for startup script modifications
 resource "google_logging_metric" "startup_script_mods" {
+  project = var.project_id
   name   = "startup-script-modifications"
   filter = <<-EOT
     resource.type="gce_instance"
@@ -529,6 +537,7 @@ resource "google_logging_metric" "startup_script_mods" {
 
 # Alert policy for startup script changes
 resource "google_monitoring_alert_policy" "startup_script_changes" {
+  project      = var.project_id
   display_name = "Startup Script Modifications Detected"
   combiner     = "OR"
   project      = var.project_id
@@ -551,6 +560,9 @@ resource "google_monitoring_alert_policy" "startup_script_changes" {
 
   alert_strategy {
     auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",

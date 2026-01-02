@@ -488,12 +488,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_monitoring_alert_policy" "high_egress" {
+  project      = var.project_id
   display_name = "Bandwidth Hijacking - High Network Egress"
   combiner     = "OR"
   conditions {
@@ -510,10 +512,18 @@ resource "google_monitoring_alert_policy" "high_egress" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }
 
 # Detect connections to Tor/VPN endpoints via VPC Flow Logs
 resource "google_logging_metric" "suspicious_destinations" {
+  project = var.project_id
   name   = "suspicious-network-destinations"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -527,6 +537,7 @@ resource "google_logging_metric" "suspicious_destinations" {
 }
 
 resource "google_monitoring_alert_policy" "suspicious_connections" {
+  project      = var.project_id
   display_name = "Suspicious Network Destinations"
   combiner     = "OR"
   conditions {
@@ -539,6 +550,13 @@ resource "google_monitoring_alert_policy" "suspicious_connections" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Bandwidth Hijacking Detected",
@@ -617,6 +635,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -624,6 +643,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Monitor GKE container network egress
 resource "google_monitoring_alert_policy" "container_egress" {
+  project      = var.project_id
   display_name = "Container Bandwidth Hijacking"
   combiner     = "OR"
   conditions {
@@ -640,6 +660,13 @@ resource "google_monitoring_alert_policy" "container_egress" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="Container Bandwidth Hijacking Detected",

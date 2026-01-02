@@ -467,6 +467,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -474,6 +475,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # GCE CPU Exhaustion Alert
 resource "google_monitoring_alert_policy" "gce_cpu" {
+  project      = var.project_id
   display_name = "GCE CPU Exhaustion"
   combiner     = "OR"
   conditions {
@@ -490,10 +492,18 @@ resource "google_monitoring_alert_policy" "gce_cpu" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }
 
 # GKE Container CPU Exhaustion
 resource "google_monitoring_alert_policy" "gke_cpu" {
+  project      = var.project_id
   display_name = "GKE Container CPU Exhaustion"
   combiner     = "OR"
   conditions {
@@ -510,10 +520,18 @@ resource "google_monitoring_alert_policy" "gke_cpu" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }
 
 # OOM Kill Detection via Logging
 resource "google_logging_metric" "oom_kills" {
+  project = var.project_id
   name   = "oom-kills"
   filter = <<-EOT
     (resource.type="gce_instance" OR resource.type="k8s_container")
@@ -526,6 +544,7 @@ resource "google_logging_metric" "oom_kills" {
 }
 
 resource "google_monitoring_alert_policy" "oom_alert" {
+  project      = var.project_id
   display_name = "OOM Kill Detection"
   combiner     = "OR"
   conditions {
@@ -538,6 +557,13 @@ resource "google_monitoring_alert_policy" "oom_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Resource Exhaustion Detected",
@@ -584,6 +610,7 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
@@ -591,6 +618,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Metric for quota exhaustion
 resource "google_logging_metric" "quota_exhaustion" {
+  project = var.project_id
   name   = "api-quota-exhaustion"
   filter = <<-EOT
     protoPayload.status.code=8
@@ -613,6 +641,7 @@ resource "google_logging_metric" "quota_exhaustion" {
 
 # Alert on excessive quota exhaustion
 resource "google_monitoring_alert_policy" "quota_alert" {
+  project      = var.project_id
   display_name = "API Quota Exhaustion Attack"
   combiner     = "OR"
   conditions {
@@ -629,6 +658,13 @@ resource "google_monitoring_alert_policy" "quota_alert" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
   documentation {
     content = "API quota exhaustion detected - possible DoS attack or misconfigured application"
   }

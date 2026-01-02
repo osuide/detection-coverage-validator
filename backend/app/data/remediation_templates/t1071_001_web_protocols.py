@@ -546,6 +546,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - HTTP C2 Detection"
   type         = "email"
   labels = {
@@ -555,6 +556,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for suspicious HTTP patterns
 resource "google_logging_metric" "http_c2_patterns" {
+  project = var.project_id
   name   = "http-c2-suspicious-patterns"
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -573,6 +575,7 @@ resource "google_logging_metric" "http_c2_patterns" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "http_c2_detection" {
+  project      = var.project_id
   display_name = "HTTP C2 Pattern Detection"
   combiner     = "OR"
 
@@ -594,6 +597,9 @@ resource "google_monitoring_alert_policy" "http_c2_detection" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -659,6 +665,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts - HTTP Beaconing"
   type         = "email"
   labels = {
@@ -668,6 +675,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for beaconing patterns
 resource "google_logging_metric" "http_beaconing" {
+  project = var.project_id
   name   = "http-beaconing-pattern"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -685,6 +693,7 @@ resource "google_logging_metric" "http_beaconing" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "beaconing_detection" {
+  project      = var.project_id
   display_name = "HTTP/HTTPS Beaconing Detection"
   combiner     = "OR"
 
@@ -706,6 +715,9 @@ resource "google_monitoring_alert_policy" "beaconing_detection" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",

@@ -528,9 +528,7 @@ resource "aws_cloudwatch_metric_alarm" "protocol_anomaly" {
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="gce_subnetwork"
 jsonPayload.connection.dest_port:(80 OR 443 OR 8080 OR 8443)
-jsonPayload.bytes_sent > 10485760
-| stats sum(bytes_sent) as total_bytes, avg(bytes_sent) as avg_bytes by src_ip, dest_ip
-| avg_bytes < 500 AND total_bytes > 10485760""",
+jsonPayload.bytes_sent > 10485760""",
                 gcp_terraform_template="""# GCP: HTTP traffic anomaly detection for obfuscated C2
 
 variable "project_id" { type = string }
@@ -541,6 +539,7 @@ variable "alert_email" { type = string }
 
 # Step 2: Create log metric for suspicious HTTP patterns
 resource "google_logging_metric" "http_anomaly" {
+  project = var.project_id
   name   = "http-c2-obfuscation"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -558,12 +557,14 @@ resource "google_logging_metric" "http_anomaly" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_monitoring_alert_policy" "http_anomaly" {
+  project      = var.project_id
   display_name = "HTTP C2 Obfuscation Detected"
   combiner     = "OR"
   conditions {
@@ -576,6 +577,13 @@ resource "google_monitoring_alert_policy" "http_anomaly" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Potential C2 Obfuscation via HTTP Detected",
@@ -615,9 +623,7 @@ resource "google_monitoring_alert_policy" "http_anomaly" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="dns_query"
-(LENGTH(protoPayload.queryName) > 50 OR protoPayload.queryType="TXT")
-| stats count() as query_count, avg(LENGTH(queryName)) as avg_length by sourceIP
-| query_count > 50 OR avg_length > 40""",
+(protoPayload.queryName=~".{50,}" OR protoPayload.queryType="TXT")""",
                 gcp_terraform_template="""# GCP: DNS data encoding detection
 
 variable "project_id" { type = string }
@@ -636,10 +642,11 @@ resource "google_dns_managed_zone" "monitored" {
 
 # Step 2: Create log metric for encoded DNS queries
 resource "google_logging_metric" "dns_encoding" {
+  project = var.project_id
   name   = "dns-data-encoding"
   filter = <<-EOT
     resource.type="dns_query"
-    (LENGTH(protoPayload.queryName) > 50 OR protoPayload.queryType="TXT")
+    (protoPayload.queryName=~".{50,}" OR protoPayload.queryType="TXT")
   EOT
   metric_descriptor {
     metric_kind = "DELTA"
@@ -649,12 +656,14 @@ resource "google_logging_metric" "dns_encoding" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_monitoring_alert_policy" "dns_encoding" {
+  project      = var.project_id
   display_name = "DNS Data Encoding Detected"
   combiner     = "OR"
   conditions {
@@ -667,6 +676,13 @@ resource "google_monitoring_alert_policy" "dns_encoding" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: DNS Data Encoding Detected",
@@ -706,10 +722,7 @@ resource "google_monitoring_alert_policy" "dns_encoding" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""resource.type="gce_subnetwork"
-jsonPayload.connection.dest_port:(80 OR 443)
-| stats sum(bytes_sent) as total_bytes, sum(packets_sent) as total_packets,
-        (sum(bytes_sent) / sum(packets_sent)) as bytes_per_packet by src_ip, dest_ip
-| bytes_per_packet < 100 OR bytes_per_packet > 1400""",
+jsonPayload.connection.dest_port:(80 OR 443)""",
                 gcp_terraform_template="""# GCP: Protocol anomaly detection
 
 variable "project_id" { type = string }
@@ -719,6 +732,7 @@ variable "alert_email" { type = string }
 
 # Step 2: Create metric for protocol anomalies
 resource "google_logging_metric" "protocol_anomaly" {
+  project = var.project_id
   name   = "protocol-impersonation"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -732,12 +746,14 @@ resource "google_logging_metric" "protocol_anomaly" {
 
 # Step 3: Create alert policy
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_monitoring_alert_policy" "protocol_anomaly" {
+  project      = var.project_id
   display_name = "Protocol Impersonation Detected"
   combiner     = "OR"
   conditions {
@@ -750,6 +766,13 @@ resource "google_monitoring_alert_policy" "protocol_anomaly" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Protocol Impersonation Detected",

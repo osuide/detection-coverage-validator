@@ -438,6 +438,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel for alerts
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Session Theft Alerts"
   type         = "email"
   labels = {
@@ -447,6 +448,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for session anomalies
 resource "google_logging_metric" "session_anomaly" {
+  project = var.project_id
   name   = "session-cookie-anomalies"
   filter = <<-EOT
     protoPayload.serviceName="login.googleapis.com"
@@ -472,6 +474,7 @@ resource "google_logging_metric" "session_anomaly" {
 
 # Step 3: Alert policy for session anomalies
 resource "google_monitoring_alert_policy" "session_theft" {
+  project      = var.project_id
   display_name = "Session Cookie Theft Detection"
   combiner     = "OR"
 
@@ -493,6 +496,9 @@ resource "google_monitoring_alert_policy" "session_theft" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="high",
@@ -547,6 +553,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Cookie Theft Alerts"
   type         = "email"
   labels = {
@@ -556,6 +563,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for suspicious auth events
 resource "google_logging_metric" "suspicious_auth" {
+  project = var.project_id
   name   = "suspicious-authentication-events"
   filter = <<-EOT
     protoPayload.serviceName="admin.googleapis.com"
@@ -582,6 +590,7 @@ resource "google_logging_metric" "suspicious_auth" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "cookie_theft_warning" {
+  project      = var.project_id
   display_name = "Cookie Theft Warning Indicators"
   combiner     = "OR"
 
@@ -603,6 +612,9 @@ resource "google_monitoring_alert_policy" "cookie_theft_warning" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 }""",
                 alert_severity="medium",

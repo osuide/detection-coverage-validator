@@ -622,12 +622,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "storage_delete" {
+  project = var.project_id
   name   = "storage-deletion"
   filter = <<-EOT
     protoPayload.methodName=~"storage.(buckets|objects).delete"
@@ -639,6 +641,7 @@ resource "google_logging_metric" "storage_delete" {
 }
 
 resource "google_monitoring_alert_policy" "storage_delete" {
+  project      = var.project_id
   display_name = "Storage Deletion"
   combiner     = "OR"
   conditions {
@@ -651,6 +654,13 @@ resource "google_monitoring_alert_policy" "storage_delete" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="critical",
                 alert_title="GCP: Storage Deletion",

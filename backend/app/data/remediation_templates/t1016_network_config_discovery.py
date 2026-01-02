@@ -450,6 +450,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "network_discovery_email" {
+  project      = var.project_id
   display_name = "Network Discovery Security Alerts"
   type         = "email"
 
@@ -460,6 +461,7 @@ resource "google_monitoring_notification_channel" "network_discovery_email" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "network_discovery" {
+  project = var.project_id
   name   = "network-configuration-discovery"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.networks.list|compute.subnetworks.list|compute.routes.list|compute.firewalls.list|compute.addresses.list|v1.compute.networks.get|v1.compute.subnetworks.get)"
@@ -483,6 +485,7 @@ resource "google_logging_metric" "network_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "network_discovery" {
+  project      = var.project_id
   display_name = "Network Configuration Discovery Detected"
   combiner     = "OR"
 
@@ -506,6 +509,9 @@ resource "google_monitoring_alert_policy" "network_discovery" {
 
   alert_strategy {
     auto_close = "86400s"
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   documentation {
@@ -569,6 +575,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "connectivity_alerts" {
+  project      = var.project_id
   display_name = "Network Connectivity Discovery Alerts"
   type         = "email"
   labels = {
@@ -578,6 +585,7 @@ resource "google_monitoring_notification_channel" "connectivity_alerts" {
 
 # Step 2: Log-based metric
 resource "google_logging_metric" "connectivity_discovery" {
+  project = var.project_id
   name   = "network-connectivity-discovery"
   filter = <<-EOT
     protoPayload.methodName=~"(compute.networks.listPeeringRoutes|v1.compute.vpnTunnels.list|v1.compute.interconnects.list|v1.compute.routers.list)"
@@ -591,6 +599,7 @@ resource "google_logging_metric" "connectivity_discovery" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "connectivity_discovery" {
+  project      = var.project_id
   display_name = "Network Connectivity Discovery"
   combiner     = "OR"
 
@@ -611,6 +620,13 @@ resource "google_monitoring_alert_policy" "connectivity_discovery" {
   }
 
   notification_channels = [google_monitoring_notification_channel.connectivity_alerts.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 
   documentation {
     content = "Network connectivity configuration discovery detected. Review for authorised scanning."

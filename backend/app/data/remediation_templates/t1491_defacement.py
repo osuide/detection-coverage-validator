@@ -365,12 +365,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "website_modifications" {
+  project = var.project_id
   name   = "gcs-website-modifications"
   filter = <<-EOT
     protoPayload.methodName=~"storage.objects.(create|update|patch|delete)"
@@ -383,6 +385,7 @@ resource "google_logging_metric" "website_modifications" {
 }
 
 resource "google_monitoring_alert_policy" "website_defacement" {
+  project      = var.project_id
   display_name = "GCS Website Defacement"
   combiner     = "OR"
   conditions {
@@ -399,6 +402,13 @@ resource "google_monitoring_alert_policy" "website_defacement" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Website Content Modified",
@@ -443,12 +453,14 @@ variable "project_id" { type = string }
 variable "alert_email" { type = string }
 
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels       = { email_address = var.alert_email }
 }
 
 resource "google_logging_metric" "bucket_iam_changes" {
+  project = var.project_id
   name   = "gcs-bucket-iam-changes"
   filter = <<-EOT
     protoPayload.methodName="storage.setIamPermissions"
@@ -460,6 +472,7 @@ resource "google_logging_metric" "bucket_iam_changes" {
 }
 
 resource "google_monitoring_alert_policy" "bucket_iam_changes" {
+  project      = var.project_id
   display_name = "GCS Bucket IAM Policy Changed"
   combiner     = "OR"
   conditions {
@@ -472,6 +485,13 @@ resource "google_monitoring_alert_policy" "bucket_iam_changes" {
     }
   }
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Bucket IAM Policy Changed",

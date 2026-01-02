@@ -725,6 +725,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -734,6 +735,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for packet mirroring
 resource "google_logging_metric" "packet_mirror" {
+  project = var.project_id
   name   = "packet-mirroring-creation"
   filter = <<-EOT
     protoPayload.serviceName="compute.googleapis.com"
@@ -749,6 +751,7 @@ resource "google_logging_metric" "packet_mirror" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "packet_mirror" {
+  project      = var.project_id
   display_name = "Packet Mirroring Configuration Detected"
   combiner     = "OR"
 
@@ -763,6 +766,13 @@ resource "google_monitoring_alert_policy" "packet_mirror" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="high",
                 alert_title="GCP: Packet Mirroring Policy Created",
@@ -817,6 +827,7 @@ variable "alert_email" {
 
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email" {
+  project      = var.project_id
   display_name = "Security Alerts"
   type         = "email"
   labels = {
@@ -826,6 +837,7 @@ resource "google_monitoring_notification_channel" "email" {
 
 # Step 2: Log-based metric for high-volume flows
 resource "google_logging_metric" "high_volume_flows" {
+  project = var.project_id
   name   = "high-volume-network-flows"
   filter = <<-EOT
     resource.type="gce_subnetwork"
@@ -841,6 +853,7 @@ resource "google_logging_metric" "high_volume_flows" {
 
 # Step 3: Alert policy
 resource "google_monitoring_alert_policy" "flow_anomaly" {
+  project      = var.project_id
   display_name = "High Volume Network Flow Detected"
   combiner     = "OR"
 
@@ -855,6 +868,13 @@ resource "google_monitoring_alert_policy" "flow_anomaly" {
   }
 
   notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "1800s"
+    notification_rate_limit {
+      period = "300s"
+    }
+  }
 }""",
                 alert_severity="medium",
                 alert_title="GCP: Anomalous Network Traffic Detected",
