@@ -219,6 +219,7 @@ resource "aws_cloudwatch_event_rule" "stealth_findings" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.stealth_findings.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 
   retry_policy {

@@ -371,6 +371,7 @@ resource "aws_cloudwatch_event_rule" "userdata_mod" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.userdata_mod.name
+target_id = "SendToSNS"
   arn  = var.sns_topic_arn
 }""",
                 alert_severity="high",
@@ -529,6 +530,7 @@ resource "aws_cloudwatch_event_rule" "runtime_findings" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.runtime_findings.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 }
 

@@ -360,6 +360,7 @@ resource "aws_cloudwatch_event_rule" "s3_crossaccount" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.s3_crossaccount.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 }
 
@@ -508,6 +509,7 @@ resource "aws_cloudwatch_event_rule" "snapshot_share" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.snapshot_share.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 }
 

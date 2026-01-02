@@ -835,6 +835,7 @@ resource "aws_iam_role_policy" "ecr_read" {
 # EventBridge target
 resource "aws_cloudwatch_event_target" "lambda" {
   rule = aws_cloudwatch_event_rule.ecr_scan.name
+target_id = "SendToLambda"
   arn  = aws_lambda_function.scan_review.arn
 }
 

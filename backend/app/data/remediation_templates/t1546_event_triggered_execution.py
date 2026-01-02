@@ -207,6 +207,7 @@ resource "aws_cloudwatch_event_rule" "lambda_trigger" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.lambda_trigger.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 
   retry_policy {
@@ -446,6 +447,7 @@ resource "aws_cloudwatch_event_rule" "eventbridge_mod" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.eventbridge_mod.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 
   retry_policy {
@@ -674,6 +676,7 @@ resource "aws_cloudwatch_event_rule" "s3_notification" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.s3_notification.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 
   retry_policy {
@@ -1102,6 +1105,7 @@ resource "aws_cloudwatch_event_rule" "logs_subscription" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.logs_subscription.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 
   retry_policy {

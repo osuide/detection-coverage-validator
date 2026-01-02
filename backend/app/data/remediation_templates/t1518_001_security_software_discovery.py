@@ -190,6 +190,7 @@ resource "aws_sqs_queue_policy" "event_dlq" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.cw_agent_enum.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 
   retry_policy {
@@ -405,6 +406,7 @@ resource "aws_sqs_queue_policy" "event_dlq" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.guardduty_enum.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 
   retry_policy {

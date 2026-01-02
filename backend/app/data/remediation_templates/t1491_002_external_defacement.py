@@ -243,6 +243,7 @@ resource "aws_sqs_queue_policy" "event_dlq" {
 
 resource "aws_cloudwatch_event_target" "defacement_alert" {
   rule = aws_cloudwatch_event_rule.s3_content_modification.name
+target_id = "AlertTarget"
   arn  = aws_sns_topic.defacement_alerts.arn
 
   retry_policy {

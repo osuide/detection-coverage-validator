@@ -593,6 +593,7 @@ resource "aws_cloudwatch_event_rule" "guardduty_encrypted_c2" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.guardduty_encrypted_c2.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.guardduty_alerts.arn
 }
 

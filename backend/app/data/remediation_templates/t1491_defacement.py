@@ -264,6 +264,7 @@ resource "aws_sqs_queue_policy" "event_dlq" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.public_access.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 
   retry_policy {

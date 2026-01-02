@@ -473,6 +473,7 @@ resource "aws_cloudwatch_event_rule" "lambda_masquerading" {
 
 resource "aws_cloudwatch_event_target" "lambda_alert" {
   rule = aws_cloudwatch_event_rule.lambda_masquerading.name
+target_id = "SendToLambda"
   arn  = var.sns_topic_arn
 }""",
                 alert_severity="medium",

@@ -251,6 +251,7 @@ resource "aws_cloudwatch_event_rule" "iam_policy_change" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.iam_policy_change.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.iam_auth_policy_alerts.arn
 
   retry_policy {
@@ -666,6 +667,7 @@ resource "aws_cloudwatch_event_rule" "idp_change" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.idp_change.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.idp_change_alerts.arn
 
   retry_policy {

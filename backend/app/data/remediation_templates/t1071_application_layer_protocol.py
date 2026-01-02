@@ -176,6 +176,7 @@ resource "aws_cloudwatch_event_rule" "dns_anomaly" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.dns_anomaly.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.dns_alerts.arn
 }
 

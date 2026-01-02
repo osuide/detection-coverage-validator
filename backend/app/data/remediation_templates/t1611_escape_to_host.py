@@ -320,6 +320,7 @@ resource "aws_cloudwatch_event_rule" "container_escape" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.container_escape.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 
   retry_policy {

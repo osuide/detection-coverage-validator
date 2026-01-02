@@ -360,6 +360,7 @@ resource "aws_sqs_queue" "lambda_dlq" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.non_compliant_lambda.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 
   retry_policy {
@@ -861,6 +862,7 @@ resource "aws_sqs_queue" "tags_dlq" {
 
 resource "aws_cloudwatch_event_target" "sns" {
   rule = aws_cloudwatch_event_rule.non_compliant_tags.name
+target_id = "SendToSNS"
   arn  = aws_sns_topic.alerts.arn
 
   retry_policy {
