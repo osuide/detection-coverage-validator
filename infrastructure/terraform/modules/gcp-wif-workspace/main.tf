@@ -183,10 +183,12 @@ resource "google_iam_workload_identity_pool_provider" "aws" {
   }
 
   # Attribute mapping
+  # Note: extract pattern must NOT have leading slash
+  # ARN format: arn:aws:sts::123:assumed-role/role-name/session
   attribute_mapping = {
     "google.subject"        = "assertion.arn"
     "attribute.aws_account" = "assertion.account"
-    "attribute.aws_role"    = "assertion.arn.extract('/assumed-role/{role}/')"
+    "attribute.aws_role"    = "assertion.arn.extract('assumed-role/{role}/')"
   }
 
   # Attribute condition - only allow specific AWS roles
