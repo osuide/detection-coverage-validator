@@ -791,6 +791,7 @@ class GoogleWorkspaceService:
         body: str,
         cc: Optional[list[str]] = None,
         reply_to: Optional[str] = None,
+        from_address: Optional[str] = None,
     ) -> dict:
         """
         Send an email via Gmail API.
@@ -801,6 +802,7 @@ class GoogleWorkspaceService:
             body: Email body (plain text)
             cc: Optional list of CC recipients
             reply_to: Optional Reply-To address (for sending on behalf of a group)
+            from_address: Optional From address (must be configured as "Send mail as" alias in Gmail)
 
         Returns:
             Sent message object
@@ -811,6 +813,8 @@ class GoogleWorkspaceService:
         message = MIMEText(body)
         message["to"] = to
         message["subject"] = subject
+        if from_address:
+            message["from"] = from_address
         if cc:
             message["cc"] = ", ".join(cc)
         if reply_to:

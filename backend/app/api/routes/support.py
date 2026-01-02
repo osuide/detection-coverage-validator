@@ -586,6 +586,7 @@ Submitted via A13E Support Form at {submitted_at.strftime('%Y-%m-%d %H:%M UTC')}
             to=settings.support_email,
             subject=f"[{ticket_id}] {request.subject}",
             body=email_body,
+            from_address=settings.support_email,
             reply_to=settings.support_email,
         )
 
@@ -618,6 +619,7 @@ https://app.a13e.com
                 to=current_user.email,
                 subject=f"[{ticket_id}] We've received your support request",
                 body=user_confirmation,
+                from_address=settings.support_email,
                 reply_to=settings.support_email,
             )
         except Exception as e:
