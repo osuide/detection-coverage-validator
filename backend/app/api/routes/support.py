@@ -528,9 +528,18 @@ async def submit_support_ticket(
 
     # Try to log to CRM and send email
     try:
-        from app.services.google_workspace_service import get_workspace_service
+        from app.services.google_workspace_service import (
+            get_workspace_service,
+            GoogleWorkspaceService,
+        )
 
         ws = get_workspace_service()
+
+        # Create a separate service instance for sending emails FROM support@a13e.com
+        # The default service uses workspace_admin_email (austin@a13e.com) for delegation
+        support_email_service = GoogleWorkspaceService(
+            delegated_user=settings.support_email
+        )
 
         # Log to CRM spreadsheet if configured
         if settings.support_crm_spreadsheet_id:
@@ -577,13 +586,13 @@ Description:
 Submitted via A13E Support Form at {submitted_at.strftime('%Y-%m-%d %H:%M UTC')}
 """
 
-        ws.send_email(
+        support_email_service.send_email(
             to=settings.support_email,
             subject=f"[{ticket_id}] {request.subject}",
             body=email_body,
         )
 
-        # Send confirmation email to user
+        # Send confirmation email to user (from support@a13e.com)
         user_confirmation = f"""Hi {context.full_name.split()[0] if context.full_name else 'there'},
 
 Thank you for contacting A13E Support. We've received your request and will get back to you shortly.
@@ -607,7 +616,7 @@ A13E Detection Coverage Validator
 https://app.a13e.com
 """
 
-        ws.send_email(
+        support_email_service.send_email(
             to=current_user.email,
             subject=f"[{ticket_id}] We've received your support request",
             body=user_confirmation,
