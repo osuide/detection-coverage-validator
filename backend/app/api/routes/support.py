@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, func
@@ -28,6 +29,7 @@ from app.models.gap import CoverageGap
 from app.models.scan import Scan
 from app.models.user import Organization, OrganizationMember, User
 
+logger = structlog.get_logger()
 router = APIRouter(prefix="/support", tags=["support"])
 settings = get_settings()
 
@@ -616,17 +618,23 @@ A13E Detection Coverage Validator
 https://app.a13e.com
 """
 
-        support_email_service.send_email(
-            to=current_user.email,
-            subject=f"[{ticket_id}] We've received your support request",
-            body=user_confirmation,
-        )
+        try:
+            support_email_service.send_email(
+                to=current_user.email,
+                subject=f"[{ticket_id}] We've received your support request",
+                body=user_confirmation,
+            )
+        except Exception as e:
+            # Log error but don't fail if user email fails (ticket is already submitted)
+            logger.error(
+                "support_confirmation_email_failed",
+                ticket_id=ticket_id,
+                user_email=current_user.email,
+                error=str(e),
+            )
 
     except Exception as e:
         # Log error but don't fail the request - ticket was submitted
-        import structlog
-
-        logger = structlog.get_logger()
         logger.error(
             "support_ticket_logging_failed",
             ticket_id=ticket_id,

@@ -148,6 +148,7 @@ def main():
                 "Metrics",
                 "Response Templates",
                 "Escalation Log",
+                "Customer Context Cache",
             ],
             folder_id=support["id"] if support else None,
         )
