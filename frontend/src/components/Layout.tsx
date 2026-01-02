@@ -26,6 +26,7 @@ import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
 import A13ELogo from './A13ELogo'
 import AccountSelector from './AccountSelector'
+import SupportWidget from './support/SupportWidget'
 
 interface LayoutProps {
   children: ReactNode
@@ -215,6 +216,7 @@ export default function Layout({ children }: LayoutProps) {
           {children}
         </main>
       </div>
+      <SupportWidget />
     </div>
   )
 }
