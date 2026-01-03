@@ -16,8 +16,8 @@ Solution: Custom AwsSecurityCredentialsSupplier + JWT signing for domain delegat
 No service account keys required in production - uses short-lived credentials.
 """
 
-from functools import cached_property
 from typing import Any, Optional, Union
+import time
 
 import structlog
 from google.oauth2 import credentials as oauth2_credentials
@@ -97,16 +97,32 @@ class GoogleWorkspaceService:
         self.delegated_user = delegated_user or settings.workspace_admin_email
         self.use_wif = use_wif and settings.workspace_wif_enabled
         self._credentials = None
+        self._credentials_expiry = 0.0
+        # WIF credentials expire after 1 hour, refresh after 50 mins to be safe
+        self._credentials_ttl = 50 * 60  # 50 minutes in seconds
 
-    @cached_property
+    @property
     def credentials(
         self,
     ) -> Union[oauth2_credentials.Credentials, service_account.Credentials]:
-        """Get authenticated credentials with domain-wide delegation."""
+        """Get authenticated credentials with domain-wide delegation.
+
+        Credentials are cached for 50 minutes (WIF tokens expire after 1 hour).
+        """
+        current_time = time.time()
+
+        # Check if we have valid cached credentials
+        if self._credentials is not None and current_time < self._credentials_expiry:
+            return self._credentials
+
+        # Get fresh credentials
         if self.use_wif:
-            return self._get_wif_credentials()
+            self._credentials = self._get_wif_credentials()
         else:
-            return self._get_service_account_credentials()
+            self._credentials = self._get_service_account_credentials()
+
+        self._credentials_expiry = current_time + self._credentials_ttl
+        return self._credentials
 
     def _get_wif_credentials(self) -> oauth2_credentials.Credentials:
         """
@@ -186,48 +202,70 @@ class GoogleWorkspaceService:
         return credentials
 
     # =========================================================================
-    # Service Clients (lazy-loaded)
+    # Service Clients (rebuilt when credentials refresh)
     # =========================================================================
+    # Note: We cache service clients but invalidate when credentials are refreshed.
+    # This avoids the expensive build() call on every request while still ensuring
+    # fresh credentials are used.
 
-    @cached_property
+    def _get_or_build_service(self, cache_key: str, api: str, version: str) -> Resource:
+        """Get a cached service client or build a new one.
+
+        Invalidates cache when credentials are refreshed.
+        """
+        # Access credentials first to trigger refresh if needed
+        creds = self.credentials
+
+        # Check if we have a cached service with current credentials expiry
+        if hasattr(self, f"_{cache_key}_service"):
+            service, expiry = getattr(self, f"_{cache_key}_service")
+            if expiry == self._credentials_expiry:
+                return service
+
+        # Build new service
+        service = build(api, version, credentials=creds)
+        setattr(self, f"_{cache_key}_service", (service, self._credentials_expiry))
+        return service
+
+    @property
     def gmail(self) -> Resource:
         """Gmail API client."""
-        return build("gmail", "v1", credentials=self.credentials)
+        return self._get_or_build_service("gmail", "gmail", "v1")
 
-    @cached_property
+    @property
     def drive(self) -> Resource:
         """Drive API client."""
-        return build("drive", "v3", credentials=self.credentials)
+        return self._get_or_build_service("drive", "drive", "v3")
 
-    @cached_property
+    @property
     def sheets(self) -> Resource:
         """Sheets API client."""
-        return build("sheets", "v4", credentials=self.credentials)
+        return self._get_or_build_service("sheets", "sheets", "v4")
 
-    @cached_property
+    @property
     def docs(self) -> Resource:
         """Docs API client."""
-        return build("docs", "v1", credentials=self.credentials)
+        return self._get_or_build_service("docs", "docs", "v1")
 
-    @cached_property
+    @property
     def calendar(self) -> Resource:
         """Calendar API client."""
-        return build("calendar", "v3", credentials=self.credentials)
+        return self._get_or_build_service("calendar", "calendar", "v3")
 
-    @cached_property
+    @property
     def forms(self) -> Resource:
         """Forms API client."""
-        return build("forms", "v1", credentials=self.credentials)
+        return self._get_or_build_service("forms", "forms", "v1")
 
-    @cached_property
+    @property
     def admin(self) -> Resource:
         """Admin Directory API client."""
-        return build("admin", "directory_v1", credentials=self.credentials)
+        return self._get_or_build_service("admin", "admin", "directory_v1")
 
-    @cached_property
+    @property
     def groups_settings(self) -> Resource:
         """Groups Settings API client."""
-        return build("groupssettings", "v1", credentials=self.credentials)
+        return self._get_or_build_service("groups_settings", "groupssettings", "v1")
 
     # =========================================================================
     # High-Level Methods
