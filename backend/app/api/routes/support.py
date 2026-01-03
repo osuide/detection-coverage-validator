@@ -110,6 +110,11 @@ class CustomerContextResponse(BaseModel):
         default_factory=list, description="Contextual notes for support"
     )
 
+    # Environment info (for correct URL generation)
+    environment: str = Field(
+        "production", description="Backend environment (staging, production)"
+    )
+
     class Config:
         """Pydantic config."""
 
@@ -335,6 +340,14 @@ async def get_customer_context(
         open_gaps=open_gaps,
     )
 
+    # Normalise environment for frontend use
+    env = settings.environment.lower()
+    if env in ("prod", "production"):
+        env = "production"
+    elif env in ("staging", "stage"):
+        env = "staging"
+    # else keep as-is (development, test, etc.)
+
     return CustomerContextResponse(
         email=email,
         user_id=user.id,
@@ -360,6 +373,7 @@ async def get_customer_context(
         mfa_enabled=user.mfa_enabled,
         recent_scans=recent_scans,
         notes=notes,
+        environment=env,
     )
 
 
