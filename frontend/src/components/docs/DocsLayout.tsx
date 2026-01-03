@@ -12,10 +12,12 @@ import {
   MessageSquare,
   ExternalLink,
   Key,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { docPages } from '../../pages/docs/docs-content';
 import A13ELogo from '../A13ELogo';
+import { useAuth } from '../../contexts/AuthContext';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   BookOpen,
@@ -49,6 +51,7 @@ interface DocsLayoutProps {
 
 export function DocsLayout({ children }: DocsLayoutProps) {
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const currentSlug = location.pathname.replace('/docs/', '').replace('/docs', '');
@@ -101,12 +104,22 @@ export function DocsLayout({ children }: DocsLayoutProps) {
 
             {/* Right side */}
             <div className="flex items-center gap-4">
-              <Link
-                to="/signup"
-                className="text-sm font-medium text-white bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 px-4 py-2 rounded-lg shadow-lg shadow-blue-500/25 transition-all"
-              >
-                Get Started
-              </Link>
+              {isAuthenticated ? (
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-white bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 px-4 py-2 rounded-lg shadow-lg shadow-blue-500/25 transition-all"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </Link>
+              ) : (
+                <Link
+                  to="/signup"
+                  className="text-sm font-medium text-white bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 px-4 py-2 rounded-lg shadow-lg shadow-blue-500/25 transition-all"
+                >
+                  Get Started
+                </Link>
+              )}
             </div>
           </div>
         </div>
