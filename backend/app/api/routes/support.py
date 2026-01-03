@@ -26,7 +26,8 @@ from app.models.billing import AccountTier, Subscription
 from app.models.cloud_account import CloudAccount
 from app.models.coverage import CoverageSnapshot
 from app.models.detection import Detection
-from app.models.gap import CoverageGap, GapStatus
+
+# Note: CoverageGap is for remediation workflow, not coverage calculation
 from app.models.scan import Scan
 from app.models.user import Organization, OrganizationMember, User
 
@@ -79,7 +80,7 @@ class CustomerContextResponse(BaseModel):
     coverage_score: Optional[float] = Field(
         None, description="Overall coverage score (0-100)"
     )
-    open_gaps: int = Field(0, description="Number of unresolved coverage gaps")
+    open_gaps: int = Field(0, description="Number of uncovered MITRE ATT&CK techniques")
     total_detections: int = Field(0, description="Total security detections found")
 
     # Activity information
@@ -241,22 +242,27 @@ async def get_customer_context(
             )
             total_detections = detections_result.scalar() or 0
 
-            # Count open gaps (OPEN, ACKNOWLEDGED, IN_PROGRESS - not yet remediated)
-            gaps_result = await db.execute(
-                select(func.count(CoverageGap.id))
-                .join(CloudAccount, CoverageGap.cloud_account_id == CloudAccount.id)
+            # Get uncovered techniques count from latest coverage snapshots
+            # This is the actual number of MITRE techniques without detection coverage
+            # (NOT the CoverageGap table, which is for remediation workflow tracking)
+            uncovered_result = await db.execute(
+                select(func.sum(CoverageSnapshot.uncovered_techniques))
+                .join(
+                    CloudAccount, CoverageSnapshot.cloud_account_id == CloudAccount.id
+                )
                 .where(CloudAccount.organization_id == organisation.id)
                 .where(
-                    CoverageGap.status.in_(
-                        [
-                            GapStatus.OPEN,
-                            GapStatus.ACKNOWLEDGED,
-                            GapStatus.IN_PROGRESS,
-                        ]
+                    CoverageSnapshot.id.in_(
+                        select(CoverageSnapshot.id)
+                        .where(CoverageSnapshot.cloud_account_id == CloudAccount.id)
+                        .order_by(CoverageSnapshot.created_at.desc())
+                        .limit(1)
+                        .correlate(CloudAccount)
+                        .scalar_subquery()
                     )
                 )
             )
-            open_gaps = gaps_result.scalar() or 0
+            open_gaps = uncovered_result.scalar() or 0
 
             # Get recent scans
             scans_result = await db.execute(
