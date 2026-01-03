@@ -567,6 +567,11 @@ resource "aws_secretsmanager_secret" "jwt_secret" {
     Name        = "a13e-${var.environment}-jwt-secret"
     Environment = var.environment
   }
+
+  # Prevent accidental deletion - this is the JWT signing key
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "jwt_secret" {
@@ -581,6 +586,11 @@ resource "aws_secretsmanager_secret" "credential_encryption_key" {
   tags = {
     Name        = "a13e-${var.environment}-credential-encryption-key"
     Environment = var.environment
+  }
+
+  # Prevent accidental deletion - this key encrypts cloud credentials
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
@@ -598,6 +608,11 @@ resource "aws_secretsmanager_secret" "stripe_secret_key" {
     Name        = "a13e-${var.environment}-stripe-secret-key"
     Environment = var.environment
   }
+
+  # Prevent accidental deletion - required for billing
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "stripe_secret_key" {
@@ -613,6 +628,11 @@ resource "aws_secretsmanager_secret" "stripe_webhook_secret" {
   tags = {
     Name        = "a13e-${var.environment}-stripe-webhook-secret"
     Environment = var.environment
+  }
+
+  # Prevent accidental deletion - required for billing webhooks
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
@@ -630,6 +650,11 @@ resource "aws_secretsmanager_secret" "github_client_secret" {
     Name        = "a13e-${var.environment}-github-client-secret"
     Environment = var.environment
   }
+
+  # Prevent accidental deletion - required for GitHub SSO
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "github_client_secret" {
@@ -638,20 +663,33 @@ resource "aws_secretsmanager_secret_version" "github_client_secret" {
   secret_string = var.github_client_secret
 }
 
+# Support API key secret - ALWAYS exists (not conditional)
+# This prevents terraform from trying to delete it when the variable is empty
 resource "aws_secretsmanager_secret" "support_api_key" {
-  count = var.support_api_key != "" ? 1 : 0
-  name  = "a13e/${var.environment}/support-api-key"
+  name = "a13e/${var.environment}/support-api-key"
 
   tags = {
     Name        = "a13e-${var.environment}-support-api-key"
     Environment = var.environment
   }
+
+  # Prevent accidental deletion - this secret is required for support system
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
+# Secret version ALWAYS exists - uses provided value or placeholder
+# This ensures ECS can always reference the secret (even if empty/placeholder)
+# The backend gracefully handles missing SUPPORT_API_KEY with a 503 response
 resource "aws_secretsmanager_secret_version" "support_api_key" {
-  count         = var.support_api_key != "" ? 1 : 0
-  secret_id     = aws_secretsmanager_secret.support_api_key[0].id
-  secret_string = var.support_api_key
+  secret_id     = aws_secretsmanager_secret.support_api_key.id
+  secret_string = var.support_api_key != "" ? var.support_api_key : "NOT_CONFIGURED"
+
+  # Don't replace if the value is unchanged
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 # IAM Policy for ECS Execution Role to read secrets
@@ -668,11 +706,11 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
       ]
       Resource = concat(
         [aws_secretsmanager_secret.jwt_secret.arn],
+        [aws_secretsmanager_secret.support_api_key.arn], # Always included - support system
         var.credential_encryption_key != "" ? [aws_secretsmanager_secret.credential_encryption_key[0].arn] : [],
         var.stripe_secret_key != "" ? [aws_secretsmanager_secret.stripe_secret_key[0].arn] : [],
         var.stripe_webhook_secret != "" ? [aws_secretsmanager_secret.stripe_webhook_secret[0].arn] : [],
-        var.github_client_secret != "" ? [aws_secretsmanager_secret.github_client_secret[0].arn] : [],
-        var.support_api_key != "" ? [aws_secretsmanager_secret.support_api_key[0].arn] : []
+        var.github_client_secret != "" ? [aws_secretsmanager_secret.github_client_secret[0].arn] : []
       )
     }]
   })
@@ -773,10 +811,11 @@ resource "aws_ecs_task_definition" "backend" {
         name      = "GITHUB_CLIENT_SECRET"
         valueFrom = aws_secretsmanager_secret.github_client_secret[0].arn
       }] : [],
-      var.support_api_key != "" ? [{
+      # SUPPORT_API_KEY is ALWAYS included - secret always exists with value or placeholder
+      [{
         name      = "SUPPORT_API_KEY"
-        valueFrom = aws_secretsmanager_secret.support_api_key[0].arn
-      }] : []
+        valueFrom = aws_secretsmanager_secret.support_api_key.arn
+      }]
     )
 
     logConfiguration = {
