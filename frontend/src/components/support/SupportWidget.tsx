@@ -5,7 +5,8 @@ import {
   X,
   Send,
   Loader2,
-  FileText
+  FileText,
+  AlertTriangle
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { supportApi, UserSupportContext } from '../../services/supportApi'
@@ -36,6 +37,14 @@ export default function SupportWidget() {
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('technical')
   const [cloudProvider, setCloudProvider] = useState<string>('')
+  const [errors, setErrors] = useState<{ subject?: string; description?: string }>({})
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // Validation constants (must match backend)
+  const SUBJECT_MIN = 5
+  const SUBJECT_MAX = 200
+  const DESCRIPTION_MIN = 20
+  const DESCRIPTION_MAX = 5000
 
   // Auto-open widget if ?support=open is in URL
   useEffect(() => {
@@ -55,11 +64,31 @@ export default function SupportWidget() {
     }
   }, [isOpen, context])
 
+  const validateForm = (): boolean => {
+    const newErrors: { subject?: string; description?: string } = {}
+
+    if (subject.length < SUBJECT_MIN) {
+      newErrors.subject = `Subject must be at least ${SUBJECT_MIN} characters`
+    } else if (subject.length > SUBJECT_MAX) {
+      newErrors.subject = `Subject must be no more than ${SUBJECT_MAX} characters`
+    }
+
+    if (description.length < DESCRIPTION_MIN) {
+      newErrors.description = `Description must be at least ${DESCRIPTION_MIN} characters`
+    } else if (description.length > DESCRIPTION_MAX) {
+      newErrors.description = `Description must be no more than ${DESCRIPTION_MAX} characters`
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!subject || !description) return
+    if (!validateForm()) return
 
     setIsSubmitting(true)
+    setSubmitError(null)  // Clear any previous error
     try {
       const response = await supportApi.submitTicket({
         subject,
@@ -74,9 +103,44 @@ export default function SupportWidget() {
       setDescription('')
       setCategory('technical')
       setCloudProvider('')
-    } catch (error) {
+      setErrors({})
+    } catch (error: unknown) {
       console.error('Failed to submit ticket', error)
-      // Ideally show error toast here
+
+      // Parse error response for user-friendly message
+      let errorMessage = 'Failed to submit ticket. Please try again or email support@a13e.com directly.'
+
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number; data?: { detail?: string | Array<{ msg: string; loc: string[] }> } } }
+        const response = axiosError.response
+
+        if (response?.status === 422 && response.data?.detail) {
+          // Handle Pydantic validation errors
+          const detail = response.data.detail
+          if (Array.isArray(detail) && detail.length > 0) {
+            // Extract field-specific errors with user-friendly formatting
+            const fieldErrors = detail.map(err => {
+              const field = err.loc[err.loc.length - 1]
+              const fieldName = field.charAt(0).toUpperCase() + field.slice(1)
+              // Make Pydantic messages more readable
+              const msg = err.msg
+                .replace('String should have at least', 'must be at least')
+                .replace('String should have at most', 'must be no more than')
+                .replace('characters', 'characters long')
+              return `${fieldName} ${msg}`
+            }).join('. ')
+            errorMessage = fieldErrors
+          } else if (typeof detail === 'string') {
+            errorMessage = detail
+          }
+        } else if (response?.status === 503) {
+          errorMessage = 'Service temporarily unavailable. Please try again in a moment.'
+        } else if (response?.status === 429) {
+          errorMessage = 'Too many requests. Please wait a moment before trying again.'
+        }
+      }
+
+      setSubmitError(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -177,25 +241,50 @@ export default function SupportWidget() {
                   <input
                     type="text"
                     value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
+                    onChange={(e) => {
+                      setSubject(e.target.value)
+                      if (errors.subject) setErrors(prev => ({ ...prev, subject: undefined }))
+                    }}
                     placeholder="Brief summary of the issue"
                     required
-                    className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 placeholder-slate-500"
+                    minLength={SUBJECT_MIN}
+                    maxLength={SUBJECT_MAX}
+                    className={clsx(
+                      "w-full bg-slate-900 border rounded px-3 py-2 text-sm text-white focus:outline-none placeholder-slate-500",
+                      errors.subject ? "border-red-500 focus:border-red-500" : "border-slate-700 focus:border-blue-500"
+                    )}
                   />
+                  {errors.subject && (
+                    <p className="mt-1 text-xs text-red-400">{errors.subject}</p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">
                     Description
+                    <span className="ml-2 text-slate-500 font-normal">
+                      ({description.length}/{DESCRIPTION_MIN} min)
+                    </span>
                   </label>
                   <textarea
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={(e) => {
+                      setDescription(e.target.value)
+                      if (errors.description) setErrors(prev => ({ ...prev, description: undefined }))
+                    }}
                     placeholder="Please describe the issue in detail..."
                     required
+                    minLength={DESCRIPTION_MIN}
+                    maxLength={DESCRIPTION_MAX}
                     rows={4}
-                    className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 placeholder-slate-500 resize-none"
+                    className={clsx(
+                      "w-full bg-slate-900 border rounded px-3 py-2 text-sm text-white focus:outline-none placeholder-slate-500 resize-none",
+                      errors.description ? "border-red-500 focus:border-red-500" : "border-slate-700 focus:border-blue-500"
+                    )}
                   />
+                  {errors.description && (
+                    <p className="mt-1 text-xs text-red-400">{errors.description}</p>
+                  )}
                 </div>
 
                 {(category === 'technical' || category === 'bug_report') && (
@@ -220,6 +309,13 @@ export default function SupportWidget() {
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {submitError && (
+                  <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg text-sm text-red-300 flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <span>{submitError}</span>
                   </div>
                 )}
 
