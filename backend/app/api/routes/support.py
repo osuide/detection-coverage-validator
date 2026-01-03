@@ -18,10 +18,12 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps.rate_limit import support_ticket_rate_limit
 from app.api.routes.auth import get_current_user
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import verify_support_api_key
+from app.services.google_workspace_service import sanitise_for_sheets
 from app.models.billing import AccountTier, Subscription
 from app.models.cloud_account import CloudAccount
 from app.models.coverage import CoverageSnapshot
@@ -34,6 +36,9 @@ from app.models.user import Organization, OrganizationMember, User
 logger = structlog.get_logger()
 router = APIRouter(prefix="/support", tags=["support"])
 settings = get_settings()
+
+# Rate limiting for support ticket submission
+rate_limit_support = support_ticket_rate_limit()
 
 
 class RecentScanInfo(BaseModel):
@@ -552,6 +557,7 @@ async def get_user_support_context(
     response_model=SubmitTicketResponse,
     summary="Submit a support ticket",
     description="Submit a support ticket. Logs to CRM and sends email to support.",
+    dependencies=[Depends(rate_limit_support)],
 )
 async def submit_support_ticket(
     request: SubmitTicketRequest,
@@ -604,15 +610,19 @@ async def submit_support_ticket(
                         [
                             ticket_id,
                             submitted_at.isoformat(),
-                            current_user.email,
+                            sanitise_for_sheets(
+                                current_user.email
+                            ),  # Prevent formula injection
                             context.tier_display,
                             category_display.get(request.category, request.category),
                             "Normal",  # Default priority
                             "New",  # Initial status
-                            request.subject,
-                            request.description[
-                                :3000
-                            ],  # Truncate for sheet readability
+                            sanitise_for_sheets(
+                                request.subject
+                            ),  # Prevent formula injection
+                            sanitise_for_sheets(
+                                request.description[:3000]
+                            ),  # Truncate + sanitise
                             request.cloud_provider or "N/A",
                             "",  # Assigned To
                             "",  # Resolution Notes

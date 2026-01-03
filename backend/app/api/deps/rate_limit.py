@@ -95,3 +95,12 @@ def api_key_rate_limit() -> dict:
     This is a generous limit for legitimate API usage while still preventing abuse.
     """
     return RateLimiter(times=100, seconds=60)
+
+
+def support_ticket_rate_limit() -> dict:
+    """Rate limit for support tickets: 5 requests per hour per IP.
+
+    Prevents support inbox flooding and Google Workspace API abuse.
+    CWE-799: Improper Control of Interaction Frequency
+    """
+    return RateLimiter(times=5, seconds=3600)

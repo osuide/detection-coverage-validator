@@ -32,6 +32,30 @@ logger = structlog.get_logger()
 settings = get_settings()
 
 
+def sanitise_for_sheets(value: str) -> str:
+    """Sanitise value to prevent Google Sheets formula injection.
+
+    Google Sheets interprets cells starting with =, +, -, @, or control
+    characters as formulas. Prefix such cells with a single quote to
+    force text mode.
+
+    CWE-1236: Improper Neutralization of Formula Elements in a CSV File
+
+    Args:
+        value: The string value to sanitise.
+
+    Returns:
+        The sanitised string with formula characters escaped.
+    """
+    if not value:
+        return value
+
+    if value[0] in ("=", "+", "-", "@", "\t", "\r", "\n"):
+        return f"'{value}"
+
+    return value
+
+
 class GoogleWorkspaceService:
     """
     Service for accessing Google Workspace APIs via WIF.
