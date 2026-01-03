@@ -26,7 +26,7 @@ from app.models.billing import AccountTier, Subscription
 from app.models.cloud_account import CloudAccount
 from app.models.coverage import CoverageSnapshot
 from app.models.detection import Detection
-from app.models.gap import CoverageGap
+from app.models.gap import CoverageGap, GapStatus
 from app.models.scan import Scan
 from app.models.user import Organization, OrganizationMember, User
 
@@ -236,12 +236,20 @@ async def get_customer_context(
             )
             total_detections = detections_result.scalar() or 0
 
-            # Count open gaps
+            # Count open gaps (OPEN, ACKNOWLEDGED, IN_PROGRESS - not yet remediated)
             gaps_result = await db.execute(
                 select(func.count(CoverageGap.id))
                 .join(CloudAccount, CoverageGap.cloud_account_id == CloudAccount.id)
                 .where(CloudAccount.organization_id == organisation.id)
-                .where(CoverageGap.status == "open")
+                .where(
+                    CoverageGap.status.in_(
+                        [
+                            GapStatus.OPEN,
+                            GapStatus.ACKNOWLEDGED,
+                            GapStatus.IN_PROGRESS,
+                        ]
+                    )
+                )
             )
             open_gaps = gaps_result.scalar() or 0
 
