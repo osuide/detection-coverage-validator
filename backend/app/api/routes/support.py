@@ -24,6 +24,7 @@ from app.core.database import get_db
 from app.core.security import verify_support_api_key
 from app.models.billing import AccountTier, Subscription
 from app.models.cloud_account import CloudAccount
+from app.models.coverage import CoverageSnapshot
 from app.models.detection import Detection
 from app.models.gap import CoverageGap
 from app.models.scan import Scan
@@ -269,11 +270,28 @@ async def get_customer_context(
                 last_scan = recent_scans[0].created_at
                 last_scan_status = recent_scans[0].status
 
-            # Calculate average coverage score (simplified)
-            if total_detections > 0:
-                coverage_score = round(
-                    (total_detections / (total_detections + open_gaps)) * 100, 1
+            # Get actual coverage score from the most recent coverage snapshots
+            # This queries the real coverage data, not a simplified formula
+            coverage_result = await db.execute(
+                select(func.avg(CoverageSnapshot.coverage_percent))
+                .join(
+                    CloudAccount, CoverageSnapshot.cloud_account_id == CloudAccount.id
                 )
+                .where(CloudAccount.organization_id == organisation.id)
+                .where(
+                    CoverageSnapshot.id.in_(
+                        select(CoverageSnapshot.id)
+                        .where(CoverageSnapshot.cloud_account_id == CloudAccount.id)
+                        .order_by(CoverageSnapshot.created_at.desc())
+                        .limit(1)
+                        .correlate(CloudAccount)
+                        .scalar_subquery()
+                    )
+                )
+            )
+            avg_coverage = coverage_result.scalar()
+            if avg_coverage is not None:
+                coverage_score = round(avg_coverage, 1)
 
     # Build tier information
     tier = subscription.tier if subscription else AccountTier.FREE

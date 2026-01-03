@@ -222,6 +222,24 @@ VPC (10.0.0.0/16)
 
 **Security**: WAF with OWASP CRS, RDS/Redis private only, IAM least privilege.
 
+## Deployment (CRITICAL)
+
+**NEVER manually build or push Docker images.** Always deploy via git:
+
+```bash
+# Correct deployment workflow
+git add <files>
+git commit -m "Description of changes"
+git push origin main
+```
+
+GitHub Actions CI/CD automatically:
+1. Builds Docker images for linux/amd64
+2. Pushes to ECR
+3. Updates ECS service
+
+**Never run `docker build` or `docker push` manually** - the CI pipeline handles this.
+
 ## Frontend (React)
 
 ### ScrollToTop on Navigation
