@@ -1259,3 +1259,194 @@ async def get_customers_for_crm(
         summary=summary,
         environment=env,
     )
+
+
+# =========================================================================
+# Welcome Email Endpoints
+# =========================================================================
+
+
+class NewRegistrationRecord(BaseModel):
+    """User record for welcome email sending."""
+
+    user_id: UUID
+    email: EmailStr
+    full_name: Optional[str] = None
+    organisation_name: Optional[str] = None
+    registered_at: datetime
+    registration_source: str  # email, google, github
+    tier: str
+    tier_display: str
+
+
+class NewRegistrationsResponse(BaseModel):
+    """Response for new registrations endpoint."""
+
+    registrations: list[NewRegistrationRecord]
+    count: int
+    environment: str
+
+
+class WelcomeEmailSentRequest(BaseModel):
+    """Request to mark welcome email as sent."""
+
+    user_id: UUID
+
+
+class WelcomeEmailSentResponse(BaseModel):
+    """Response after marking welcome email sent."""
+
+    success: bool
+    user_id: UUID
+    sent_at: datetime
+
+
+@router.get(
+    "/new-registrations",
+    response_model=NewRegistrationsResponse,
+    summary="Get users needing welcome emails",
+    description="""
+    Fetch users who registered but haven't received a welcome email yet.
+
+    Returns users where:
+    - welcome_email_sent_at is NULL
+    - created_at is within the last 7 days (to avoid spamming old users)
+
+    Called by Apps Script to send AI-personalised welcome emails.
+    """,
+    responses={
+        200: {"description": "New registrations retrieved successfully"},
+        401: {"description": "Invalid or missing support API key"},
+    },
+)
+async def get_new_registrations(
+    since_days: int = Query(
+        7, description="Only include users from last N days", ge=1, le=30
+    ),
+    limit: int = Query(50, description="Maximum users to return", ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(verify_support_api_key),
+) -> NewRegistrationsResponse:
+    """Get users who need welcome emails."""
+    from datetime import timedelta
+
+    from app.models.user import MembershipStatus, UserRole
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=since_days)
+
+    # Query users who:
+    # 1. Have no welcome_email_sent_at
+    # 2. Were created after cutoff date
+    # 3. Are organisation owners (primary account holders)
+    query = (
+        select(User, Organization)
+        .outerjoin(OrganizationMember, OrganizationMember.user_id == User.id)
+        .outerjoin(Organization, Organization.id == OrganizationMember.organization_id)
+        .where(User.welcome_email_sent_at.is_(None))
+        .where(User.created_at >= cutoff)
+        .where(User.is_active == True)  # noqa: E712
+        .where(OrganizationMember.role == UserRole.OWNER)
+        .where(OrganizationMember.status == MembershipStatus.ACTIVE)
+        .order_by(User.created_at.asc())  # Oldest first
+        .limit(limit)
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    registrations: list[NewRegistrationRecord] = []
+
+    for user, org in rows:
+        # Determine registration source
+        reg_source = "email"
+        if user.identity_provider:
+            reg_source = user.identity_provider
+        elif user.oauth_provider:
+            reg_source = user.oauth_provider
+
+        # Get subscription tier
+        tier = "free"
+        tier_display = "Free"
+        if org:
+            sub_result = await db.execute(
+                select(Subscription).where(Subscription.organization_id == org.id)
+            )
+            subscription = sub_result.scalar_one_or_none()
+            if subscription:
+                tier = subscription.tier.value
+                tier_display = subscription.tier.value.title()
+
+        registrations.append(
+            NewRegistrationRecord(
+                user_id=user.id,
+                email=user.email,
+                full_name=user.full_name,
+                organisation_name=org.name if org else None,
+                registered_at=user.created_at,
+                registration_source=reg_source,
+                tier=tier,
+                tier_display=tier_display,
+            )
+        )
+
+    # Normalise environment
+    env = settings.environment.lower()
+    if env in ("prod", "production"):
+        env = "production"
+    elif env in ("staging", "stage"):
+        env = "staging"
+
+    return NewRegistrationsResponse(
+        registrations=registrations,
+        count=len(registrations),
+        environment=env,
+    )
+
+
+@router.post(
+    "/welcome-email-sent",
+    response_model=WelcomeEmailSentResponse,
+    summary="Mark welcome email as sent",
+    description="""
+    Mark a user's welcome email as sent.
+
+    Called by Apps Script after successfully sending the welcome email.
+    Sets the welcome_email_sent_at timestamp to prevent duplicate sends.
+    """,
+    responses={
+        200: {"description": "Welcome email marked as sent"},
+        401: {"description": "Invalid or missing support API key"},
+        404: {"description": "User not found"},
+    },
+)
+async def mark_welcome_email_sent(
+    body: WelcomeEmailSentRequest,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(verify_support_api_key),
+) -> WelcomeEmailSentResponse:
+    """Mark a user's welcome email as sent."""
+    # Find the user
+    result = await db.execute(select(User).where(User.id == body.user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Update the timestamp
+    sent_at = datetime.now(timezone.utc)
+    user.welcome_email_sent_at = sent_at
+
+    await db.commit()
+
+    logger.info(
+        "welcome_email_marked_sent",
+        user_id=str(body.user_id),
+        email=user.email,
+    )
+
+    return WelcomeEmailSentResponse(
+        success=True,
+        user_id=body.user_id,
+        sent_at=sent_at,
+    )

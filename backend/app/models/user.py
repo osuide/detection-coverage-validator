@@ -164,6 +164,11 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Onboarding
+    welcome_email_sent_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

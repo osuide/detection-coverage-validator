@@ -10,6 +10,7 @@ Stripe products (test mode):
 - A13E Individual: `price_1SijVDAB6j5KiVeUwd4QD5uX` (£29/month, 6 accounts)
 - A13E Pro: `price_1SijVTAB6j5KiVeUZTSUdnBl` (£250/month, 500 accounts)
 
+Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
 ## Project Context
 
 Multi-cloud security detection coverage validator:
@@ -221,6 +222,106 @@ VPC (10.0.0.0/16)
 **No NAT Gateway** - backend has public IPs for external APIs (HIBP, Google, GitHub, Cognito, MITRE).
 
 **Security**: WAF with OWASP CRS, RDS/Redis private only, IAM least privilege.
+
+## Google Workspace Integration
+
+**First point of reference for collaborative work:** emails, customer management, support automation, and notifications.
+
+**Same Google Workspace for staging and production** - environment detection via Script Properties and backend API responses.
+
+### Services Used
+
+| Service | Purpose | Why |
+|---------|---------|-----|
+| **Gmail** | Support inbox (support@a13e.com), welcome emails, ticket confirmations | Unified customer communication, no third-party email service needed |
+| **Google Groups** | Collaborative inbox for support@ | Team-shared inbox with assignment, no per-seat cost |
+| **Google Sheets** | CRM (Tickets, Customers, Templates sheets) | Visual dashboard, conditional formatting, no database cost |
+| **Google Drive** | Knowledge Base documents for RAG | Free storage, easy content updates, document search |
+| **Google Chat** | Automated alerts (SLA breaches, churn risk, renewals) | Real-time team notifications, webhook integration |
+| **Google Apps Script** | Automation engine (every 5 min) | No hosting cost, native Workspace integration, time-based triggers |
+| **Claude API** | AI classification, draft generation, personalisation | Intelligent ticket routing, response suggestions |
+
+### Architecture
+
+```
+┌─────────────────────┐     ┌──────────────────────────────────────────────┐
+│   A13E BACKEND      │     │           GOOGLE WORKSPACE                   │
+│   (FastAPI/ECS)     │     │                                              │
+│                     │     │  ┌────────────────────────────────────────┐  │
+│  /api/support/      │◄────│  │  Google Apps Script (Triggers)         │  │
+│    customer-context │     │  │  • processNewTickets (5 min)           │  │
+│    customers        │     │  │  • syncCustomers (daily 7 AM)          │  │
+│    new-registrations│     │  │  • checkSLABreaches (hourly)           │  │
+│    welcome-email-   │     │  │  • executeScheduledSend (1 min)        │  │
+│      sent           │     │  └────────────────────────────────────────┘  │
+│                     │     │           │              │                   │
+└─────────────────────┘     │           ▼              ▼                   │
+                            │  ┌─────────────┐  ┌─────────────────────┐    │
+                            │  │ Gmail       │  │ Google Sheets (CRM) │    │
+                            │  │ • Labels    │  │ • Tickets           │    │
+                            │  │ • Drafts    │  │ • Customers         │    │
+                            │  │ • Filters   │  │ • Templates         │    │
+                            │  └─────────────┘  └─────────────────────┘    │
+                            │           │              │                   │
+                            │           ▼              ▼                   │
+                            │  ┌─────────────┐  ┌─────────────────────┐    │
+                            │  │ Drive       │  │ Google Chat         │    │
+                            │  │ (KB Docs)   │  │ (Alerts Space)      │    │
+                            │  └─────────────┘  └─────────────────────┘    │
+                            └──────────────────────────────────────────────┘
+```
+
+### Environment Configuration
+
+Apps Script uses Script Properties for environment-aware URLs:
+
+| Property | Staging | Production |
+|----------|---------|------------|
+| `ENVIRONMENT` | staging | production |
+| `A13E_API_URL` | api.staging.a13e.com | api.a13e.com |
+| `A13E_SUPPORT_API_KEY` | (shared key) | (shared key) |
+| `SPREADSHEET_ID` | (shared CRM sheet) | (shared CRM sheet) |
+| `CHAT_WEBHOOK_URL` | (shared webhook) | (shared webhook) |
+
+### Apps Script Files
+
+| File | Purpose |
+|------|---------|
+| `Code.gs` | Main config, Claude API, Gmail helpers |
+| `ProcessFromSheet.gs` | Ticket processing from CRM submission |
+| `CustomerCRM.gs` | Daily customer sync, churn/upgrade detection |
+| `WelcomeEmail.gs` | AI-personalised welcome emails for new users |
+| `SLA.gs` | SLA calculation and breach monitoring |
+| `Templates.gs` | Canned response matching |
+| `KnowledgeBase.gs` | Drive document search for RAG |
+| `AutoSend.gs` | Scheduled email sending with confidence threshold |
+
+### Backend Support Endpoints
+
+| Endpoint | Auth | Purpose |
+|----------|------|---------|
+| `GET /api/support/customer-context` | Support API Key | Single customer context for ticket handling |
+| `GET /api/support/customers` | Support API Key | All customers for CRM sync |
+| `GET /api/support/new-registrations` | Support API Key | Users needing welcome emails |
+| `POST /api/support/welcome-email-sent` | Support API Key | Mark user as welcomed |
+| `POST /api/support/tickets` | User JWT | Submit support ticket |
+| `GET /api/support/context` | User JWT | User's own context for form pre-fill |
+
+### Key Points
+
+- **SUPPORT_API_KEY**: Stored in AWS Secrets Manager, unconditionally included in ECS task definition
+- **open_gaps**: Count of uncovered MITRE techniques from `CoverageSnapshot.uncovered_techniques` (NOT CoverageGap table)
+- **tier_display**: Use this field for human-readable tier names
+- **environment**: API returns customer's environment (staging/production) for correct docs URLs
+- **welcome_email_sent_at**: User field tracking when welcome email was sent
+
+### Terraform Variable
+
+```bash
+export TF_VAR_support_api_key="your-key-here"
+```
+
+If not set, terraform apply will warn but continue (secret stores "NOT_CONFIGURED").
 
 ## Deployment (CRITICAL)
 
