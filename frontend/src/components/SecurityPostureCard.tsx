@@ -145,58 +145,58 @@ export function SecurityPostureCard({
           </a>
         </div>
 
-        {/* Main stats row - horizontal layout for full width */}
-        <div className="flex flex-wrap items-center gap-6 mt-2">
-          {/* Compliance percentage - prominent */}
-          <div className="flex items-center gap-3">
-            <div className="relative w-14 h-14">
-              <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
-                <circle
-                  cx="28" cy="28" r="24"
-                  fill="none"
-                  stroke="#374151"
-                  strokeWidth="4"
-                />
-                <circle
-                  cx="28" cy="28" r="24"
-                  fill="none"
-                  stroke={compliance_percent >= 80 ? '#22c55e' : compliance_percent >= 50 ? '#eab308' : '#ef4444'}
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  strokeDasharray={`${(compliance_percent / 100) * 150.8} 150.8`}
-                />
-              </svg>
-              <span className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${getComplianceColour(compliance_percent)}`}>
-                {compliance_percent}%
-              </span>
+        {/* Main stats - consistent vertical layout */}
+        <div className="mt-2 space-y-3">
+          {/* Row 1: Compliance ring + pass/fail stats */}
+          <div className="flex items-center gap-6">
+            {/* Compliance percentage - prominent */}
+            <div className="flex items-center gap-3">
+              <div className="relative w-14 h-14">
+                <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
+                  <circle
+                    cx="28" cy="28" r="24"
+                    fill="none"
+                    stroke="#374151"
+                    strokeWidth="4"
+                  />
+                  <circle
+                    cx="28" cy="28" r="24"
+                    fill="none"
+                    stroke={compliance_percent >= 80 ? '#22c55e' : compliance_percent >= 50 ? '#eab308' : '#ef4444'}
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(compliance_percent / 100) * 150.8} 150.8`}
+                  />
+                </svg>
+                <span className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${getComplianceColour(compliance_percent)}`}>
+                  {compliance_percent}%
+                </span>
+              </div>
+              <span className="text-xs text-gray-400">Compliance</span>
             </div>
-            <span className="text-xs text-gray-400">Compliance</span>
+
+            {/* Divider */}
+            <div className="h-10 w-px bg-gray-700" />
+
+            {/* Pass/Fail stats */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-400" />
+                <span className="text-lg font-bold text-green-400">{passed_count}</span>
+                <span className="text-xs text-gray-500">passed</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <XCircle className="h-4 w-4 text-red-400" />
+                <span className="text-lg font-bold text-red-400">{failed_count}</span>
+                <span className="text-xs text-gray-500">failed</span>
+              </div>
+              <div className="text-xs text-gray-500">
+                of {total_controls} controls
+              </div>
+            </div>
           </div>
 
-          {/* Divider */}
-          <div className="h-10 w-px bg-gray-700 hidden sm:block" />
-
-          {/* Pass/Fail stats - inline */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-400" />
-              <span className="text-lg font-bold text-green-400">{passed_count}</span>
-              <span className="text-xs text-gray-500">passed</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <XCircle className="h-4 w-4 text-red-400" />
-              <span className="text-lg font-bold text-red-400">{failed_count}</span>
-              <span className="text-xs text-gray-500">failed</span>
-            </div>
-            <div className="text-xs text-gray-500">
-              of {total_controls} controls
-            </div>
-          </div>
-
-          {/* Divider */}
-          {failed_count > 0 && <div className="h-10 w-px bg-gray-700 hidden lg:block" />}
-
-          {/* Severity badges - inline */}
+          {/* Row 2: Severity badges */}
           {failed_count > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               {by_severity.CRITICAL > 0 && (
