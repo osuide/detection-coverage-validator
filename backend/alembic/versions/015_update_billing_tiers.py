@@ -38,31 +38,18 @@ def upgrade() -> None:
     )
 
     # Add new enum values to account_tier
-    # Note: PostgreSQL enums can have values added but not removed easily
-    op.execute(
-        """
-        DO $$ BEGIN
-            ALTER TYPE account_tier ADD VALUE IF NOT EXISTS 'free';
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
-    """
-    )
-    op.execute(
-        """
-        DO $$ BEGIN
-            ALTER TYPE account_tier ADD VALUE IF NOT EXISTS 'individual';
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
-    """
-    )
-    op.execute(
-        """
-        DO $$ BEGIN
-            ALTER TYPE account_tier ADD VALUE IF NOT EXISTS 'pro';
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
-    """
-    )
+    # Note: PostgreSQL requires a COMMIT after adding enum values before they can be used.
+    # We must commit the current transaction, add the values outside a transaction,
+    # then start a new transaction for the rest of the migration.
+    op.execute("COMMIT")
+
+    # Add enum values outside transaction (required for PostgreSQL enum safety)
+    op.execute("ALTER TYPE account_tier ADD VALUE IF NOT EXISTS 'free'")
+    op.execute("ALTER TYPE account_tier ADD VALUE IF NOT EXISTS 'individual'")
+    op.execute("ALTER TYPE account_tier ADD VALUE IF NOT EXISTS 'pro'")
+
+    # Start new transaction for the rest of the migration
+    op.execute("BEGIN")
 
     # Add new columns to subscriptions table for the simplified tier model
     # max_accounts: NULL = unlimited (Enterprise), otherwise the limit
@@ -106,22 +93,15 @@ def upgrade() -> None:
     )
 
     # Add audit log actions for tier changes
+    # Note: These also need COMMIT/BEGIN pattern for PostgreSQL enum safety
+    op.execute("COMMIT")
     op.execute(
-        """
-        DO $$ BEGIN
-            ALTER TYPE auditlogaction ADD VALUE IF NOT EXISTS 'subscription.tier_changed';
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
-    """
+        "ALTER TYPE auditlogaction ADD VALUE IF NOT EXISTS 'subscription.tier_changed'"
     )
     op.execute(
-        """
-        DO $$ BEGIN
-            ALTER TYPE auditlogaction ADD VALUE IF NOT EXISTS 'subscription.tier_migrated';
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
-    """
+        "ALTER TYPE auditlogaction ADD VALUE IF NOT EXISTS 'subscription.tier_migrated'"
     )
+    op.execute("BEGIN")
 
     # Data migration: Set defaults for existing subscriptions based on their current tier
 
