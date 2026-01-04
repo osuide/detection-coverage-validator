@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { Shield, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
+import { useOAuthStore } from '../stores/oauthStore'
 import { cognitoApi } from '../services/cognitoApi'
 import { githubApi } from '../services/githubApi'
 
@@ -9,9 +10,16 @@ export default function AuthCallback() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const setAuth = useAuthStore((state) => state.setAuth)
+  const getAndClearParams = useOAuthStore((state) => state.getAndClearParams)
   const [error, setError] = useState<string | null>(null)
+  // Prevent double execution in React StrictMode
+  const hasRun = useRef(false)
 
   useEffect(() => {
+    // Prevent double execution
+    if (hasRun.current) return
+    hasRun.current = true
+
     const handleCallback = async () => {
       const code = searchParams.get('code')
       const state = searchParams.get('state')
@@ -30,10 +38,11 @@ export default function AuthCallback() {
         return
       }
 
-      // Get stored OAuth info
-      const storedState = sessionStorage.getItem('oauth_state')
-      const storedProvider = sessionStorage.getItem('oauth_provider') || 'cognito'
-      const storedCodeVerifier = sessionStorage.getItem('oauth_code_verifier')
+      // Get and clear stored OAuth params from memory (one-time use)
+      const oauthParams = getAndClearParams()
+      const storedState = oauthParams.state
+      const storedProvider = oauthParams.provider || 'cognito'
+      const storedCodeVerifier = oauthParams.codeVerifier
 
       // Validate state (CSRF protection)
       if (state && storedState && state !== storedState) {
@@ -41,10 +50,11 @@ export default function AuthCallback() {
         return
       }
 
-      // Clear stored values
-      sessionStorage.removeItem('oauth_state')
-      sessionStorage.removeItem('oauth_provider')
-      sessionStorage.removeItem('oauth_code_verifier')
+      // If no stored params, the flow may have expired or page was refreshed
+      if (!storedState) {
+        setError('OAuth session expired. Please try again.')
+        return
+      }
 
       try {
         const redirectUri = `${window.location.origin}/auth/callback`
@@ -80,7 +90,7 @@ export default function AuthCallback() {
     }
 
     handleCallback()
-  }, [searchParams, navigate, setAuth])
+  }, [searchParams, navigate, setAuth, getAndClearParams])
 
   if (error) {
     return (

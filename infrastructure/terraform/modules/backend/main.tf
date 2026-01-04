@@ -224,6 +224,104 @@ variable "allowed_ips" {
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
+# ELB service account for ALB access logs
+# See: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/enable-access-logging.html
+data "aws_elb_service_account" "main" {}
+
+# S3 bucket for ALB access logs (security/compliance requirement)
+resource "random_id" "alb_logs_suffix" {
+  byte_length = 4
+}
+
+resource "aws_s3_bucket" "alb_logs" {
+  bucket = "a13e-${var.environment}-alb-logs-${random_id.alb_logs_suffix.hex}"
+
+  tags = {
+    Name        = "a13e-${var.environment}-alb-logs"
+    Environment = var.environment
+    Purpose     = "ALB Access Logs"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    id     = "expire-old-logs"
+    status = "Enabled"
+
+    expiration {
+      days = 90 # Keep logs for 90 days
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# Bucket policy to allow ALB to write access logs
+resource "aws_s3_bucket_policy" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowALBLogs"
+        Effect = "Allow"
+        Principal = {
+          AWS = data.aws_elb_service_account.main.arn
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.alb_logs.arn}/alb-logs/*"
+      },
+      {
+        Sid    = "AllowALBLogDelivery"
+        Effect = "Allow"
+        Principal = {
+          Service = "delivery.logs.amazonaws.com"
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.alb_logs.arn}/alb-logs/*"
+        Condition = {
+          StringEquals = {
+            "s3:x-amz-acl" = "bucket-owner-full-control"
+          }
+        }
+      },
+      {
+        Sid    = "AllowALBLogDeliveryAclCheck"
+        Effect = "Allow"
+        Principal = {
+          Service = "delivery.logs.amazonaws.com"
+        }
+        Action   = "s3:GetBucketAcl"
+        Resource = aws_s3_bucket.alb_logs.arn
+      }
+    ]
+  })
+}
+
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "a13e-${var.environment}-backend"
@@ -345,9 +443,21 @@ resource "aws_lb" "main" {
 
   enable_deletion_protection = var.environment == "prod"
 
+  # Security: Enable access logs for debugging, security analysis, and compliance
+  # Logs include: client IP, request path, latency, response codes
+  # Retained for 90 days via lifecycle policy on the S3 bucket
+  access_logs {
+    bucket  = aws_s3_bucket.alb_logs.id
+    prefix  = "alb-logs"
+    enabled = true
+  }
+
   tags = {
     Name = "a13e-${var.environment}-alb"
   }
+
+  # Ensure bucket and policy exist before enabling logging
+  depends_on = [aws_s3_bucket_policy.alb_logs]
 }
 
 # Target Group

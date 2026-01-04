@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router'
 import { useAuth } from '../contexts/AuthContext'
 import { cognitoApi, CognitoConfig } from '../services/cognitoApi'
 import { githubApi, GitHubConfig } from '../services/githubApi'
+import { useOAuthStore } from '../stores/oauthStore'
 import A13ELogo from '../components/A13ELogo'
 
 export default function Login() {
@@ -17,6 +18,7 @@ export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const setOAuthParams = useOAuthStore((state) => state.setOAuthParams)
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard'
 
@@ -39,10 +41,12 @@ export default function Login() {
     try {
       const redirectUri = `${window.location.origin}/auth/callback`
       const response = await cognitoApi.initiateSso(provider, redirectUri)
-      // Store PKCE code_verifier and state for callback
-      sessionStorage.setItem('oauth_state', response.state)
-      sessionStorage.setItem('oauth_code_verifier', response.code_verifier)
-      sessionStorage.setItem('oauth_provider', 'cognito')
+      // Store PKCE parameters in memory (not sessionStorage - XSS protection)
+      setOAuthParams({
+        state: response.state,
+        codeVerifier: response.code_verifier,
+        provider: 'cognito',
+      })
       window.location.href = response.authorization_url
     } catch {
       setError('Failed to initiate SSO. Please try again.')
@@ -58,9 +62,11 @@ export default function Login() {
     try {
       const redirectUri = `${window.location.origin}/auth/callback`
       const response = await githubApi.authorize(redirectUri)
-      // Store state and provider for callback
-      sessionStorage.setItem('oauth_state', response.state)
-      sessionStorage.setItem('oauth_provider', 'github')
+      // Store state in memory (not sessionStorage - XSS protection)
+      setOAuthParams({
+        state: response.state,
+        provider: 'github',
+      })
       window.location.href = response.authorization_url
     } catch {
       setError('Failed to initiate GitHub login. Please try again.')

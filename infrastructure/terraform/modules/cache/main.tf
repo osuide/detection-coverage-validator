@@ -27,12 +27,11 @@ resource "aws_security_group" "redis" {
   # Security: No inline ingress rules - managed by aws_security_group_rule in backend module
   # This uses source_security_group_id for proper SG-to-SG rules instead of broad CIDR blocks
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # Security: No egress rules needed for Redis
+  # AWS Security Groups are stateful - return traffic for allowed inbound connections
+  # is automatically permitted. Redis only responds to commands, it doesn't initiate
+  # outbound connections to the internet.
+  # Removing 0.0.0.0/0 egress improves defense-in-depth.
 
   tags = {
     Name = "dcv-${var.environment}-redis-sg"
