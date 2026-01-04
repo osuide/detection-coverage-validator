@@ -730,3 +730,532 @@ https://app.a13e.com
         message="Your support ticket has been submitted. We'll respond shortly.",
         submitted_at=submitted_at,
     )
+
+
+# =========================================================================
+# Customer CRM Endpoint
+# =========================================================================
+
+
+class CustomerCRMRecord(BaseModel):
+    """Single customer record for CRM."""
+
+    # Identity
+    user_id: UUID
+    email: EmailStr
+    full_name: Optional[str] = None
+    organisation_id: Optional[UUID] = None
+    organisation_name: Optional[str] = None
+
+    # Registration
+    registered_at: datetime
+    days_since_registration: int
+    registration_source: str  # email, google, github
+
+    # Subscription
+    tier: str
+    tier_display: str
+    subscription_status: str
+    is_legacy_tier: bool
+    stripe_customer_id: Optional[str] = None
+
+    # Billing Cycle
+    current_period_start: Optional[datetime] = None
+    current_period_end: Optional[datetime] = None
+    days_until_renewal: Optional[int] = None
+    cancel_at_period_end: bool = False
+    monthly_value_gbp: float = 0  # £0, £29, £250
+
+    # Usage
+    cloud_accounts_count: int = 0
+    max_accounts_allowed: int = 1
+    accounts_usage_percent: float = 0
+    team_members_count: int = 1
+    max_team_members: int = 1
+
+    # Engagement
+    last_login_at: Optional[datetime] = None
+    days_since_login: Optional[int] = None
+    total_scans: int = 0
+    last_scan_at: Optional[datetime] = None
+    scans_last_30_days: int = 0
+    coverage_score: Optional[float] = None
+
+    # CRM Signals
+    upgrade_opportunity: bool = False
+    upgrade_reason: Optional[str] = None
+    churn_risk: str = "none"  # none, low, medium, high
+    churn_reasons: list[str] = []
+    renewal_status: str = (
+        "not_applicable"  # not_applicable, ok, upcoming, due_soon, overdue, cancelled
+    )
+
+    # Flags
+    needs_attention: bool = False
+    attention_reasons: list[str] = []
+
+
+class CRMSummary(BaseModel):
+    """Summary statistics for CRM dashboard."""
+
+    total_customers: int
+    by_tier: dict[str, int]
+    total_mrr_gbp: float
+    upgrade_opportunities: int
+    churn_risk_high: int
+    churn_risk_medium: int
+    needs_attention: int
+    renewals_this_week: int
+
+
+class CustomersListResponse(BaseModel):
+    """Response for customers list endpoint."""
+
+    customers: list[CustomerCRMRecord]
+    total_count: int
+    summary: CRMSummary
+    environment: str
+
+
+def _detect_upgrade_opportunity(
+    tier: AccountTier,
+    accounts_count: int,
+    max_accounts: int,
+    scans_last_30_days: int,
+    team_members: int,
+    max_team_members: int,
+) -> tuple[bool, Optional[str]]:
+    """Detect if customer is an upgrade opportunity.
+
+    Returns (is_opportunity, reason).
+    """
+    # FREE → INDIVIDUAL triggers
+    if tier == AccountTier.FREE:
+        if accounts_count >= 1:  # At limit
+            return True, "At FREE account limit (1/1)"
+        if scans_last_30_days >= 4:  # Weekly user
+            return True, "High engagement on FREE tier"
+
+    # INDIVIDUAL → PRO triggers
+    elif tier == AccountTier.INDIVIDUAL:
+        if accounts_count >= 5:  # 5/6 accounts
+            return True, "Near INDIVIDUAL limit (5/6 accounts)"
+        if team_members >= 3:  # At team limit
+            return True, "At team member limit (3/3)"
+        if scans_last_30_days >= 20:  # Daily user
+            return True, "Power user - daily scanning"
+
+    # PRO → ENTERPRISE triggers
+    elif tier == AccountTier.PRO:
+        if accounts_count >= 400:  # 400/500
+            return True, "Near PRO limit (400/500 accounts)"
+        if team_members >= 8:  # Near limit
+            return True, "Near team limit (8/10)"
+
+    return False, None
+
+
+def _detect_churn_risk(
+    tier: AccountTier,
+    subscription_status: str,
+    days_since_login: Optional[int],
+    scans_last_30_days: int,
+    cancel_at_period_end: bool,
+    days_until_renewal: Optional[int],
+) -> tuple[str, list[str]]:
+    """Detect churn risk level.
+
+    Returns (risk_level, reasons).
+    Risk levels: none, low, medium, high
+    """
+    reasons = []
+    risk_score = 0
+
+    # Payment issues (HIGH risk)
+    if subscription_status == "past_due":
+        reasons.append("Payment past due")
+        risk_score += 50
+    elif subscription_status == "unpaid":
+        reasons.append("Payment failed")
+        risk_score += 70
+
+    # Scheduled cancellation (HIGH risk)
+    if cancel_at_period_end:
+        reasons.append("Cancellation scheduled")
+        risk_score += 60
+
+    # Inactivity (MEDIUM-HIGH risk)
+    if days_since_login is not None:
+        if days_since_login > 60:
+            reasons.append(f"Inactive {days_since_login} days")
+            risk_score += 40
+        elif days_since_login > 30:
+            reasons.append(f"Inactive {days_since_login} days")
+            risk_score += 25
+        elif days_since_login > 14:
+            reasons.append(f"Declining engagement ({days_since_login} days)")
+            risk_score += 10
+
+    # No scanning activity (MEDIUM risk for paid tiers)
+    if tier != AccountTier.FREE and scans_last_30_days == 0:
+        reasons.append("No scans in 30 days")
+        risk_score += 20
+
+    # Renewal approaching with risk factors
+    if days_until_renewal is not None and days_until_renewal <= 7:
+        if risk_score > 0:
+            reasons.append(f"Renewal in {days_until_renewal} days with issues")
+            risk_score += 15
+
+    # Determine risk level
+    if risk_score >= 50:
+        return "high", reasons
+    elif risk_score >= 25:
+        return "medium", reasons
+    elif risk_score > 0:
+        return "low", reasons
+    return "none", []
+
+
+def _get_renewal_status(
+    tier: AccountTier,
+    current_period_end: Optional[datetime],
+    cancel_at_period_end: bool,
+) -> str:
+    """Get renewal status."""
+    # Free tier doesn't have renewals
+    if tier == AccountTier.FREE:
+        return "not_applicable"
+
+    if not current_period_end:
+        return "not_applicable"
+
+    if cancel_at_period_end:
+        return "cancelled"
+
+    now = datetime.now(timezone.utc)
+    # Handle timezone-aware comparison
+    period_end = (
+        current_period_end.astimezone(timezone.utc)
+        if current_period_end.tzinfo
+        else current_period_end.replace(tzinfo=timezone.utc)
+    )
+    days_until = (period_end - now).days
+
+    if days_until < 0:
+        return "overdue"
+    elif days_until <= 3:
+        return "due_soon"
+    elif days_until <= 7:
+        return "upcoming"
+    return "ok"
+
+
+@router.get(
+    "/customers",
+    response_model=CustomersListResponse,
+    summary="Get all customers for CRM",
+    description="""
+    Fetch all customers with CRM data for support automation.
+
+    This endpoint returns comprehensive customer information including:
+    - Subscription and billing status
+    - Usage metrics (accounts, team members, scans)
+    - Engagement data (last login, scan activity)
+    - CRM signals (upgrade opportunities, churn risk)
+
+    Use query parameters to filter results.
+    """,
+    responses={
+        200: {"description": "Customer list retrieved successfully"},
+        401: {"description": "Invalid or missing support API key"},
+    },
+)
+async def get_customers_for_crm(
+    include_free: bool = Query(True, description="Include free tier users"),
+    churn_risk_filter: Optional[str] = Query(
+        None, description="Filter by churn risk: none, low, medium, high"
+    ),
+    upgrade_only: bool = Query(False, description="Only show upgrade opportunities"),
+    attention_only: bool = Query(
+        False, description="Only show customers needing attention"
+    ),
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(verify_support_api_key),
+) -> CustomersListResponse:
+    """Get all customers with CRM data for support automation."""
+    from datetime import timedelta
+
+    from app.models.user import MembershipStatus, UserRole
+
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+
+    # Query all organisation owners (primary account holders)
+    query = (
+        select(User, Organization, Subscription, OrganizationMember)
+        .outerjoin(OrganizationMember, OrganizationMember.user_id == User.id)
+        .outerjoin(Organization, Organization.id == OrganizationMember.organization_id)
+        .outerjoin(Subscription, Subscription.organization_id == Organization.id)
+        .where(OrganizationMember.role == UserRole.OWNER)
+        .where(OrganizationMember.status == MembershipStatus.ACTIVE)
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    customers: list[CustomerCRMRecord] = []
+
+    for user, org, subscription, membership in rows:
+        # Skip if no org (shouldn't happen for owners, but be safe)
+        if not org:
+            continue
+
+        tier = subscription.tier if subscription else AccountTier.FREE
+
+        # Skip free tier if requested
+        if not include_free and tier == AccountTier.FREE:
+            continue
+
+        # Get account counts
+        accounts_result = await db.execute(
+            select(func.count(CloudAccount.id)).where(
+                CloudAccount.organization_id == org.id
+            )
+        )
+        accounts_count = accounts_result.scalar() or 0
+
+        # Get team member count
+        team_result = await db.execute(
+            select(func.count(OrganizationMember.id))
+            .where(OrganizationMember.organization_id == org.id)
+            .where(OrganizationMember.status == MembershipStatus.ACTIVE)
+        )
+        team_count = team_result.scalar() or 1
+
+        # Get scan stats
+        total_scans_result = await db.execute(
+            select(func.count(Scan.id))
+            .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)
+            .where(CloudAccount.organization_id == org.id)
+        )
+        total_scans = total_scans_result.scalar() or 0
+
+        # Last scan
+        last_scan_result = await db.execute(
+            select(Scan.created_at)
+            .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)
+            .where(CloudAccount.organization_id == org.id)
+            .order_by(Scan.created_at.desc())
+            .limit(1)
+        )
+        last_scan_row = last_scan_result.first()
+        last_scan_at = last_scan_row[0] if last_scan_row else None
+
+        # Scans last 30 days
+        scans_30_result = await db.execute(
+            select(func.count(Scan.id))
+            .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)
+            .where(CloudAccount.organization_id == org.id)
+            .where(Scan.created_at >= thirty_days_ago)
+        )
+        scans_last_30 = scans_30_result.scalar() or 0
+
+        # Coverage score (average of latest snapshots)
+        coverage_result = await db.execute(
+            select(func.avg(CoverageSnapshot.coverage_percent))
+            .join(CloudAccount, CoverageSnapshot.cloud_account_id == CloudAccount.id)
+            .where(CloudAccount.organization_id == org.id)
+        )
+        coverage_avg = coverage_result.scalar()
+        coverage_score = round(coverage_avg, 1) if coverage_avg else None
+
+        # Calculate derived fields
+        max_accounts = subscription.total_accounts_allowed if subscription else 1
+        if max_accounts == -1:
+            max_accounts = 999999  # Unlimited
+        max_team = (
+            subscription.max_team_members
+            if subscription and subscription.max_team_members
+            else 1
+        )
+        if max_team is None:
+            max_team = 999999  # Unlimited
+
+        # Days since login
+        days_since_login = None
+        if user.last_login_at:
+            last_login_utc = (
+                user.last_login_at.astimezone(timezone.utc)
+                if user.last_login_at.tzinfo
+                else user.last_login_at.replace(tzinfo=timezone.utc)
+            )
+            days_since_login = (now - last_login_utc).days
+
+        # Days until renewal
+        days_until_renewal = None
+        if subscription and subscription.current_period_end:
+            period_end_utc = (
+                subscription.current_period_end.astimezone(timezone.utc)
+                if subscription.current_period_end.tzinfo
+                else subscription.current_period_end.replace(tzinfo=timezone.utc)
+            )
+            days_until_renewal = (period_end_utc - now).days
+
+        # Days since registration
+        created_utc = (
+            user.created_at.astimezone(timezone.utc)
+            if user.created_at.tzinfo
+            else user.created_at.replace(tzinfo=timezone.utc)
+        )
+        days_since_registration = (now - created_utc).days
+
+        # Detect CRM signals
+        upgrade_opp, upgrade_reason = _detect_upgrade_opportunity(
+            tier,
+            accounts_count,
+            max_accounts,
+            scans_last_30,
+            team_count,
+            max_team,
+        )
+
+        sub_status = subscription.status.value if subscription else "active"
+        churn_risk, churn_reasons = _detect_churn_risk(
+            tier,
+            sub_status,
+            days_since_login,
+            scans_last_30,
+            subscription.cancel_at_period_end if subscription else False,
+            days_until_renewal,
+        )
+
+        renewal_status = _get_renewal_status(
+            tier,
+            subscription.current_period_end if subscription else None,
+            subscription.cancel_at_period_end if subscription else False,
+        )
+
+        # Calculate monthly value (GBP)
+        monthly_value_map = {
+            AccountTier.FREE: 0,
+            AccountTier.FREE_SCAN: 0,
+            AccountTier.INDIVIDUAL: 29,
+            AccountTier.SUBSCRIBER: 29,
+            AccountTier.PRO: 250,
+            AccountTier.ENTERPRISE: 500,  # Placeholder for custom
+        }
+        monthly_value = monthly_value_map.get(tier, 0)
+
+        # Determine if needs attention
+        attention_reasons = []
+        if churn_risk in ("medium", "high"):
+            attention_reasons.append(f"Churn risk: {churn_risk}")
+        if renewal_status in ("due_soon", "overdue"):
+            attention_reasons.append(f"Renewal: {renewal_status}")
+        if sub_status == "past_due":
+            attention_reasons.append("Payment issue")
+
+        # Registration source
+        reg_source = user.identity_provider or "email"
+        if user.oauth_provider:
+            reg_source = user.oauth_provider
+
+        # Build record
+        record = CustomerCRMRecord(
+            user_id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            organisation_id=org.id,
+            organisation_name=org.name,
+            registered_at=user.created_at,
+            days_since_registration=days_since_registration,
+            registration_source=reg_source,
+            tier=tier.value,
+            tier_display=tier.value.title(),
+            subscription_status=sub_status,
+            is_legacy_tier=subscription.is_legacy_tier if subscription else False,
+            stripe_customer_id=(
+                subscription.stripe_customer_id if subscription else None
+            ),
+            current_period_start=(
+                subscription.current_period_start if subscription else None
+            ),
+            current_period_end=(
+                subscription.current_period_end if subscription else None
+            ),
+            days_until_renewal=days_until_renewal,
+            cancel_at_period_end=(
+                subscription.cancel_at_period_end if subscription else False
+            ),
+            monthly_value_gbp=monthly_value,
+            cloud_accounts_count=accounts_count,
+            max_accounts_allowed=max_accounts,
+            accounts_usage_percent=(
+                round((accounts_count / max_accounts) * 100, 1)
+                if max_accounts > 0 and max_accounts < 999999
+                else 0
+            ),
+            team_members_count=team_count,
+            max_team_members=max_team,
+            last_login_at=user.last_login_at,
+            days_since_login=days_since_login,
+            total_scans=total_scans,
+            last_scan_at=last_scan_at,
+            scans_last_30_days=scans_last_30,
+            coverage_score=coverage_score,
+            upgrade_opportunity=upgrade_opp,
+            upgrade_reason=upgrade_reason,
+            churn_risk=churn_risk,
+            churn_reasons=churn_reasons,
+            renewal_status=renewal_status,
+            needs_attention=len(attention_reasons) > 0,
+            attention_reasons=attention_reasons,
+        )
+
+        # Apply filters
+        if churn_risk_filter and record.churn_risk != churn_risk_filter:
+            continue
+        if upgrade_only and not record.upgrade_opportunity:
+            continue
+        if attention_only and not record.needs_attention:
+            continue
+
+        customers.append(record)
+
+    # Calculate summary
+    all_tiers = [c.tier for c in customers]
+    by_tier = {}
+    for t in AccountTier:
+        by_tier[t.value] = all_tiers.count(t.value)
+
+    summary = CRMSummary(
+        total_customers=len(customers),
+        by_tier=by_tier,
+        total_mrr_gbp=sum(c.monthly_value_gbp for c in customers),
+        upgrade_opportunities=len([c for c in customers if c.upgrade_opportunity]),
+        churn_risk_high=len([c for c in customers if c.churn_risk == "high"]),
+        churn_risk_medium=len([c for c in customers if c.churn_risk == "medium"]),
+        needs_attention=len([c for c in customers if c.needs_attention]),
+        renewals_this_week=len(
+            [
+                c
+                for c in customers
+                if c.days_until_renewal is not None and 0 <= c.days_until_renewal <= 7
+            ]
+        ),
+    )
+
+    # Normalise environment for frontend use
+    env = settings.environment.lower()
+    if env in ("prod", "production"):
+        env = "production"
+    elif env in ("staging", "stage"):
+        env = "staging"
+
+    return CustomersListResponse(
+        customers=customers,
+        total_count=len(customers),
+        summary=summary,
+        environment=env,
+    )
