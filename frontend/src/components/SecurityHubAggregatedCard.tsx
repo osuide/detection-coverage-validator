@@ -30,6 +30,29 @@ export interface SecurityHubControl {
   techniques?: string[]  // Optional - not always present from scanner
 }
 
+// Detection effectiveness (compliance findings) from Security Hub
+export interface DetectionEffectiveness {
+  total_controls: number
+  passed_count: number
+  failed_count: number
+  compliance_percent: number
+  by_severity: Record<string, number>
+  top_failing_controls: Array<{
+    control_id: string
+    title: string
+    failed_count: number
+    passed_count: number
+    severity: string
+  }>
+  all_failing_controls: Array<{
+    control_id: string
+    title: string
+    failed_count: number
+    passed_count: number
+    severity: string
+  }>
+}
+
 export interface SecurityHubAggregatedConfig {
   api_version: 'cspm_aggregated' | 'cspm_per_enabled_standard'
   standard_name: string
@@ -39,6 +62,7 @@ export interface SecurityHubAggregatedConfig {
   techniques_covered_count: number
   techniques_covered: string[]
   controls: Record<string, SecurityHubControl>
+  detection_effectiveness?: DetectionEffectiveness
 }
 
 interface SecurityHubAggregatedCardProps {
@@ -288,12 +312,12 @@ export function SecurityHubAggregatedCard({
     return null
   }
 
-  const enabledPercent =
-    config.total_controls_count > 0
-      ? Math.round(
-          (config.enabled_controls_count / config.total_controls_count) * 100
-        )
-      : 0
+  // Use compliance data from detection_effectiveness if available
+  const effectiveness = config.detection_effectiveness
+  const compliancePercent = effectiveness?.compliance_percent ?? 0
+  const passedCount = effectiveness?.passed_count ?? 0
+  const failedCount = effectiveness?.failed_count ?? 0
+  const totalControls = effectiveness?.total_controls ?? config.total_controls_count
 
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
@@ -320,20 +344,29 @@ export function SecurityHubAggregatedCard({
             </div>
           </div>
 
-          {/* Centre: Compact inline stats */}
+          {/* Centre: Compact inline stats - Compliance data */}
           <div className="hidden md:flex items-center gap-6">
-            {/* Controls */}
+            {/* Compliance progress bar */}
             <div className="flex items-center gap-2">
               <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                 <div
-                  className={`h-full ${enabledPercent >= 80 ? 'bg-green-500' : enabledPercent >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                  style={{ width: `${enabledPercent}%` }}
+                  className={`h-full ${compliancePercent >= 80 ? 'bg-green-500' : compliancePercent >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                  style={{ width: `${compliancePercent}%` }}
                 />
               </div>
               <span className="text-xs text-gray-400">
-                {config.enabled_controls_count}/{config.total_controls_count}
+                {passedCount}/{totalControls}
               </span>
             </div>
+
+            {/* Failed count indicator */}
+            {failedCount > 0 && (
+              <div className="flex items-center gap-1.5">
+                <XCircle className="h-3.5 w-3.5 text-red-400" />
+                <span className="text-sm font-medium text-red-400">{failedCount}</span>
+                <span className="text-xs text-gray-500">failed</span>
+              </div>
+            )}
 
             {/* Techniques */}
             <div className="flex items-center gap-1.5">
@@ -342,11 +375,11 @@ export function SecurityHubAggregatedCard({
               <span className="text-xs text-gray-500">techniques</span>
             </div>
 
-            {/* Enablement % */}
+            {/* Compliance % */}
             <span className={`text-sm font-semibold ${
-              enabledPercent >= 80 ? 'text-green-400' : enabledPercent >= 50 ? 'text-yellow-400' : 'text-red-400'
+              compliancePercent >= 80 ? 'text-green-400' : compliancePercent >= 50 ? 'text-yellow-400' : 'text-red-400'
             }`}>
-              {enabledPercent}%
+              {compliancePercent}%
             </span>
           </div>
 
