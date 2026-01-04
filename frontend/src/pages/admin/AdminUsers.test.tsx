@@ -62,7 +62,7 @@ function renderWithProviders(ui: React.ReactElement) {
 function setupAuthenticatedAdmin() {
   useAdminAuthStore.setState({
     accessToken: 'mock-admin-token',
-    refreshToken: 'mock-refresh-token',
+    csrfToken: 'mock-csrf-token',
     admin: {
       id: 'admin-1',
       email: 'admin@example.com',
@@ -88,7 +88,7 @@ describe('AdminUsers', () => {
     // Reset admin auth store
     useAdminAuthStore.setState({
       accessToken: null,
-      refreshToken: null,
+      csrfToken: null,
       admin: null,
       isAuthenticated: false,
       isLoading: false,
@@ -363,7 +363,7 @@ describe('AdminUsers', () => {
       // Clear authentication
       useAdminAuthStore.setState({
         accessToken: null,
-        refreshToken: null,
+        csrfToken: null,
         admin: null,
         isAuthenticated: false,
         isLoading: false,
