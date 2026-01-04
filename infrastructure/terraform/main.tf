@@ -127,10 +127,15 @@ resource "random_password" "credential_encryption" {
 # Redis AUTH token - always generate (no user override needed)
 # Security: Prevents unauthorized cache access even with VPC access
 # ElastiCache requires 16-128 chars, printable ASCII except @, ", /
+# Using alphanumeric only to avoid URL encoding issues in connection string
 resource "random_password" "redis_auth" {
-  length           = 64
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}|:;<>,.?"
+  length  = 64
+  special = false # Alphanumeric only - avoids special char issues with ElastiCache/URLs
+
+  # Keeper forces recreation when changed - increment version to regenerate token
+  keepers = {
+    version = "2" # v1 had invalid special chars, v2 is alphanumeric only
+  }
 }
 
 locals {
