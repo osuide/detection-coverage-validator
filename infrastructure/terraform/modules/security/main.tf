@@ -446,13 +446,15 @@ resource "aws_wafv2_web_acl" "frontend" {
     }
   }
 
-  # Rule 5: Anonymous IP List (Tor, VPNs, proxies - count only for monitoring)
+  # Rule 5: Anonymous IP List (Tor, VPNs, proxies - BLOCK for security)
+  # Security: Block traffic from known anonymous proxies, Tor exit nodes, and VPNs
+  # This prevents attackers from hiding their identity during attacks
   rule {
     name     = "AWSManagedRulesAnonymousIpList"
     priority = 5
 
     override_action {
-      count {}
+      none {} # Use rule's default action (BLOCK)
     }
 
     statement {

@@ -39,10 +39,12 @@ class Settings(BaseSettings):
     # M16: Using SecretStr to prevent accidental exposure in logs/repr
     secret_key: SecretStr
 
-    # Session binding: Optionally validate IP and User-Agent on session refresh
-    # Set to True for higher security (may cause issues for mobile users on changing networks)
-    session_bind_ip: bool = False
-    session_bind_user_agent: bool = False
+    # Session binding: Validate IP and User-Agent on session refresh
+    # Security: Enabled by default in production/staging to prevent session hijacking
+    # May cause issues for mobile users on changing networks - can be disabled if needed
+    # Override with SESSION_BIND_IP=false or SESSION_BIND_USER_AGENT=false
+    session_bind_ip: bool = True
+    session_bind_user_agent: bool = True
 
     # HaveIBeenPwned password checking
     # When enabled, passwords are checked against the HIBP database during signup/password change

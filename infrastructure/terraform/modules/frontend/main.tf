@@ -70,6 +70,53 @@ resource "aws_s3_bucket_versioning" "frontend" {
   }
 }
 
+# Lifecycle policy to clean up old versions and reduce storage costs
+# Security: Ensures old versions don't accumulate indefinitely
+resource "aws_s3_bucket_lifecycle_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  rule {
+    id     = "expire-old-versions"
+    status = "Enabled"
+
+    # Delete non-current versions after 30 days
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+
+    # Clean up incomplete multipart uploads after 7 days
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+
+  rule {
+    id     = "expire-delete-markers"
+    status = "Enabled"
+
+    # Clean up expired delete markers (orphaned markers with no versions)
+    expiration {
+      expired_object_delete_marker = true
+    }
+
+    # Only apply to objects (not folders)
+    filter {
+      prefix = ""
+    }
+  }
+}
+
+# Server-side encryption for frontend bucket
+resource "aws_s3_bucket_server_side_encryption_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
 # CloudFront Origin Access Control (modern replacement for OAI)
 resource "aws_cloudfront_origin_access_control" "frontend" {
   name                              = "a13e-${var.environment}-frontend-oac"

@@ -56,6 +56,61 @@ resource "aws_db_subnet_group" "main" {
   }
 }
 
+# Custom parameter group for PostgreSQL audit logging
+# Security: Enables logging for compliance and security analysis
+resource "aws_db_parameter_group" "postgres" {
+  name   = "dcv-${var.environment}-postgres15"
+  family = "postgres15"
+
+  # Log all DDL statements (CREATE, ALTER, DROP)
+  parameter {
+    name  = "log_statement"
+    value = "ddl"
+  }
+
+  # Log all connections
+  parameter {
+    name  = "log_connections"
+    value = "1"
+  }
+
+  # Log all disconnections
+  parameter {
+    name  = "log_disconnections"
+    value = "1"
+  }
+
+  # Log duration of completed statements (for performance analysis)
+  parameter {
+    name  = "log_duration"
+    value = "1"
+  }
+
+  # Log statements that take longer than 1 second (slow query logging)
+  parameter {
+    name  = "log_min_duration_statement"
+    value = "1000"
+  }
+
+  # Log hostname in addition to IP address
+  parameter {
+    name  = "log_hostname"
+    value = "0"
+  }
+
+  # Log lock waits (for deadlock analysis)
+  parameter {
+    name  = "log_lock_waits"
+    value = "1"
+  }
+
+  tags = {
+    Name        = "dcv-${var.environment}-postgres15"
+    Environment = var.environment
+    Purpose     = "PostgreSQL Audit Logging"
+  }
+}
+
 resource "aws_db_instance" "main" {
   identifier     = "dcv-${var.environment}-db"
   engine         = "postgres"
@@ -73,9 +128,13 @@ resource "aws_db_instance" "main" {
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.db.id]
+  parameter_group_name   = aws_db_parameter_group.postgres.name
 
   # High Availability
   multi_az = var.multi_az
+
+  # Auto minor version upgrade for security patches
+  auto_minor_version_upgrade = true
 
   backup_retention_period = 7
   skip_final_snapshot     = var.environment != "prod"
