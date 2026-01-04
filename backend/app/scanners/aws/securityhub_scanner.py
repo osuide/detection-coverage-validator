@@ -321,21 +321,30 @@ class SecurityHubScanner(BaseScanner):
             for detection in all_detections:
                 standard_id = detection.raw_config.get("standard_id")
                 if standard_id:
+                    # Get actual total controls (not just those with findings)
+                    actual_total = detection.raw_config.get("total_controls_count", 0)
+
                     if standard_id in findings_by_standard:
-                        # Use actual findings data
-                        detection.raw_config["detection_effectiveness"] = (
-                            findings_by_standard[standard_id]
-                        )
+                        # Use findings data but override total with actual control count
+                        # findings_by_standard only contains controls WITH findings,
+                        # not all controls in the standard
+                        effectiveness = findings_by_standard[standard_id].copy()
+                        failed_count = effectiveness["failed_count"]
+
+                        # Override with actual totals from detection
+                        effectiveness["total_controls"] = actual_total
+                        effectiveness["passed_count"] = actual_total - failed_count
+                        if actual_total > 0:
+                            effectiveness["compliance_percent"] = round(
+                                effectiveness["passed_count"] / actual_total * 100
+                            )
+                        detection.raw_config["detection_effectiveness"] = effectiveness
                         standards_with_findings += 1
                     else:
                         # No findings = 100% compliant (all controls passing)
-                        # This ensures the Security Posture card can display this standard
-                        enabled_count = detection.raw_config.get(
-                            "enabled_controls_count", 0
-                        )
                         detection.raw_config["detection_effectiveness"] = {
-                            "total_controls": enabled_count,
-                            "passed_count": enabled_count,
+                            "total_controls": actual_total,
+                            "passed_count": actual_total,
                             "failed_count": 0,
                             "compliance_percent": 100,
                             "by_severity": {
