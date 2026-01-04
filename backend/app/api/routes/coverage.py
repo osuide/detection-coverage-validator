@@ -451,12 +451,13 @@ async def get_technique_coverage(
             )
             mappings = mappings_result.all()
 
-            detection_count = len(mappings)
             if mappings:
                 max_confidence = mappings[0][
                     0
                 ].confidence  # First one has highest confidence
-                detection_names = [m[1] for m in mappings]  # Detection names
+                # Deduplicate names, preserve order (highest confidence first)
+                detection_names = list(dict.fromkeys(m[1] for m in mappings))
+                detection_count = len(detection_names)  # Count unique detections
 
         # Determine status based on confidence threshold
         if max_confidence >= 0.6:
