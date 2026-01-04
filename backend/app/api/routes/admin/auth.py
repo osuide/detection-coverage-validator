@@ -1,9 +1,15 @@
-"""Admin authentication routes."""
+"""Admin authentication routes.
 
+Security: Uses httpOnly cookies for refresh tokens (immune to XSS).
+CSRF protection via double-submit cookie pattern.
+"""
+
+import hmac
+import secrets
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
@@ -22,6 +28,108 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/auth", tags=["Admin Auth"])
 
 
+# === Secure Cookie Configuration ===
+# httpOnly cookies for refresh tokens - immune to XSS
+
+ADMIN_REFRESH_TOKEN_COOKIE_NAME = "dcv_admin_refresh_token"
+ADMIN_CSRF_TOKEN_COOKIE_NAME = "dcv_admin_csrf_token"
+
+
+def set_admin_auth_cookies(
+    response: Response,
+    refresh_token: str,
+    csrf_token: str,
+) -> None:
+    """Set secure httpOnly cookies for admin authentication.
+
+    Args:
+        response: FastAPI response object
+        refresh_token: The refresh token to store
+        csrf_token: CSRF token for double-submit protection
+    """
+    # Admin sessions have shorter lifetime (8 hours vs 7 days for users)
+    max_age = 8 * 60 * 60  # 8 hours
+
+    # Cookie domain for cross-subdomain auth (e.g., ".a13e.com")
+    cookie_domain = settings.cookie_domain
+
+    # Refresh token - httpOnly (not accessible to JS)
+    response.set_cookie(
+        key=ADMIN_REFRESH_TOKEN_COOKIE_NAME,
+        value=refresh_token,
+        max_age=max_age,
+        httponly=True,  # Critical: prevents XSS from stealing token
+        secure=settings.environment != "development",  # HTTPS only in production
+        samesite="lax",  # Protects against CSRF for most cases
+        path="/api/v1/admin/auth",  # Only sent to admin auth endpoints
+        domain=cookie_domain,
+    )
+
+    # CSRF token - NOT httpOnly (JS needs to read and send in header)
+    response.set_cookie(
+        key=ADMIN_CSRF_TOKEN_COOKIE_NAME,
+        value=csrf_token,
+        max_age=max_age,
+        httponly=False,  # JS must read this
+        secure=settings.environment != "development",
+        samesite="lax",
+        path="/",
+        domain=cookie_domain,
+    )
+
+
+def clear_admin_auth_cookies(response: Response) -> None:
+    """Clear admin authentication cookies on logout."""
+    cookie_domain = settings.cookie_domain
+
+    response.delete_cookie(
+        key=ADMIN_REFRESH_TOKEN_COOKIE_NAME,
+        path="/api/v1/admin/auth",
+        domain=cookie_domain,
+    )
+    response.delete_cookie(
+        key=ADMIN_CSRF_TOKEN_COOKIE_NAME,
+        path="/",
+        domain=cookie_domain,
+    )
+
+
+def generate_admin_csrf_token() -> str:
+    """Generate a CSRF token for double-submit cookie pattern."""
+    return secrets.token_urlsafe(32)
+
+
+async def validate_admin_csrf_token(request: Request) -> None:
+    """Validate CSRF token using double-submit cookie pattern.
+
+    Uses hmac.compare_digest for constant-time comparison to prevent timing attacks.
+
+    Raises HTTPException 403 if validation fails.
+    """
+    # Get CSRF token from cookie
+    cookie_token = request.cookies.get(ADMIN_CSRF_TOKEN_COOKIE_NAME)
+    if not cookie_token:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Missing CSRF token cookie",
+        )
+
+    # Get CSRF token from header
+    header_token = request.headers.get("X-Admin-CSRF-Token")
+    if not header_token:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Missing CSRF token header",
+        )
+
+    # Constant-time comparison to prevent timing attacks
+    if not hmac.compare_digest(cookie_token, header_token):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid CSRF token",
+        )
+
+
 # Request/Response schemas
 class AdminLoginRequest(BaseModel):
     """Admin login request."""
@@ -31,14 +139,18 @@ class AdminLoginRequest(BaseModel):
 
 
 class AdminLoginResponse(BaseModel):
-    """Admin login response."""
+    """Admin login response.
+
+    Note: refresh_token is no longer returned in the response body.
+    It is set as an httpOnly cookie for security.
+    """
 
     requires_mfa: bool
     mfa_setup_required: bool = False  # True if MFA needs to be set up first
     mfa_token: Optional[str] = None  # Temporary token for MFA flow
     setup_token: Optional[str] = None  # Token for MFA setup (when mfa_setup_required)
     access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
+    csrf_token: Optional[str] = None  # CSRF token for double-submit pattern
 
 
 class AdminMFARequest(BaseModel):
@@ -49,18 +161,22 @@ class AdminMFARequest(BaseModel):
 
 
 class AdminTokenResponse(BaseModel):
-    """Token response."""
+    """Token response.
+
+    Note: refresh_token is set as an httpOnly cookie, not in response body.
+    """
 
     access_token: str
-    refresh_token: str
+    csrf_token: str  # CSRF token for double-submit pattern
     expires_in: int
     admin: dict
 
 
-class AdminRefreshRequest(BaseModel):
-    """Token refresh request."""
+class AdminRefreshResponse(BaseModel):
+    """Token refresh response."""
 
-    refresh_token: str
+    access_token: str
+    expires_in: int
 
 
 class AdminProfileResponse(BaseModel):
@@ -92,6 +208,7 @@ class AdminEnableMFARequest(BaseModel):
 async def admin_login(
     body: AdminLoginRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> AdminLoginResponse:
     """Admin login endpoint.
@@ -99,6 +216,8 @@ async def admin_login(
     Step 1: Verify email/password
     Step 2: If MFA enabled, return mfa_token for verification
     Step 3: If MFA not enabled, return tokens directly (dev mode only)
+
+    Security: Refresh token is set as httpOnly cookie (not in response body).
     """
     auth_service = get_admin_auth_service(db)
     ip_address = get_client_ip(request) or "unknown"
@@ -158,10 +277,14 @@ async def admin_login(
         user_agent=user_agent,
     )
 
+    # Set refresh token in httpOnly cookie (secure against XSS)
+    csrf_token = generate_admin_csrf_token()
+    set_admin_auth_cookies(response, refresh_token, csrf_token)
+
     return AdminLoginResponse(
         requires_mfa=False,
         access_token=access_token,
-        refresh_token=refresh_token,
+        csrf_token=csrf_token,
     )
 
 
@@ -169,9 +292,13 @@ async def admin_login(
 async def verify_mfa(
     body: AdminMFARequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> AdminTokenResponse:
-    """Verify MFA code and issue tokens."""
+    """Verify MFA code and issue tokens.
+
+    Security: Refresh token is set as httpOnly cookie (not in response body).
+    """
     auth_service = get_admin_auth_service(db)
     ip_address = get_client_ip(request) or "unknown"
     user_agent = request.headers.get("User-Agent")
@@ -216,9 +343,13 @@ async def verify_mfa(
         user_agent=user_agent,
     )
 
+    # Set refresh token in httpOnly cookie (secure against XSS)
+    csrf_token = generate_admin_csrf_token()
+    set_admin_auth_cookies(response, refresh_token, csrf_token)
+
     return AdminTokenResponse(
         access_token=access_token,
-        refresh_token=refresh_token,
+        csrf_token=csrf_token,
         expires_in=auth_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         admin={
             "id": str(admin.id),
@@ -230,18 +361,33 @@ async def verify_mfa(
     )
 
 
-@router.post("/refresh", response_model=dict)
+@router.post("/refresh", response_model=AdminRefreshResponse)
 async def refresh_token(
-    body: AdminRefreshRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-) -> dict:
-    """Refresh access token."""
+    admin_refresh_token: Optional[str] = Cookie(
+        None, alias=ADMIN_REFRESH_TOKEN_COOKIE_NAME
+    ),
+) -> AdminRefreshResponse:
+    """Refresh access token.
+
+    Security: Reads refresh token from httpOnly cookie.
+    CSRF validation is performed to prevent cross-site token refresh attacks.
+    """
+    # Validate CSRF token (prevents cross-site token refresh)
+    await validate_admin_csrf_token(request)
+
+    if not admin_refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing refresh token",
+        )
+
     auth_service = get_admin_auth_service(db)
     ip_address = get_client_ip(request) or "unknown"
 
     access_token = await auth_service.refresh_access_token(
-        refresh_token=body.refresh_token,
+        refresh_token=admin_refresh_token,
         ip_address=ip_address,
     )
 
@@ -251,19 +397,23 @@ async def refresh_token(
             detail="Invalid or expired refresh token",
         )
 
-    return {
-        "access_token": access_token,
-        "expires_in": auth_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    }
+    return AdminRefreshResponse(
+        access_token=access_token,
+        expires_in=auth_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
 
 
 @router.post("/logout")
 async def logout(
     request: Request,
+    response: Response,
     admin: AdminUser = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Logout and terminate session."""
+    """Logout and terminate session.
+
+    Clears httpOnly cookies and invalidates server-side session.
+    """
     auth_service = get_admin_auth_service(db)
     ip_address = get_client_ip(request) or "unknown"
     user_agent = request.headers.get("User-Agent")
@@ -277,6 +427,9 @@ async def logout(
             ip_address=ip_address,
             user_agent=user_agent,
         )
+
+    # Clear httpOnly cookies
+    clear_admin_auth_cookies(response)
 
     return {"message": "Logged out successfully"}
 
@@ -422,12 +575,15 @@ async def setup_mfa_with_token(
 async def enable_mfa_with_token(
     body: AdminEnableMFAWithTokenRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> AdminTokenResponse:
     """Enable MFA and complete login using setup token and TOTP code.
 
-    After MFA is enabled, this endpoint returns access and refresh tokens
-    to complete the login flow.
+    After MFA is enabled, this endpoint returns access tokens and sets
+    refresh token as httpOnly cookie to complete the login flow.
+
+    Security: Refresh token is set as httpOnly cookie (not in response body).
     """
     from app.core.security import decode_token, get_client_ip
     from sqlalchemy import select
@@ -475,9 +631,13 @@ async def enable_mfa_with_token(
         user_agent=user_agent,
     )
 
+    # Set refresh token in httpOnly cookie (secure against XSS)
+    csrf_token = generate_admin_csrf_token()
+    set_admin_auth_cookies(response, refresh_token, csrf_token)
+
     return AdminTokenResponse(
         access_token=access_token,
-        refresh_token=refresh_token,
+        csrf_token=csrf_token,
         expires_in=auth_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         admin={
             "id": str(admin.id),
@@ -601,11 +761,13 @@ async def get_webauthn_auth_options(
 async def verify_webauthn_auth(
     body: WebAuthnAuthVerifyRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> AdminTokenResponse:
     """Complete WebAuthn authentication.
 
-    Verifies the security key response and returns access/refresh tokens.
+    Verifies the security key response and returns access tokens.
+    Security: Refresh token is set as httpOnly cookie (not in response body).
     """
     import json
     from sqlalchemy import select
@@ -693,9 +855,13 @@ async def verify_webauthn_auth(
         user_agent=user_agent,
     )
 
+    # Set refresh token in httpOnly cookie (secure against XSS)
+    csrf_token = generate_admin_csrf_token()
+    set_admin_auth_cookies(response, refresh_token, csrf_token)
+
     return AdminTokenResponse(
         access_token=access_token,
-        refresh_token=refresh_token,
+        csrf_token=csrf_token,
         expires_in=auth_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         admin={
             "id": str(admin.id),

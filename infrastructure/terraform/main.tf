@@ -92,6 +92,22 @@ check "github_oauth_configured" {
   }
 }
 
+check "support_api_key_configured" {
+  assert {
+    condition     = var.support_api_key != ""
+    error_message = <<-EOT
+      ⚠️  WARNING: Support API key not set!
+
+      The support system (Google Apps Script) will NOT work. To fix:
+        export TF_VAR_support_api_key="your-support-api-key"
+
+      Or source the .env.terraform file if available.
+      The existing secret in AWS will be preserved but the task definition
+      will not include the SUPPORT_API_KEY environment variable.
+    EOT
+  }
+}
+
 # =============================================================================
 
 # Random JWT secret key if not provided
@@ -106,6 +122,15 @@ resource "random_password" "credential_encryption" {
   count   = var.credential_encryption_key == "" ? 1 : 0
   length  = 32
   special = false
+}
+
+# Redis AUTH token - always generate (no user override needed)
+# Security: Prevents unauthorized cache access even with VPC access
+# ElastiCache requires 16-128 chars, printable ASCII except @, ", /
+resource "random_password" "redis_auth" {
+  length           = 64
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}|:;<>,.?"
 }
 
 locals {
@@ -151,6 +176,7 @@ module "cache" {
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
   node_type          = var.redis_node_type
+  auth_token         = random_password.redis_auth.result
 }
 
 # DNS and SSL Certificates (only when enable_https is true)

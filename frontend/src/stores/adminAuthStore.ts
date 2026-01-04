@@ -3,9 +3,13 @@
  *
  * This store manages admin authentication state with:
  * - Access tokens stored in memory only (not localStorage)
- * - Refresh tokens stored in localStorage (admin-specific)
+ * - Refresh tokens stored in httpOnly cookies (secure against XSS)
+ * - CSRF token stored in memory for double-submit pattern
  * - Automatic token refresh on 401 responses
  * - Session restoration on page load
+ *
+ * Security: Refresh tokens are now httpOnly cookies, not localStorage.
+ * This prevents XSS attacks from stealing admin credentials.
  */
 
 import { create } from 'zustand'
@@ -25,7 +29,7 @@ export interface AdminUser {
 interface AdminAuthState {
   // State
   accessToken: string | null
-  refreshToken: string | null
+  csrfToken: string | null // CSRF token for double-submit pattern
   admin: AdminUser | null
   isAuthenticated: boolean
   isLoading: boolean
@@ -34,7 +38,7 @@ interface AdminAuthState {
   // Actions
   setAuth: (data: {
     accessToken: string
-    refreshToken: string
+    csrfToken: string
     admin: AdminUser
   }) => void
   clearAuth: () => void
@@ -42,45 +46,45 @@ interface AdminAuthState {
   setInitialised: (initialised: boolean) => void
   updateAdmin: (admin: Partial<AdminUser>) => void
   setAccessToken: (token: string) => void
+  setCsrfToken: (token: string) => void
 }
 
 // API base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
-// Storage keys
-const REFRESH_TOKEN_KEY = 'admin_refresh_token'
+// Cookie name for CSRF token (readable by JS, unlike refresh token)
+const ADMIN_CSRF_COOKIE_NAME = 'dcv_admin_csrf_token'
 
 // Create axios instance for admin auth
+// withCredentials: true ensures cookies are sent with requests
 const adminAuthApi = axios.create({
   baseURL: `${API_BASE_URL}/api/v1/admin/auth`,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Critical: send httpOnly cookies with requests
 })
 
-// Helper to get refresh token from localStorage
-function getStoredRefreshToken(): string | null {
+// Helper to get CSRF token from cookie
+function getCsrfTokenFromCookie(): string | null {
   try {
-    return localStorage.getItem(REFRESH_TOKEN_KEY)
+    const cookies = document.cookie.split(';')
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=')
+      if (name === ADMIN_CSRF_COOKIE_NAME) {
+        return decodeURIComponent(value)
+      }
+    }
+    return null
   } catch {
     return null
   }
 }
 
-// Helper to store refresh token
-function storeRefreshToken(token: string): void {
+// Helper to clear legacy localStorage tokens (migration cleanup)
+function clearLegacyStorage(): void {
   try {
-    localStorage.setItem(REFRESH_TOKEN_KEY, token)
-  } catch {
-    // Ignore storage errors
-  }
-}
-
-// Helper to clear refresh token
-function clearStoredRefreshToken(): void {
-  try {
-    localStorage.removeItem(REFRESH_TOKEN_KEY)
-    // Also clear legacy token key
+    localStorage.removeItem('admin_refresh_token')
     localStorage.removeItem('admin_token')
   } catch {
     // Ignore storage errors
@@ -89,9 +93,9 @@ function clearStoredRefreshToken(): void {
 
 // Zustand store
 export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
-  // Initial state - access token in memory only
+  // Initial state - tokens in memory only (refresh token in httpOnly cookie)
   accessToken: null,
-  refreshToken: null,
+  csrfToken: null,
   admin: null,
   isAuthenticated: false,
   isLoading: false,
@@ -99,14 +103,12 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
 
   // Set authentication data after login
   setAuth: (data) => {
-    // Clear legacy localStorage token
-    clearStoredRefreshToken()
-    // Store new refresh token
-    storeRefreshToken(data.refreshToken)
+    // Clear legacy localStorage tokens (migration cleanup)
+    clearLegacyStorage()
 
     set({
       accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
+      csrfToken: data.csrfToken,
       admin: data.admin,
       isAuthenticated: true,
       isLoading: false,
@@ -116,11 +118,12 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
 
   // Clear all auth data on logout
   clearAuth: () => {
-    clearStoredRefreshToken()
+    // Clear legacy localStorage tokens
+    clearLegacyStorage()
 
     set({
       accessToken: null,
-      refreshToken: null,
+      csrfToken: null,
       admin: null,
       isAuthenticated: false,
       isLoading: false,
@@ -139,12 +142,14 @@ export const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
   },
 
   setAccessToken: (token) => set({ accessToken: token }),
+  setCsrfToken: (token) => set({ csrfToken: token }),
 }))
 
 // Auth API functions that work with the store
 export const adminAuthActions = {
   /**
    * Login with email and password
+   * Security: Refresh token is set as httpOnly cookie by the server
    */
   login: async (email: string, password: string) => {
     const response = await adminAuthApi.post('/login', { email, password })
@@ -169,10 +174,10 @@ export const adminAuthActions = {
       headers: { Authorization: `Bearer ${data.access_token}` },
     })
 
-    // Set auth state
+    // Set auth state (refresh token is in httpOnly cookie, not response body)
     useAdminAuthStore.getState().setAuth({
       accessToken: data.access_token,
-      refreshToken: data.refresh_token,
+      csrfToken: data.csrf_token,
       admin: profileResponse.data,
     })
 
@@ -181,6 +186,7 @@ export const adminAuthActions = {
 
   /**
    * Complete MFA verification
+   * Security: Refresh token is set as httpOnly cookie by the server
    */
   verifyMfa: async (mfaToken: string, totpCode: string) => {
     const response = await adminAuthApi.post('/mfa/verify', {
@@ -192,31 +198,43 @@ export const adminAuthActions = {
 
     useAdminAuthStore.getState().setAuth({
       accessToken: data.access_token,
-      refreshToken: data.refresh_token,
+      csrfToken: data.csrf_token,
       admin: data.admin,
     })
   },
 
   /**
-   * Restore session from stored refresh token on page load
+   * Restore session from httpOnly cookie on page load
+   * Security: Refresh token is read from httpOnly cookie by server,
+   * CSRF token is read from readable cookie for double-submit pattern
    */
   restoreSession: async (): Promise<boolean> => {
     const store = useAdminAuthStore.getState()
     store.setLoading(true)
 
     try {
-      const refreshToken = getStoredRefreshToken()
+      // Get CSRF token from cookie (set by server on previous login)
+      const csrfToken = getCsrfTokenFromCookie()
 
-      if (!refreshToken) {
+      if (!csrfToken) {
+        // No CSRF token means no session to restore
         store.setInitialised(true)
         store.setLoading(false)
         return false
       }
 
       // Try to refresh the access token
-      const response = await adminAuthApi.post('/refresh', {
-        refresh_token: refreshToken,
-      })
+      // httpOnly cookie with refresh token is sent automatically
+      // CSRF token is sent in header for double-submit validation
+      const response = await adminAuthApi.post(
+        '/refresh',
+        {},
+        {
+          headers: {
+            'X-Admin-CSRF-Token': csrfToken,
+          },
+        }
+      )
 
       const data = response.data
       const newAccessToken = data.access_token
@@ -228,13 +246,13 @@ export const adminAuthActions = {
 
       store.setAuth({
         accessToken: newAccessToken,
-        refreshToken: refreshToken, // Keep using the same refresh token
+        csrfToken: csrfToken, // CSRF token remains in cookie
         admin: profileResponse.data,
       })
 
       return true
     } catch {
-      // Session restoration failed - clear stored token
+      // Session restoration failed - clear auth state
       store.clearAuth()
       return false
     }
@@ -242,19 +260,28 @@ export const adminAuthActions = {
 
   /**
    * Refresh the access token
+   * Security: Uses httpOnly cookie for refresh token, CSRF for validation
    */
   refreshToken: async (): Promise<string | null> => {
     const store = useAdminAuthStore.getState()
-    const refreshToken = store.refreshToken || getStoredRefreshToken()
+    const csrfToken = store.csrfToken || getCsrfTokenFromCookie()
 
-    if (!refreshToken) {
+    if (!csrfToken) {
       return null
     }
 
     try {
-      const response = await adminAuthApi.post('/refresh', {
-        refresh_token: refreshToken,
-      })
+      // Refresh token is in httpOnly cookie, sent automatically
+      // CSRF token is sent in header for validation
+      const response = await adminAuthApi.post(
+        '/refresh',
+        {},
+        {
+          headers: {
+            'X-Admin-CSRF-Token': csrfToken,
+          },
+        }
+      )
 
       const newAccessToken = response.data.access_token
       store.setAccessToken(newAccessToken)
@@ -269,6 +296,7 @@ export const adminAuthActions = {
 
   /**
    * Logout and clear session
+   * Server clears httpOnly cookies
    */
   logout: async () => {
     const store = useAdminAuthStore.getState()
@@ -360,6 +388,7 @@ export const adminAuthActions = {
 
   /**
    * Enable MFA and complete login using setup token
+   * Security: Refresh token is set as httpOnly cookie by server
    */
   enableMFAWithToken: async (setupToken: string, totpCode: string): Promise<void> => {
     const response = await adminAuthApi.post('/mfa/enable-with-token', {
@@ -370,9 +399,10 @@ export const adminAuthActions = {
     const data = response.data
 
     // Set auth state - user is now fully logged in
+    // Refresh token is in httpOnly cookie, not response body
     useAdminAuthStore.getState().setAuth({
       accessToken: data.access_token,
-      refreshToken: data.refresh_token,
+      csrfToken: data.csrf_token,
       admin: data.admin,
     })
   },
@@ -389,6 +419,7 @@ export const adminAuthActions = {
 
   /**
    * Complete WebAuthn login with credential response
+   * Security: Refresh token is set as httpOnly cookie by server
    */
   verifyWebAuthnLogin: async (authToken: string, credential: unknown): Promise<void> => {
     const response = await adminAuthApi.post('/webauthn/auth/verify', {
@@ -398,9 +429,10 @@ export const adminAuthActions = {
 
     const data = response.data
 
+    // Refresh token is in httpOnly cookie, not response body
     useAdminAuthStore.getState().setAuth({
       accessToken: data.access_token,
-      refreshToken: data.refresh_token,
+      csrfToken: data.csrf_token,
       admin: data.admin,
     })
   },
@@ -457,6 +489,7 @@ export const createAdminAuthenticatedApi = (baseURL: string) => {
     headers: {
       'Content-Type': 'application/json',
     },
+    withCredentials: true, // Send httpOnly cookies with requests
   })
 
   // Request interceptor - add auth header

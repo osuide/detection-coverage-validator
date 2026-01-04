@@ -14,6 +14,12 @@ variable "node_type" {
   type = string
 }
 
+variable "auth_token" {
+  description = "AUTH token for Redis authentication. Must be 16-128 characters."
+  type        = string
+  sensitive   = true
+}
+
 resource "aws_security_group" "redis" {
   name_prefix = "dcv-${var.environment}-redis-"
   vpc_id      = var.vpc_id
@@ -53,9 +59,10 @@ resource "aws_elasticache_replication_group" "main" {
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = [aws_security_group.redis.id]
 
-  # Security: Enable encryption
+  # Security: Enable encryption and AUTH
   at_rest_encryption_enabled = true
-  transit_encryption_enabled = true
+  transit_encryption_enabled = true # Required for AUTH token
+  auth_token                 = var.auth_token
 
   # Maintenance window (off-peak hours UK time)
   maintenance_window = "sun:03:00-sun:04:00"
@@ -74,7 +81,9 @@ output "endpoint" {
 
 output "connection_string" {
   # Use rediss:// (with double s) for TLS connection
-  value = "rediss://${aws_elasticache_replication_group.main.primary_endpoint_address}:6379/0"
+  # Include AUTH token in URL format: rediss://:password@host:port/db
+  value     = "rediss://:${var.auth_token}@${aws_elasticache_replication_group.main.primary_endpoint_address}:6379/0"
+  sensitive = true
 }
 
 output "security_group_id" {
