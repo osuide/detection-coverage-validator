@@ -1,7 +1,7 @@
 """Add welcome_email_sent_at to users table.
 
 Revision ID: 052_add_welcome_email
-Revises: 051_add_inspector_macie
+Revises: 051_inspector_macie
 Create Date: 2026-01-04
 
 Tracks when welcome email was sent to new users.
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic
 revision = "052_add_welcome_email"
-down_revision = "051_add_inspector_macie"
+down_revision = "051_inspector_macie"
 branch_labels = None
 depends_on = None
 
