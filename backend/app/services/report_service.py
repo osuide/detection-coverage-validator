@@ -46,7 +46,7 @@ from app.models.cloud_account import CloudAccount
 from app.models.coverage import CoverageSnapshot
 from app.models.detection import Detection, DetectionStatus, SecurityFunction
 from app.models.mapping import DetectionMapping
-from app.models.mitre import Technique
+from app.models.mitre import Tactic, Technique
 from app.core.config import get_settings
 
 # Import professional design system
@@ -204,6 +204,10 @@ class ReportService:
             )
         writer.writerow([])  # Blank line separator
 
+        # Get tactics for name lookup
+        tactic_result = await self.db.execute(select(Tactic))
+        tactics = {t.id: t.name for t in tactic_result.scalars().all()}
+
         # Get techniques with coverage status
         result = await self.db.execute(select(Technique))
         techniques = result.scalars().all()
@@ -260,7 +264,7 @@ class ReportService:
                 [
                     _sanitize_csv_cell(tech.technique_id),
                     _sanitize_csv_cell(tech.name),
-                    tech.tactic_id,
+                    tactics.get(tech.tactic_id, "Unknown"),
                     status,
                     f"{confidence:.2f}" if confidence > 0 else "",
                     "Yes" if tech.is_subtechnique else "No",
