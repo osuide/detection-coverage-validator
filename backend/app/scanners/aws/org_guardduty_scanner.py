@@ -254,5 +254,5 @@ class OrgGuardDutyScanner(BaseScanner):
                 "org_id": org_id,
             },
             description=description,
-            is_managed=True,  # GuardDuty is an AWS-managed service
+            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
         )

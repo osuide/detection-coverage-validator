@@ -9,40 +9,6 @@ from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
 from app.scanners.aws.service_mappings import extract_services_from_log_groups
 
-# Patterns indicating AWS-managed CloudWatch alarms
-# These are created by AWS services and should not be modified by users
-AWS_MANAGED_ALARM_PATTERNS = [
-    "DO-NOT-DELETE-",  # AWS Control Tower, Config delivery channel
-    "TargetTracking",  # Auto Scaling target tracking
-    "awsec2-",  # EC2 Auto Scaling alarms
-    "awsrds-",  # RDS Auto Scaling alarms
-    "AWSServiceAlarm",  # Generic AWS service alarms
-]
-
-
-def is_aws_managed_alarm(alarm_name: str, description: str | None = None) -> bool:
-    """Determine if a CloudWatch alarm is AWS-managed.
-
-    Args:
-        alarm_name: The name of the CloudWatch alarm
-        description: The alarm description (if available)
-
-    Returns:
-        True if the alarm is AWS-managed, False otherwise
-    """
-    # Check name patterns
-    if any(pattern in alarm_name for pattern in AWS_MANAGED_ALARM_PATTERNS):
-        return True
-
-    # Check description for AWS-managed indicators
-    if description:
-        if "DO NOT EDIT OR DELETE" in description:
-            return True
-        if "Created by AWS" in description:
-            return True
-
-    return False
-
 
 def _serialize_for_json(obj: Any) -> Any:
     """Recursively convert datetime objects to ISO format strings for JSON serialization."""
@@ -397,9 +363,6 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
             ),
         }
 
-        # Determine if this is an AWS-managed alarm
-        is_managed = is_aws_managed_alarm(alarm_name, description)
-
         # Serialize datetime objects in raw_config for JSON storage
         serialized_alarm = _serialize_for_json(alarm)
         return RawDetection(
@@ -410,5 +373,5 @@ class CloudWatchMetricAlarmScanner(BaseScanner):
             raw_config=serialized_alarm,
             description=description,
             evaluation_summary=evaluation_summary,
-            is_managed=is_managed,
+            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
         )

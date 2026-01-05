@@ -163,11 +163,11 @@ class ConfigRulesScanner(BaseScanner):
         rule_arn = rule.get("ConfigRuleArn", "")
         rule_state = rule.get("ConfigRuleState", "ACTIVE")
 
-        # Determine if managed or custom
+        # Get source details
         source = rule.get("Source", {})
         source_identifier = source.get("SourceIdentifier", "")
         owner = source.get("Owner", "")
-        is_managed = owner == "AWS"
+        is_aws_owned = owner == "AWS"  # Used for description lookup only
 
         # Get rule scope (what resources it monitors)
         scope = rule.get("Scope", {})
@@ -183,7 +183,7 @@ class ConfigRulesScanner(BaseScanner):
 
         # Build description
         description = rule.get("Description", "")
-        if not description and is_managed:
+        if not description and is_aws_owned:
             description = self._get_managed_rule_description(source_identifier)
 
         # Get compliance evaluation summary
@@ -211,7 +211,7 @@ class ConfigRulesScanner(BaseScanner):
                 "evaluation_modes": rule.get("EvaluationModes", []),
             },
             description=description,
-            is_managed=is_managed,
+            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
             target_services=target_services or None,
             evaluation_summary=evaluation_summary,
         )

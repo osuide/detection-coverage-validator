@@ -705,7 +705,7 @@ class SecurityHubScanner(BaseScanner):
                     "api_version": "cspm_aggregated",
                 },
                 description=standard_info["description"],
-                is_managed=True,
+                is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
             )
             detections.append(detection)
 
@@ -1093,7 +1093,7 @@ class SecurityHubScanner(BaseScanner):
                     "api_version": "cspm_aggregated",
                 },
                 description=standard_description,
-                is_managed=True,
+                is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
             )
             detections.append(detection)
 
@@ -1758,7 +1758,7 @@ class SecurityHubScanner(BaseScanner):
                                 "controls": controls,
                             },
                             description=standard_info["description"],
-                            is_managed=True,
+                            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
                         )
                         detections.append(detection)
 
@@ -1823,8 +1823,8 @@ class SecurityHubScanner(BaseScanner):
                     filters = insight.get("Filters", {})
                     group_by = insight.get("GroupByAttribute", "")
 
-                    # Determine if this is a custom or managed insight
-                    is_managed = "arn:aws:securityhub:::insight/" in insight_arn
+                    # Check if this is a built-in AWS insight (stored in raw_config only)
+                    is_aws_insight = "arn:aws:securityhub:::insight/" in insight_arn
 
                     detection = RawDetection(
                         name=f"SecurityHub-Insight-{name}",
@@ -1837,12 +1837,12 @@ class SecurityHubScanner(BaseScanner):
                             "insight_name": name,
                             "filters": filters,
                             "group_by_attribute": group_by,
-                            "is_managed_insight": is_managed,
+                            "is_managed_insight": is_aws_insight,
                         },
                         description=self._generate_insight_description(
                             name, filters, group_by
                         ),
-                        is_managed=is_managed,
+                        is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
                     )
                     detections.append(detection)
 

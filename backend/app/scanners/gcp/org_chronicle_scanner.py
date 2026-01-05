@@ -342,7 +342,7 @@ class OrgChronicleScanner(BaseScanner):
                 "customer_id": customer_id,
             },
             description=f"Chronicle Parser: {parser_name} ({state})",
-            is_managed=parser_type == "BUILTIN",
+            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
         )
 
 

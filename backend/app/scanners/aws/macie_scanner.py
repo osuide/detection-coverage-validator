@@ -140,7 +140,7 @@ class MacieScanner(BaseScanner):
                         "macie_status": status,
                     },
                     description=category["description"],
-                    is_managed=True,  # Macie is a managed service
+                    is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
                     target_services=["S3"],  # Macie primarily monitors S3
                 )
                 detections.append(detection)

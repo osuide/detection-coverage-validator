@@ -140,7 +140,7 @@ class InspectorScanner(BaseScanner):
                         },
                     },
                     description=category["description"],
-                    is_managed=True,  # Inspector is a managed service
+                    is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
                     target_services=category.get("target_services", []),
                 )
                 detections.append(detection)

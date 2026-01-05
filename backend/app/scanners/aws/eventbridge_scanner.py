@@ -9,36 +9,24 @@ from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
 from app.scanners.aws.service_mappings import extract_services_from_event_pattern
 
-# Patterns indicating AWS-managed EventBridge rules
-# These are created by AWS services and should not be modified by users
-AWS_MANAGED_RULE_PATTERNS = [
-    "DO-NOT-DELETE-",  # AWS Control Tower, Config delivery channel
-    "AWSServiceRule",  # AWS service-created rules
-    "aws.partner/",  # AWS Partner event source rules
-    "AwsHealthEvent",  # AWS Health events
-    "SecurityHub",  # Security Hub managed rules
-]
+# Pattern for AWS Control Tower / Config delivery channel rules
+# These rules should not be deleted by users, so we mark them clearly
+DO_NOT_DELETE_PREFIX = "DO-NOT-DELETE-"
 
 
-def is_aws_managed_rule(
-    rule_name: str,
-    managed_by: str | None = None,
-) -> bool:
-    """Determine if an EventBridge rule is AWS-managed.
+def is_do_not_delete_rule(rule_name: str) -> bool:
+    """Check if this is a DO-NOT-DELETE rule that needs the AWS Managed badge.
+
+    These rules are created by AWS Control Tower or Config and should not
+    be modified or deleted by users. The badge helps users understand this.
 
     Args:
         rule_name: The name of the EventBridge rule
-        managed_by: The ManagedBy field from AWS API (if available)
 
     Returns:
-        True if the rule is AWS-managed, False otherwise
+        True if the rule has DO-NOT-DELETE- prefix, False otherwise
     """
-    # AWS API provides ManagedBy field for some managed rules
-    if managed_by:
-        return True
-
-    # Check against known patterns
-    return any(pattern in rule_name for pattern in AWS_MANAGED_RULE_PATTERNS)
+    return rule_name.startswith(DO_NOT_DELETE_PREFIX)
 
 
 class EventBridgeScanner(BaseScanner):
@@ -160,8 +148,8 @@ class EventBridgeScanner(BaseScanner):
             "state": state,
         }
 
-        # Determine if this is an AWS-managed rule
-        is_managed = is_aws_managed_rule(name, managed_by)
+        # Only mark DO-NOT-DELETE- rules as managed (to show badge)
+        is_managed = is_do_not_delete_rule(name)
 
         return RawDetection(
             name=name,

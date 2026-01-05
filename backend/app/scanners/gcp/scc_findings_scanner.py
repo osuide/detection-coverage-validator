@@ -287,7 +287,7 @@ class SCCFindingsScanner(BaseScanner):
                 "org_id": org_id,
             },
             description=description,
-            is_managed=True,  # SCC is a managed service
+            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge  # SCC is a managed service
         )
 
 
@@ -488,7 +488,7 @@ class SCCModuleStatusScanner(BaseScanner):
                 "org_id": org_id,
             },
             description=details["description"],
-            is_managed=True,
+            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
         )
 
     def _create_summary_detection(
@@ -521,5 +521,5 @@ class SCCModuleStatusScanner(BaseScanner):
                 "org_id": org_id,
             },
             description=f"Security Command Center {tier} with {len(enabled_modules)} modules",
-            is_managed=True,
+            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
         )

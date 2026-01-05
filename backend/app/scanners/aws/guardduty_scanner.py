@@ -123,7 +123,7 @@ class GuardDutyScanner(BaseScanner):
                         "data_sources": data_sources,
                     },
                     description=category["description"],
-                    is_managed=True,  # GuardDuty is a managed service
+                    is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
                 )
                 detections.append(detection)
 

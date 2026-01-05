@@ -152,7 +152,7 @@ class SecurityCommandCenterScanner(BaseScanner):
             },
             query_pattern=filter_string,
             description=description or f"SCC notification config: {config_name}",
-            is_managed=True,
+            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
         )
 
     async def _scan_finding_sources(
@@ -217,7 +217,7 @@ class SecurityCommandCenterScanner(BaseScanner):
                 ),
             },
             description=description or f"SCC finding source: {display_name}",
-            is_managed=True,  # SCC sources are managed detections
+            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge  # SCC sources are managed detections
         )
 
 

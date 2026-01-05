@@ -181,7 +181,7 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
             },
             query_pattern=filter_string,
             description=description or f"Org SCC notification: {short_name}",
-            is_managed=True,
+            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
         )
 
     async def _scan_finding_sources(
@@ -224,18 +224,6 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
         display_name = source.display_name or source_name.split("/")[-1]
         description = source.description or ""
 
-        # Identify managed Google sources
-        is_managed = any(
-            name in display_name.lower()
-            for name in [
-                "security health analytics",
-                "event threat detection",
-                "container threat detection",
-                "virtual machine threat detection",
-                "web security scanner",
-            ]
-        )
-
         return RawDetection(
             name=f"Org SCC Source: {display_name}",
             detection_type=self.detection_type,
@@ -252,7 +240,7 @@ class OrgSecurityCommandCenterScanner(BaseScanner):
                 "org_id": org_id,
             },
             description=description or f"SCC finding source: {display_name}",
-            is_managed=is_managed,
+            is_managed=False,  # Only DO-NOT-DELETE- EventBridge rules show badge
         )
 
     async def _scan_bigquery_exports(
