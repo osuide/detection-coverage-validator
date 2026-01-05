@@ -46,6 +46,77 @@ router = APIRouter()
 settings = get_settings()
 
 
+# === CWE-601: Open Redirect Prevention ===
+# Strict whitelist of allowed redirect URIs for OAuth callback
+# These MUST be exact matches to prevent URL manipulation attacks
+ALLOWED_REDIRECT_URIS: dict[str, list[str]] = {
+    "production": [
+        "https://app.a13e.com/auth/callback",
+    ],
+    "staging": [
+        "https://staging.a13e.com/auth/callback",
+    ],
+    "development": [
+        "http://localhost:5173/auth/callback",
+        "http://localhost:3000/auth/callback",
+        "http://127.0.0.1:5173/auth/callback",
+        "http://127.0.0.1:3000/auth/callback",
+    ],
+    "test": [
+        "http://localhost:5173/auth/callback",
+        "http://testserver/auth/callback",
+    ],
+}
+
+
+def validate_redirect_uri(redirect_uri: str, request_ip: str | None = None) -> bool:
+    """Validate redirect_uri against strict whitelist.
+
+    CWE-601: Prevents open redirect attacks by ensuring redirect_uri
+    exactly matches an allowed URI for the current environment.
+
+    Args:
+        redirect_uri: The redirect URI to validate
+        request_ip: IP address of requester (for logging)
+
+    Returns:
+        True if valid, raises HTTPException if invalid
+    """
+    env = settings.environment.lower()
+
+    # Map environment aliases
+    if env in ("prod",):
+        env = "production"
+    elif env in ("dev",):
+        env = "development"
+
+    allowed_uris = ALLOWED_REDIRECT_URIS.get(env, [])
+
+    # Also allow development URIs in staging for testing
+    if env == "staging":
+        allowed_uris = allowed_uris + ALLOWED_REDIRECT_URIS.get("development", [])
+
+    # Exact match required - no partial matching or wildcards
+    if redirect_uri in allowed_uris:
+        return True
+
+    # Log the attack attempt for security monitoring
+    logger.warning(
+        "cognito_oauth_redirect_uri_rejected",
+        redirect_uri=redirect_uri[:200],  # Truncate for safety
+        environment=env,
+        allowed_uris=allowed_uris,
+        ip=request_ip,
+        cwe="CWE-601",
+        severity="HIGH",
+    )
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Invalid redirect_uri. OAuth redirects must use the application's registered callback URL.",
+    )
+
+
 # === OAuth State Store ===
 # CWE-352: Redis-backed state store for CSRF protection
 # Uses Redis for distributed validation across multiple ECS instances.
@@ -158,6 +229,7 @@ async def get_cognito_config() -> CognitoConfigResponse:
 async def initiate_sso(
     provider: str,
     redirect_uri: str,
+    request: Request,
 ) -> SSOInitiateResponse:
     """Initiate SSO flow for a provider with PKCE."""
     if not cognito_service.is_configured():
@@ -165,6 +237,9 @@ async def initiate_sso(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="SSO is not configured",
         )
+
+    # CWE-601: Validate redirect_uri against strict whitelist BEFORE proceeding
+    validate_redirect_uri(redirect_uri, get_client_ip(request))
 
     # Validate provider and map to Cognito identity provider name
     provider_mapping = {
@@ -233,6 +308,10 @@ async def exchange_cognito_token(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="SSO is not configured",
         )
+
+    # CWE-601: Validate redirect_uri against strict whitelist
+    # This MUST be checked before exchanging the code to prevent token theft
+    validate_redirect_uri(body.redirect_uri, get_client_ip(request))
 
     # Security: Always validate OAuth state for CSRF protection (Redis or fallback)
     state_valid = False
