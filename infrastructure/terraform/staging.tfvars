@@ -81,6 +81,13 @@ enable_codebuild_tests = true
 enable_docs = true
 
 # ============================================================================
+# CloudTrail Audit Logging (CWE-778)
+# ============================================================================
+# Enables audit logging for all AWS API calls and Secrets Manager access.
+# Required for security compliance and incident investigation.
+enable_cloudtrail = true
+
+# ============================================================================
 # Google Workspace Integration (WIF)
 # ============================================================================
 # Enables automated support, CRM, and operations via Google Workspace APIs.
