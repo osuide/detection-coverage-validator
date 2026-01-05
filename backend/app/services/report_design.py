@@ -28,6 +28,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 from reportlab.platypus import (
+    SimpleDocTemplate,
     TableStyle,
 )
 from reportlab.graphics.shapes import Drawing, Rect, String
@@ -664,7 +665,9 @@ class ReportPageTemplate:
         self.confidential = confidential
         self.page_count = 0
 
-    def draw_header_footer(self, canvas_obj: canvas.Canvas, doc) -> None:
+    def draw_header_footer(
+        self, canvas_obj: canvas.Canvas, doc: SimpleDocTemplate
+    ) -> None:
         """Draw header and footer on each page."""
         canvas_obj.saveState()
 
@@ -719,7 +722,7 @@ class ReportPageTemplate:
     def draw_cover_page(
         self,
         canvas_obj: canvas.Canvas,
-        doc,
+        doc: SimpleDocTemplate,
         generated_at: datetime,
     ) -> None:
         """Draw the cover page with logo and branding."""

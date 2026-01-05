@@ -509,13 +509,17 @@ class ReportService:
             )
 
         # Build PDF with page callbacks
-        def on_first_page(canvas_obj: canvas.Canvas, doc_obj) -> None:
+        def on_first_page(
+            canvas_obj: canvas.Canvas, doc_obj: SimpleDocTemplate
+        ) -> None:
             """Draw cover page."""
             page_template.draw_cover_page(canvas_obj, doc_obj, generated_at)
             if add_watermark:
                 _draw_watermark(canvas_obj, doc_obj)
 
-        def on_later_pages(canvas_obj: canvas.Canvas, doc_obj) -> None:
+        def on_later_pages(
+            canvas_obj: canvas.Canvas, doc_obj: SimpleDocTemplate
+        ) -> None:
             """Draw header/footer on subsequent pages."""
             page_template.draw_header_footer(canvas_obj, doc_obj)
             if add_watermark:
@@ -1092,12 +1096,16 @@ class ReportService:
                 story.append(Spacer(1, 4))
 
         # Build PDF
-        def on_first_page(canvas_obj: canvas.Canvas, doc_obj) -> None:
+        def on_first_page(
+            canvas_obj: canvas.Canvas, doc_obj: SimpleDocTemplate
+        ) -> None:
             page_template.draw_cover_page(canvas_obj, doc_obj, generated_at)
             if add_watermark:
                 _draw_watermark(canvas_obj, doc_obj)
 
-        def on_later_pages(canvas_obj: canvas.Canvas, doc_obj) -> None:
+        def on_later_pages(
+            canvas_obj: canvas.Canvas, doc_obj: SimpleDocTemplate
+        ) -> None:
             page_template.draw_header_footer(canvas_obj, doc_obj)
             if add_watermark:
                 _draw_watermark(canvas_obj, doc_obj)
