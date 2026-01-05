@@ -210,18 +210,13 @@ def get_report_styles() -> dict:
         )
     )
 
-    # Body text
-    styles.add(
-        ParagraphStyle(
-            name="BodyText",
-            fontName=Typography.FONT_REGULAR,
-            fontSize=Typography.SIZE_BODY,
-            leading=Typography.LEADING_BODY,
-            textColor=BrandColours.GREY_700,
-            alignment=TA_JUSTIFY,
-            spaceAfter=8,
-        )
-    )
+    # Body text - override the default BodyText style
+    styles["BodyText"].fontName = Typography.FONT_REGULAR
+    styles["BodyText"].fontSize = Typography.SIZE_BODY
+    styles["BodyText"].leading = Typography.LEADING_BODY
+    styles["BodyText"].textColor = BrandColours.GREY_700
+    styles["BodyText"].alignment = TA_JUSTIFY
+    styles["BodyText"].spaceAfter = 8
 
     # Body text (left aligned)
     styles.add(
