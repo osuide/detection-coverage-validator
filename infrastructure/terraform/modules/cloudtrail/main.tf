@@ -326,27 +326,18 @@ resource "aws_cloudtrail" "main" {
   # Enable log file integrity validation
   enable_log_file_validation = true
 
-  # Management events (API calls)
-  event_selector {
-    read_write_type           = "All"
-    include_management_events = true
-  }
+  # Management events (API calls) - using advanced_event_selector
+  # Note: Cannot mix event_selector and advanced_event_selector
+  advanced_event_selector {
+    name = "ManagementEvents"
 
-  # Optional: S3 data events (significant cost - enable for production)
-  dynamic "event_selector" {
-    for_each = var.enable_data_events ? [1] : []
-    content {
-      read_write_type           = "All"
-      include_management_events = false
-
-      data_resource {
-        type   = "AWS::S3::Object"
-        values = ["arn:aws:s3"]
-      }
+    field_selector {
+      field  = "eventCategory"
+      equals = ["Management"]
     }
   }
 
-  # Advanced event selectors for Secrets Manager (always enabled)
+  # Secrets Manager data events (always enabled)
   # Tracks access to sensitive secrets
   advanced_event_selector {
     name = "SecretsManagerAccess"
@@ -359,6 +350,24 @@ resource "aws_cloudtrail" "main" {
     field_selector {
       field  = "resources.type"
       equals = ["AWS::SecretsManager::Secret"]
+    }
+  }
+
+  # Optional: S3 data events (significant cost - enable for production)
+  dynamic "advanced_event_selector" {
+    for_each = var.enable_data_events ? [1] : []
+    content {
+      name = "S3DataEvents"
+
+      field_selector {
+        field  = "eventCategory"
+        equals = ["Data"]
+      }
+
+      field_selector {
+        field  = "resources.type"
+        equals = ["AWS::S3::Object"]
+      }
     }
   }
 
