@@ -295,7 +295,7 @@ async def download_full_pdf(
             cloud_account_id,
             include_executive_summary=True,
             include_gap_analysis=True,
-            include_detection_details=True,
+            include_detection_details=False,  # Detections better suited for CSV export
             include_compliance=True,
             add_watermark=False,  # No watermark for paid subscribers
         )
