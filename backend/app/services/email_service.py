@@ -1,7 +1,9 @@
 """Email service using AWS SES."""
 
 import os
+from html import escape as html_escape
 from typing import Optional
+
 import boto3
 from botocore.exceptions import ClientError
 import structlog
@@ -240,17 +242,23 @@ class EmailService:
         """
         invite_link = f"{self.app_url}/invites/accept?token={invite_token}"
 
-        # Build message section
+        # HTML-escape user inputs to prevent XSS (CWE-79)
+        safe_org_name = html_escape(org_name)
+        safe_role = html_escape(role.title())
+
+        # Build message section with escaped content
         if message:
-            message_section = f'<div class="message-box">"{message}"</div>'
+            safe_message = html_escape(message)
+            message_section = f'<div class="message-box">"{safe_message}"</div>'
             if inviter_name:
-                message_section = f'<div class="message-box">"{message}"<br><br>— {inviter_name}</div>'
+                safe_inviter = html_escape(inviter_name)
+                message_section = f'<div class="message-box">"{safe_message}"<br><br>— {safe_inviter}</div>'
         else:
             message_section = ""
 
         html_body = TEAM_INVITE_TEMPLATE.format(
-            org_name=org_name,
-            role=role.title(),
+            org_name=safe_org_name,
+            role=safe_role,
             invite_link=invite_link,
             message_section=message_section,
         )
@@ -264,7 +272,7 @@ class EmailService:
 
         return self._send_email(
             to_email=to_email,
-            subject=f"You've been invited to join {org_name} on A13E",
+            subject=f"You've been invited to join {safe_org_name} on A13E",
             html_body=html_body,
         )
 
