@@ -142,7 +142,7 @@ export function RegionalAggregatedCard({
             <div className={`shrink-0 p-1.5 ${typeConfig.bgColour} rounded-lg`}>
               <TypeIcon className={`h-5 w-5 ${typeConfig.colour}`} />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h3 className="text-sm font-medium text-white truncate">{name}</h3>
               <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
                 <span className="inline-flex items-center">
@@ -152,46 +152,48 @@ export function RegionalAggregatedCard({
                 <span>•</span>
                 <span>{latestDiscovered.toLocaleDateString()}</span>
               </div>
-            </div>
-
-            {/* Mobile: compact stats row */}
-            <div className="md:hidden flex flex-wrap items-center gap-2 mt-2">
-              <div
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${
-                  activeRegions.length === detections.length
-                    ? 'bg-green-900/30'
-                    : activeRegions.length > 0
-                    ? 'bg-yellow-900/30'
-                    : 'bg-red-900/30'
-                }`}
-              >
-                <MapPin className="h-3 w-3 text-gray-400" />
-                <span
-                  className={`text-xs font-medium ${
+              {/* Mobile: compact stats row - INSIDE title container for proper vertical stacking */}
+              <div className="md:hidden flex flex-wrap items-center gap-2 mt-2">
+                <div
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${
                     activeRegions.length === detections.length
-                      ? 'text-green-400'
+                      ? 'bg-green-900/30'
                       : activeRegions.length > 0
-                      ? 'text-yellow-400'
-                      : 'text-red-400'
+                      ? 'bg-yellow-900/30'
+                      : 'bg-red-900/30'
                   }`}
                 >
-                  {activeRegions.length}/{detections.length}
-                </span>
-              </div>
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-900/30">
-                <Shield className="h-3 w-3 text-green-400" />
-                <span className="text-xs font-medium text-green-400">
-                  {totalMappings}
-                </span>
-              </div>
-              {unprotectedRegions.length > 0 && (
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-900/30">
-                  <ShieldOff className="h-3 w-3 text-amber-400" />
-                  <span className="text-xs font-medium text-amber-400">
-                    {unprotectedRegions.length}
+                  <MapPin className="h-3 w-3 text-gray-400" />
+                  <span
+                    className={`text-xs font-medium ${
+                      activeRegions.length === detections.length
+                        ? 'text-green-400'
+                        : activeRegions.length > 0
+                        ? 'text-yellow-400'
+                        : 'text-red-400'
+                    }`}
+                  >
+                    {activeRegions.length}/{detections.length}
                   </span>
+                  <span className="text-xs text-gray-500">active</span>
                 </div>
-              )}
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-900/30">
+                  <Shield className="h-3 w-3 text-green-400" />
+                  <span className="text-xs font-medium text-green-400">
+                    {totalMappings}
+                  </span>
+                  <span className="text-xs text-gray-500">techniques</span>
+                </div>
+                {unprotectedRegions.length > 0 && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-900/30">
+                    <ShieldOff className="h-3 w-3 text-amber-400" />
+                    <span className="text-xs font-medium text-amber-400">
+                      {unprotectedRegions.length}
+                    </span>
+                    <span className="text-xs text-gray-500">unprotected</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
