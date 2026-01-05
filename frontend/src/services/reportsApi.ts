@@ -18,7 +18,7 @@ const api = axios.create({
 })
 
 // Types
-export type ReportType = 'coverage' | 'gaps' | 'detections' | 'executive' | 'full'
+export type ReportType = 'coverage' | 'gaps' | 'detections' | 'executive' | 'full' | 'compliance'
 export type ReportFormat = 'csv' | 'pdf' | 'json'
 
 export interface ReportOptions {
@@ -173,6 +173,30 @@ export const reportsApi = {
       filename: getFilenameFromHeader(
         response.headers['content-disposition'],
         `full_report_${cloudAccountId}.pdf`
+      ),
+      contentType: 'application/pdf',
+    }
+  },
+
+  /**
+   * Download compliance summary PDF report
+   * Dedicated report showing NIST 800-53 and CIS Controls coverage
+   */
+  downloadCompliancePdf: async (
+    token: string,
+    cloudAccountId: string
+  ): Promise<ReportDownloadResult> => {
+    const response = await api.get('/compliance/pdf', {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { cloud_account_id: cloudAccountId },
+      responseType: 'blob',
+    })
+
+    return {
+      blob: response.data,
+      filename: getFilenameFromHeader(
+        response.headers['content-disposition'],
+        `compliance_report_${cloudAccountId}.pdf`
       ),
       contentType: 'application/pdf',
     }

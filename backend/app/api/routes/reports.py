@@ -296,6 +296,7 @@ async def download_full_pdf(
             include_executive_summary=True,
             include_gap_analysis=True,
             include_detection_details=True,
+            include_compliance=True,
             add_watermark=False,  # No watermark for paid subscribers
         )
 
@@ -309,3 +310,57 @@ async def download_full_pdf(
     except Exception as e:
         logger.error("pdf_generation_failed", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to generate PDF report")
+
+
+@router.get(
+    "/compliance/pdf",
+    dependencies=[Depends(require_scope("read:reports"))],
+)
+async def download_compliance_pdf(
+    cloud_account_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Download compliance summary PDF report.
+
+    Dedicated report showing NIST 800-53 and CIS Controls coverage.
+    Requires paid subscription (Individual tier or higher).
+    """
+    # Require paid subscription for reports
+    await _require_paid_subscription(db, auth.organization_id)
+
+    # Security: Check account-level ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
+    result = await db.execute(
+        select(CloudAccount).where(
+            CloudAccount.id == cloud_account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=404, detail="Cloud account not found")
+
+    try:
+        service = ReportService(db)
+        pdf_content = await service.generate_compliance_pdf_report(
+            cloud_account_id,
+            add_watermark=False,  # No watermark for paid subscribers
+        )
+
+        return StreamingResponse(
+            io.BytesIO(pdf_content),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=compliance_report_{sanitize_filename(account.name)}.pdf"
+            },
+        )
+    except Exception as e:
+        logger.error("compliance_pdf_generation_failed", error=str(e))
+        raise HTTPException(
+            status_code=500, detail="Failed to generate compliance PDF report"
+        )

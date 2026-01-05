@@ -20,6 +20,7 @@ import {
   Check,
   ArrowRight,
   Sparkles,
+  Shield,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { billingApi, Subscription } from '../services/billingApi'
@@ -69,7 +70,7 @@ export default function Reports() {
   const selectedAccount = accounts?.find((a) => a.id === selectedAccountId)
 
   const handleDownload = async (
-    reportType: 'coverage' | 'gaps' | 'detections' | 'executive' | 'full'
+    reportType: 'coverage' | 'gaps' | 'detections' | 'executive' | 'full' | 'compliance'
   ) => {
     if (!accessToken || !selectedAccountId) return
 
@@ -98,6 +99,9 @@ export default function Reports() {
           break
         case 'full':
           result = await reportsApi.downloadFullPdf(accessToken, selectedAccountId)
+          break
+        case 'compliance':
+          result = await reportsApi.downloadCompliancePdf(accessToken, selectedAccountId)
           break
       }
 
@@ -154,6 +158,15 @@ export default function Reports() {
       format: 'PDF',
       icon: FileBarChart,
       colour: 'text-indigo-600 bg-indigo-100',
+      isPdf: true,
+    },
+    {
+      id: 'compliance' as const,
+      name: 'Compliance Summary',
+      description: 'NIST 800-53 Rev 5 and CIS Controls v8 coverage analysis with control-level details',
+      format: 'PDF',
+      icon: Shield,
+      colour: 'text-teal-600 bg-teal-100',
       isPdf: true,
     },
   ]
