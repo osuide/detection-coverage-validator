@@ -167,6 +167,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "cloudtrail" {
     id     = "cloudtrail-lifecycle"
     status = "Enabled"
 
+    # Required filter block for AWS provider 4.x+
+    filter {}
+
     transition {
       days          = 90
       storage_class = "STANDARD_IA"

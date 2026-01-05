@@ -437,6 +437,7 @@ resource "aws_guardduty_detector" "main" {
 
 module "cloudtrail" {
   source = "./modules/cloudtrail"
+  count  = var.enable_cloudtrail ? 1 : 0
 
   environment               = var.environment
   enable_data_events        = var.environment == "prod" # S3 data events only in production (cost)

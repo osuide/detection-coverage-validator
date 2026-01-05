@@ -208,6 +208,16 @@ variable "github_repo" {
 }
 
 # ============================================================================
+# CloudTrail Audit Logging
+# ============================================================================
+
+variable "enable_cloudtrail" {
+  description = "Enable CloudTrail for audit logging. Requires kms:TagResource permission for the GitHub Actions IAM user."
+  type        = bool
+  default     = false
+}
+
+# ============================================================================
 # API Documentation Site
 # ============================================================================
 
