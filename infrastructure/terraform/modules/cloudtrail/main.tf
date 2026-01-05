@@ -160,6 +160,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "cloudtrail" {
 }
 
 # Lifecycle policy - transition to cheaper storage and eventually delete
+# Note: Transitions are only enabled when retention is long enough
+# (expiration must be > transition days)
 resource "aws_s3_bucket_lifecycle_configuration" "cloudtrail" {
   bucket = aws_s3_bucket.cloudtrail.id
 
@@ -170,14 +172,22 @@ resource "aws_s3_bucket_lifecycle_configuration" "cloudtrail" {
     # Required filter block for AWS provider 4.x+
     filter {}
 
-    transition {
-      days          = 90
-      storage_class = "STANDARD_IA"
+    # Only transition to STANDARD_IA if retention >= 120 days
+    dynamic "transition" {
+      for_each = var.log_retention_days >= 120 ? [1] : []
+      content {
+        days          = 90
+        storage_class = "STANDARD_IA"
+      }
     }
 
-    transition {
-      days          = 180
-      storage_class = "GLACIER"
+    # Only transition to GLACIER if retention >= 365 days
+    dynamic "transition" {
+      for_each = var.log_retention_days >= 365 ? [1] : []
+      content {
+        days          = 180
+        storage_class = "GLACIER"
+      }
     }
 
     expiration {
@@ -329,7 +339,8 @@ resource "aws_cloudtrail" "main" {
   # Enable log file integrity validation
   enable_log_file_validation = true
 
-  # Management events (API calls) - using advanced_event_selector
+  # Management events (API calls) - captures all AWS API activity
+  # including Secrets Manager, IAM, EC2, etc.
   # Note: Cannot mix event_selector and advanced_event_selector
   advanced_event_selector {
     name = "ManagementEvents"
@@ -337,22 +348,6 @@ resource "aws_cloudtrail" "main" {
     field_selector {
       field  = "eventCategory"
       equals = ["Management"]
-    }
-  }
-
-  # Secrets Manager data events (always enabled)
-  # Tracks access to sensitive secrets
-  advanced_event_selector {
-    name = "SecretsManagerAccess"
-
-    field_selector {
-      field  = "eventCategory"
-      equals = ["Data"]
-    }
-
-    field_selector {
-      field  = "resources.type"
-      equals = ["AWS::SecretsManager::Secret"]
     }
   }
 
