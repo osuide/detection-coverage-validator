@@ -1,27 +1,27 @@
 /**
  * OAuth Store Unit Tests
  *
- * Tests for secure in-memory OAuth state management.
+ * Tests for sessionStorage-backed OAuth state management.
+ * sessionStorage is used to survive OAuth redirects while maintaining
+ * tab isolation and automatic cleanup on tab close.
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { useOAuthStore } from './oauthStore'
 
+const STORAGE_KEY = 'a13e_oauth_params'
+
 describe('oauthStore', () => {
   beforeEach(() => {
-    // Reset store state before each test
-    useOAuthStore.setState({
-      state: null,
-      codeVerifier: null,
-      provider: null,
-      createdAt: null,
-    })
+    // Clear sessionStorage before each test
+    sessionStorage.clear()
     // Reset timers
     vi.useRealTimers()
   })
 
   afterEach(() => {
     vi.useRealTimers()
+    sessionStorage.clear()
   })
 
   describe('setOAuthParams', () => {
@@ -34,11 +34,11 @@ describe('oauthStore', () => {
         provider: 'cognito',
       })
 
-      const updatedStore = useOAuthStore.getState()
-      expect(updatedStore.state).toBe('test-state-123')
-      expect(updatedStore.codeVerifier).toBe('test-code-verifier-456')
-      expect(updatedStore.provider).toBe('cognito')
-      expect(updatedStore.createdAt).toBeGreaterThan(0)
+      const stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}')
+      expect(stored.state).toBe('test-state-123')
+      expect(stored.codeVerifier).toBe('test-code-verifier-456')
+      expect(stored.provider).toBe('cognito')
+      expect(stored.createdAt).toBeGreaterThan(0)
     })
 
     it('should store OAuth parameters for GitHub flow (no codeVerifier)', () => {
@@ -49,10 +49,10 @@ describe('oauthStore', () => {
         provider: 'github',
       })
 
-      const updatedStore = useOAuthStore.getState()
-      expect(updatedStore.state).toBe('github-state-789')
-      expect(updatedStore.codeVerifier).toBeNull()
-      expect(updatedStore.provider).toBe('github')
+      const stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}')
+      expect(stored.state).toBe('github-state-789')
+      expect(stored.codeVerifier).toBeNull()
+      expect(stored.provider).toBe('github')
     })
 
     it('should overwrite previous OAuth parameters', () => {
@@ -72,9 +72,9 @@ describe('oauthStore', () => {
         provider: 'cognito',
       })
 
-      const updatedStore = useOAuthStore.getState()
-      expect(updatedStore.state).toBe('second-state')
-      expect(updatedStore.codeVerifier).toBe('second-verifier')
+      const stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}')
+      expect(stored.state).toBe('second-state')
+      expect(stored.codeVerifier).toBe('second-verifier')
     })
   })
 
@@ -94,11 +94,8 @@ describe('oauthStore', () => {
       expect(params.codeVerifier).toBe('test-verifier')
       expect(params.provider).toBe('cognito')
 
-      // Verify params are cleared
-      const clearedStore = useOAuthStore.getState()
-      expect(clearedStore.state).toBeNull()
-      expect(clearedStore.codeVerifier).toBeNull()
-      expect(clearedStore.provider).toBeNull()
+      // Verify params are cleared from sessionStorage
+      expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull()
     })
 
     it('should return null values when no params are stored', () => {
@@ -142,64 +139,12 @@ describe('oauthStore', () => {
 
       store.clearParams()
 
-      const clearedStore = useOAuthStore.getState()
-      expect(clearedStore.state).toBeNull()
-      expect(clearedStore.codeVerifier).toBeNull()
-      expect(clearedStore.provider).toBeNull()
-      expect(clearedStore.createdAt).toBeNull()
+      expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull()
     })
   })
 
-  describe('isExpired', () => {
-    it('should return true when no params are set', () => {
-      const store = useOAuthStore.getState()
-      expect(store.isExpired()).toBe(true)
-    })
-
-    it('should return false for recently set params', () => {
-      const store = useOAuthStore.getState()
-
-      store.setOAuthParams({
-        state: 'fresh-state',
-        provider: 'github',
-      })
-
-      expect(useOAuthStore.getState().isExpired()).toBe(false)
-    })
-
-    it('should return true after 5 minutes', () => {
-      vi.useFakeTimers()
-
-      const store = useOAuthStore.getState()
-      store.setOAuthParams({
-        state: 'old-state',
-        provider: 'github',
-      })
-
-      // Fast-forward 6 minutes
-      vi.advanceTimersByTime(6 * 60 * 1000)
-
-      expect(useOAuthStore.getState().isExpired()).toBe(true)
-    })
-
-    it('should return false just before 5 minutes', () => {
-      vi.useFakeTimers()
-
-      const store = useOAuthStore.getState()
-      store.setOAuthParams({
-        state: 'valid-state',
-        provider: 'cognito',
-      })
-
-      // Fast-forward 4 minutes 59 seconds
-      vi.advanceTimersByTime(4 * 60 * 1000 + 59 * 1000)
-
-      expect(useOAuthStore.getState().isExpired()).toBe(false)
-    })
-  })
-
-  describe('getAndClearParams with expiry', () => {
-    it('should return nulls for expired params', () => {
+  describe('expiry handling', () => {
+    it('should return nulls for expired params (after 5 minutes)', () => {
       vi.useFakeTimers()
 
       const store = useOAuthStore.getState()
@@ -218,25 +163,66 @@ describe('oauthStore', () => {
       expect(params.codeVerifier).toBeNull()
       expect(params.provider).toBeNull()
     })
-  })
 
-  describe('security properties', () => {
-    it('should not persist to localStorage', () => {
+    it('should return params before 5 minutes', () => {
+      vi.useFakeTimers()
+
       const store = useOAuthStore.getState()
-
       store.setOAuthParams({
-        state: 'secret-state',
-        codeVerifier: 'secret-verifier',
+        state: 'valid-state',
+        codeVerifier: 'valid-verifier',
         provider: 'cognito',
       })
 
-      // Check that nothing was written to localStorage
-      expect(localStorage.getItem('oauth_state')).toBeNull()
-      expect(localStorage.getItem('oauth_code_verifier')).toBeNull()
-      expect(localStorage.getItem('oauth_provider')).toBeNull()
+      // Fast-forward 4 minutes 59 seconds
+      vi.advanceTimersByTime(4 * 60 * 1000 + 59 * 1000)
+
+      const params = useOAuthStore.getState().getAndClearParams()
+
+      expect(params.state).toBe('valid-state')
+      expect(params.codeVerifier).toBe('valid-verifier')
     })
 
-    it('should not persist to sessionStorage', () => {
+    it('should clear expired params from sessionStorage', () => {
+      vi.useFakeTimers()
+
+      const store = useOAuthStore.getState()
+      store.setOAuthParams({
+        state: 'expired-state',
+        provider: 'github',
+      })
+
+      // Fast-forward 6 minutes
+      vi.advanceTimersByTime(6 * 60 * 1000)
+
+      // Retrieve (should be expired)
+      store.getAndClearParams()
+
+      // sessionStorage should be cleared
+      expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull()
+    })
+  })
+
+  describe('storage behaviour', () => {
+    it('should use sessionStorage (survives same-tab navigation)', () => {
+      const store = useOAuthStore.getState()
+
+      store.setOAuthParams({
+        state: 'navigation-test',
+        codeVerifier: 'nav-verifier',
+        provider: 'cognito',
+      })
+
+      // Verify it's in sessionStorage
+      expect(sessionStorage.getItem(STORAGE_KEY)).not.toBeNull()
+
+      // Simulate what happens after OAuth redirect (new store instance reads from sessionStorage)
+      const params = useOAuthStore.getState().getAndClearParams()
+      expect(params.state).toBe('navigation-test')
+      expect(params.codeVerifier).toBe('nav-verifier')
+    })
+
+    it('should NOT persist to localStorage', () => {
       const store = useOAuthStore.getState()
 
       store.setOAuthParams({
@@ -245,10 +231,40 @@ describe('oauthStore', () => {
         provider: 'cognito',
       })
 
-      // Check that nothing was written to sessionStorage
-      expect(sessionStorage.getItem('oauth_state')).toBeNull()
-      expect(sessionStorage.getItem('oauth_code_verifier')).toBeNull()
-      expect(sessionStorage.getItem('oauth_provider')).toBeNull()
+      // localStorage should not have any OAuth data
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+      expect(localStorage.getItem('oauth_state')).toBeNull()
+      expect(localStorage.getItem('oauth_code_verifier')).toBeNull()
+    })
+
+    it('should handle sessionStorage errors gracefully', () => {
+      // Use vi.spyOn to properly mock sessionStorage methods
+      const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('QuotaExceededError')
+      })
+      const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('SecurityError')
+      })
+
+      const store = useOAuthStore.getState()
+
+      // Should not throw when setItem fails
+      expect(() => {
+        store.setOAuthParams({
+          state: 'error-test',
+          provider: 'github',
+        })
+      }).not.toThrow()
+
+      // Should return nulls when getItem fails
+      const params = store.getAndClearParams()
+      expect(params.state).toBeNull()
+      expect(params.codeVerifier).toBeNull()
+      expect(params.provider).toBeNull()
+
+      // Restore mocks
+      setItemSpy.mockRestore()
+      getItemSpy.mockRestore()
     })
   })
 })
