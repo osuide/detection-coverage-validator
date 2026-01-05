@@ -24,6 +24,7 @@ import {
   Bell,
   AlertTriangle,
   ShieldOff,
+  Cloud,
 } from 'lucide-react'
 import { Detection } from '../services/api'
 
@@ -129,6 +130,9 @@ export function RegionalAggregatedCard({
     return date > latest ? date : latest
   }, new Date(0))
 
+  // Check if this is an AWS-managed detection (DO-NOT-DELETE- rules)
+  const isManaged = detections.some((d) => d.is_managed)
+
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
       {/* Card header */}
@@ -143,7 +147,15 @@ export function RegionalAggregatedCard({
               <TypeIcon className={`h-5 w-5 ${typeConfig.colour}`} />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-medium text-white truncate">{name}</h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-medium text-white truncate">{name}</h3>
+                {isManaged && (
+                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-sky-900/30 text-sky-400 border border-sky-700/50 shrink-0">
+                    <Cloud className="h-3 w-3 mr-1" />
+                    AWS Managed
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
                 <span className="inline-flex items-center">
                   <MapPin className="h-3 w-3 mr-1" />
