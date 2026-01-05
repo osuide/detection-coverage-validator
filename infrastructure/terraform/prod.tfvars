@@ -81,14 +81,28 @@ enable_codebuild_tests = false
 # API documentation site at docs.a13e.com
 enable_docs = true
 
+# CloudTrail audit logging (CWE-778 - security compliance)
+enable_cloudtrail = true
+
 # Compliance data - set to true only for initial data load
 force_reload_compliance = false
 
 # =============================================================================
-# Google Workspace Integration (Optional)
+# Support System (Google Workspace Integration)
+# =============================================================================
+# API key for Google Apps Script - set via environment variable:
+#   TF_VAR_support_api_key=...
+#
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# =============================================================================
+# Google Workspace WIF Integration (Optional)
 # =============================================================================
 # Enable after initial production deployment
-enable_workspace_wif         = false
-workspace_gcp_project_id     = ""
-workspace_gcp_project_number = ""
-workspace_admin_email        = "austin@a13e.com"
+# Uses Workload Identity Federation - no service account keys required
+enable_workspace_wif            = false
+workspace_gcp_project_id        = ""
+workspace_gcp_project_number    = ""
+workspace_admin_email           = "austin@a13e.com"
+workspace_service_account_email = ""
+support_crm_spreadsheet_id      = ""
