@@ -1083,7 +1083,8 @@ class TestAdminMFALogin:
         data = verify_response.json()
 
         assert data["access_token"] is not None
-        assert data["refresh_token"] is not None
+        # refresh_token is now in httpOnly cookie, not in response body (security fix)
+        assert "admin_refresh_token" in verify_response.cookies
         assert data["admin"]["email"] == "admin_with_mfa@example.com"
 
     @pytest.mark.asyncio
