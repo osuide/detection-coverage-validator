@@ -42,27 +42,63 @@ class TestGetAllowedAccountFilter:
         result = get_allowed_account_filter(auth)
         assert result == []
 
-    def test_owner_returns_none(self):
-        """Owner should have unrestricted access (None)."""
+    def test_owner_with_restrictions_returns_list(self):
+        """Owner with allowed_account_ids should get that list (CWE-639 fix).
+
+        Security: allowed_account_ids applies to ALL roles including OWNER.
+        """
+        account_id = uuid4()
         auth = AuthContext(
             user=_create_mock_user(),
             organization=_create_mock_org(),
             membership=_create_mock_membership(
                 UserRole.OWNER,
-                allowed_account_ids=[str(uuid4())],  # Even if set, should be ignored
+                allowed_account_ids=[str(account_id)],
+            ),
+        )
+        result = get_allowed_account_filter(auth)
+        assert result is not None
+        assert len(result) == 1
+        assert account_id in result
+
+    def test_owner_with_null_returns_none(self):
+        """Owner with null allowed_account_ids has unrestricted access."""
+        auth = AuthContext(
+            user=_create_mock_user(),
+            organization=_create_mock_org(),
+            membership=_create_mock_membership(
+                UserRole.OWNER, allowed_account_ids=None
             ),
         )
         result = get_allowed_account_filter(auth)
         assert result is None
 
-    def test_admin_returns_none(self):
-        """Admin should have unrestricted access (None)."""
+    def test_admin_with_restrictions_returns_list(self):
+        """Admin with allowed_account_ids should get that list (CWE-639 fix).
+
+        Security: allowed_account_ids applies to ALL roles including ADMIN.
+        """
+        account_id = uuid4()
         auth = AuthContext(
             user=_create_mock_user(),
             organization=_create_mock_org(),
             membership=_create_mock_membership(
                 UserRole.ADMIN,
-                allowed_account_ids=[str(uuid4())],
+                allowed_account_ids=[str(account_id)],
+            ),
+        )
+        result = get_allowed_account_filter(auth)
+        assert result is not None
+        assert len(result) == 1
+        assert account_id in result
+
+    def test_admin_with_null_returns_none(self):
+        """Admin with null allowed_account_ids has unrestricted access."""
+        auth = AuthContext(
+            user=_create_mock_user(),
+            organization=_create_mock_org(),
+            membership=_create_mock_membership(
+                UserRole.ADMIN, allowed_account_ids=None
             ),
         )
         result = get_allowed_account_filter(auth)
@@ -128,28 +164,66 @@ class TestGetAllowedAccountFilter:
 class TestAuthContextCanAccessAccount:
     """Tests for AuthContext.can_access_account method."""
 
-    def test_owner_can_access_any_account(self):
-        """Owner should access any account regardless of ACL."""
+    def test_owner_with_restrictions_cannot_access_other_account(self):
+        """Owner with allowed_account_ids cannot access unlisted accounts (CWE-639 fix).
+
+        Security: allowed_account_ids applies to ALL roles including OWNER.
+        """
+        allowed_account = uuid4()
         auth = AuthContext(
             user=_create_mock_user(),
             organization=_create_mock_org(),
             membership=_create_mock_membership(
                 UserRole.OWNER,
-                allowed_account_ids=[str(uuid4())],  # Different account
+                allowed_account_ids=[str(allowed_account)],
             ),
         )
 
+        # Can access the allowed account
+        assert auth.can_access_account(allowed_account) is True
+        # Cannot access a different account
         random_account = uuid4()
-        assert auth.can_access_account(random_account) is True
+        assert auth.can_access_account(random_account) is False
 
-    def test_admin_can_access_any_account(self):
-        """Admin should access any account regardless of ACL."""
+    def test_owner_with_null_can_access_any(self):
+        """Owner with null allowed_account_ids can access any account."""
+        auth = AuthContext(
+            user=_create_mock_user(),
+            organization=_create_mock_org(),
+            membership=_create_mock_membership(
+                UserRole.OWNER, allowed_account_ids=None
+            ),
+        )
+
+        assert auth.can_access_account(uuid4()) is True
+
+    def test_admin_with_restrictions_cannot_access_other_account(self):
+        """Admin with allowed_account_ids cannot access unlisted accounts (CWE-639 fix).
+
+        Security: allowed_account_ids applies to ALL roles including ADMIN.
+        """
+        allowed_account = uuid4()
         auth = AuthContext(
             user=_create_mock_user(),
             organization=_create_mock_org(),
             membership=_create_mock_membership(
                 UserRole.ADMIN,
-                allowed_account_ids=[str(uuid4())],
+                allowed_account_ids=[str(allowed_account)],
+            ),
+        )
+
+        # Can access the allowed account
+        assert auth.can_access_account(allowed_account) is True
+        # Cannot access a different account
+        assert auth.can_access_account(uuid4()) is False
+
+    def test_admin_with_null_can_access_any(self):
+        """Admin with null allowed_account_ids can access any account."""
+        auth = AuthContext(
+            user=_create_mock_user(),
+            organization=_create_mock_org(),
+            membership=_create_mock_membership(
+                UserRole.ADMIN, allowed_account_ids=None
             ),
         )
 

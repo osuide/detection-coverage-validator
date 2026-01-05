@@ -105,6 +105,10 @@ class AuthContext:
         """Check if user can access a specific cloud account.
 
         M3: Uses consistent string comparison with normalised UUID format.
+
+        Security: The allowed_account_ids restriction applies to ALL roles,
+        including ADMIN and OWNER. This enables fine-grained account-level
+        access control even for privileged users.
         """
         # API keys have org-level access (can access all accounts in their org)
         if self.api_key:
@@ -113,11 +117,8 @@ class AuthContext:
         if not self.membership:
             return False
 
-        # Owners and admins can access all accounts
-        if self.is_admin():
-            return True
-
-        # Members and viewers with null allowed_account_ids can access all
+        # All roles with null allowed_account_ids can access all accounts
+        # (None means unrestricted, different from empty list which means no access)
         if self.membership.allowed_account_ids is None:
             return True
 
@@ -126,6 +127,7 @@ class AuthContext:
         account_id_str = str(account_id).lower()
 
         # Check if account is in allowed list (normalise each entry)
+        # This applies to ALL roles including ADMIN and OWNER
         return any(
             str(allowed_id).lower() == account_id_str
             for allowed_id in self.membership.allowed_account_ids
@@ -136,12 +138,13 @@ def get_allowed_account_filter(auth: AuthContext) -> Optional[list[UUID]]:
     """Get list of allowed account IDs for filtering, or None if unrestricted.
 
     Security: Used to filter list queries by allowed_account_ids ACL.
+    The allowed_account_ids restriction applies to ALL roles including ADMIN/OWNER.
 
     Returns:
-        - None if user is admin/owner OR allowed_account_ids is not set (full access)
+        - None if allowed_account_ids is not set (full access - applies to all roles)
         - None if API key (org-level access)
         - Empty list if no membership (no access)
-        - List of UUIDs if user has restricted access
+        - List of UUIDs if user has restricted access (applies to all roles)
     """
     # API keys have org-level access (can access all accounts in their org)
     if auth.api_key:
@@ -150,15 +153,13 @@ def get_allowed_account_filter(auth: AuthContext) -> Optional[list[UUID]]:
     if not auth.membership:
         return []  # No membership = no access
 
-    # Owners and admins have full access
-    if auth.is_admin():
-        return None
-
-    # If allowed_account_ids is not set, member has access to all
+    # If allowed_account_ids is not set, user has access to all accounts
+    # This applies to ALL roles including ADMIN/OWNER
     if auth.membership.allowed_account_ids is None:
         return None
 
     # Convert string UUIDs to UUID objects
+    # Account restrictions apply to ALL roles including ADMIN/OWNER
     return [UUID(str(aid)) for aid in auth.membership.allowed_account_ids]
 
 

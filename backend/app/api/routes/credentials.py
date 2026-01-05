@@ -703,6 +703,12 @@ async def get_credential(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Get credential status for a cloud account."""
+    # Security: Check account-level ACL (CWE-639 fix)
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     result = await db.execute(
         select(CloudCredential).where(
             CloudCredential.cloud_account_id == cloud_account_id,
@@ -727,6 +733,12 @@ async def delete_credential(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """Delete a credential."""
+    # Security: Check account-level ACL (CWE-639 fix)
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     result = await db.execute(
         select(CloudCredential).where(
             CloudCredential.cloud_account_id == cloud_account_id,
