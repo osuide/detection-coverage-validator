@@ -239,8 +239,6 @@ export const authActions = {
 
       if (!csrfToken) {
         // No CSRF token means no session
-        store.setInitialised(true)
-        store.setLoading(false)
         return false
       }
 
@@ -281,13 +279,16 @@ export const authActions = {
         organization,
       })
 
-      store.setInitialised(true)
       return true
     } catch {
-      // Session restoration failed - user needs to log in
+      // Session restoration failed - clear any stale auth state
       store.clearAuth()
-      store.setInitialised(true)
       return false
+    } finally {
+      // CRITICAL: Always mark as initialised to unblock rendering
+      // This ensures the app doesn't get stuck on loading spinner
+      store.setInitialised(true)
+      store.setLoading(false)
     }
   },
 

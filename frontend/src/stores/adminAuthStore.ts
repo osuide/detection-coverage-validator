@@ -218,8 +218,6 @@ export const adminAuthActions = {
 
       if (!csrfToken) {
         // No CSRF token means no session to restore
-        store.setInitialised(true)
-        store.setLoading(false)
         return false
       }
 
@@ -252,9 +250,14 @@ export const adminAuthActions = {
 
       return true
     } catch {
-      // Session restoration failed - clear auth state
+      // Session restoration failed - clear any stale auth state
       store.clearAuth()
       return false
+    } finally {
+      // CRITICAL: Always mark as initialised to unblock rendering
+      // This ensures the admin portal doesn't get stuck on loading spinner
+      store.setInitialised(true)
+      store.setLoading(false)
     }
   },
 
