@@ -96,17 +96,22 @@ class MITREEmbeddingsCache:
         return self._embeddings, self._technique_metadata
 
     def _load_from_cache(self) -> tuple[dict[str, np.ndarray], dict[str, dict]]:
-        """Load embeddings from cache files."""
-        # Load embeddings
-        data = np.load(str(self.cache_file), allow_pickle=True)
-        technique_ids = data["technique_ids"].tolist()
+        """Load embeddings from cache files.
+
+        Security (CWE-502): Technique IDs stored in metadata JSON to avoid
+        unsafe serialisation of string arrays in numpy format.
+        """
+        # Load metadata (contains technique_ids)
+        with open(self.metadata_file, "r") as f:
+            metadata = json.load(f)
+
+        technique_ids = metadata.get("_technique_ids", [])
+
+        # Load embeddings (numeric arrays only - safe deserialisation)
+        data = np.load(str(self.cache_file))
         embeddings_array = data["embeddings"]
 
         embeddings = {tid: embeddings_array[i] for i, tid in enumerate(technique_ids)}
-
-        # Load metadata
-        with open(self.metadata_file, "r") as f:
-            metadata = json.load(f)
 
         return embeddings, metadata
 
@@ -173,12 +178,16 @@ class MITREEmbeddingsCache:
         return " ".join(filter(None, parts))
 
     def _save_to_cache(self) -> None:
-        """Save embeddings to cache files."""
+        """Save embeddings to cache files.
+
+        Security (CWE-502): Stores technique_ids in JSON metadata to avoid
+        numpy string array serialisation which requires unsafe deserialisation.
+        """
         if not self._embeddings or not self._technique_metadata:
             return
 
         try:
-            # Save embeddings as numpy array
+            # Save embeddings as numpy array (numeric only)
             technique_ids = list(self._embeddings.keys())
             embeddings_array = np.array(
                 [self._embeddings[tid] for tid in technique_ids]
@@ -186,13 +195,14 @@ class MITREEmbeddingsCache:
 
             np.savez(
                 str(self.cache_file),
-                technique_ids=np.array(technique_ids),
                 embeddings=embeddings_array,
             )
 
-            # Save metadata as JSON
+            # Save metadata as JSON (includes technique_ids for safe loading)
+            metadata_with_ids = dict(self._technique_metadata)
+            metadata_with_ids["_technique_ids"] = technique_ids
             with open(self.metadata_file, "w") as f:
-                json.dump(self._technique_metadata, f)
+                json.dump(metadata_with_ids, f)
 
             self.logger.info("embeddings_saved_to_cache", path=str(self.cache_file))
         except Exception as e:

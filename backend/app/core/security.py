@@ -416,6 +416,15 @@ async def _authenticate_jwt(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Security: Log legacy tokens without type field (CWE-287 monitoring)
+    # These will be deprecated in future releases
+    if token_type is None:
+        logger.warning(
+            "legacy_token_without_type",
+            user_id=payload.get("sub"),
+            message="Token missing 'type' field - legacy format detected",
+        )
+
     user_id = UUID(payload.get("sub"))
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

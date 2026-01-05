@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { cognitoApi, CognitoConfig } from '../services/cognitoApi'
 import { githubApi, GitHubConfig } from '../services/githubApi'
+import { useOAuthStore } from '../stores/oauthStore'
 
 interface SocialLoginButtonsProps {
   onError?: (error: string) => void
@@ -11,6 +12,7 @@ export default function SocialLoginButtons({ onError, mode = 'login' }: SocialLo
   const [cognitoConfig, setCognitoConfig] = useState<CognitoConfig | null>(null)
   const [githubConfig, setGithubConfig] = useState<GitHubConfig | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
+  const { setOAuthParams } = useOAuthStore()
 
   useEffect(() => {
     // Load both Cognito and GitHub configs
@@ -31,9 +33,13 @@ export default function SocialLoginButtons({ onError, mode = 'login' }: SocialLo
       const redirectUri = `${window.location.origin}/auth/callback`
       const response = await cognitoApi.initiateSso('google', redirectUri)
 
-      // Store state and provider for callback handling
-      sessionStorage.setItem('oauth_state', response.state)
-      sessionStorage.setItem('oauth_provider', 'cognito')
+      // Store state and provider in memory for callback handling
+      // CWE-79: Using in-memory store instead of sessionStorage to prevent XSS attacks
+      setOAuthParams({
+        state: response.state,
+        codeVerifier: response.code_verifier,
+        provider: 'cognito',
+      })
 
       // Redirect to provider
       window.location.href = response.authorization_url
@@ -51,9 +57,12 @@ export default function SocialLoginButtons({ onError, mode = 'login' }: SocialLo
       const redirectUri = `${window.location.origin}/auth/callback`
       const response = await githubApi.authorize(redirectUri)
 
-      // Store state and provider for callback handling
-      sessionStorage.setItem('oauth_state', response.state)
-      sessionStorage.setItem('oauth_provider', 'github')
+      // Store state and provider in memory for callback handling
+      // CWE-79: Using in-memory store instead of sessionStorage to prevent XSS attacks
+      setOAuthParams({
+        state: response.state,
+        provider: 'github',
+      })
 
       // Redirect to GitHub
       window.location.href = response.authorization_url

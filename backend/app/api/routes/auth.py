@@ -875,13 +875,19 @@ async def forgot_password(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/reset-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit_password_reset)],
+)
 async def reset_password(
     request: Request,
     body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """Reset password using reset token.
+
+    Security: Rate limited to prevent token brute-force attacks (CWE-307).
 
     Enforces organisation password policy if the user belongs to an organisation
     with custom password requirements.

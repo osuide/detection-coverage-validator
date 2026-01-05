@@ -716,3 +716,128 @@ async def should_force_full_scan(account_id: str, days_threshold: int = 7) -> bo
     except (ValueError, TypeError):
         # Invalid timestamp, force full scan
         return True
+
+
+# ============================================================================
+# OAuth State Store (Redis-backed)
+# ============================================================================
+# CWE-352: Cross-Site Request Forgery (CSRF) protection for OAuth flows
+# Uses Redis for distributed state validation across multiple instances.
+
+OAUTH_STATE_PREFIX = "dcv:oauth:"
+OAUTH_STATE_TTL = 300  # 5 minutes - OAuth flows should complete quickly
+
+
+async def store_oauth_state(state: str, provider: str = "oauth") -> bool:
+    """Store an OAuth state token for CSRF protection.
+
+    Uses Redis for distributed validation across multiple instances.
+    State tokens are one-time use and expire after 5 minutes.
+
+    Args:
+        state: The state token to store (should be cryptographically random)
+        provider: OAuth provider name (github, cognito) for logging
+
+    Returns:
+        True if stored successfully, False otherwise
+
+    Security:
+        - State token is validated against injection attacks
+        - Short TTL limits replay window
+        - Used with validate_and_consume for one-time use
+    """
+    if not _redis_cache:
+        logger.warning(
+            "oauth_state_store_no_redis",
+            provider=provider,
+            message="Redis unavailable - falling back to in-memory (not recommended)",
+        )
+        return False
+
+    # Validate state format (should be base64url-safe)
+    if not state or len(state) > 128 or not VALID_KEY_PATTERN.match(state):
+        logger.warning("oauth_state_invalid_format", provider=provider)
+        return False
+
+    try:
+        key = f"{OAUTH_STATE_PREFIX}{provider}:{state}"
+        # Store with value "1" - we only care about existence
+        await _redis_cache.setex(key, OAUTH_STATE_TTL, "1")
+        logger.debug("oauth_state_stored", provider=provider)
+        return True
+    except Exception as e:
+        logger.warning(
+            "oauth_state_store_failed",
+            provider=provider,
+            error=str(e),
+        )
+        return False
+
+
+async def validate_and_consume_oauth_state(state: str, provider: str = "oauth") -> bool:
+    """Validate and consume an OAuth state token (one-time use).
+
+    Checks if the state exists in Redis and removes it atomically.
+    This prevents replay attacks by ensuring each state can only be used once.
+
+    Args:
+        state: The state token to validate
+        provider: OAuth provider name (github, cognito)
+
+    Returns:
+        True if state was valid and consumed, False otherwise
+
+    Security:
+        - Atomic get-and-delete prevents race conditions
+        - Expired states automatically rejected (Redis TTL)
+        - Logs invalid attempts for security monitoring
+    """
+    if not _redis_cache:
+        logger.warning(
+            "oauth_state_validate_no_redis",
+            provider=provider,
+            message="Redis unavailable - cannot validate state",
+        )
+        return False
+
+    if not state or len(state) > 128:
+        logger.warning(
+            "oauth_state_invalid_attempt",
+            provider=provider,
+            reason="invalid_format",
+        )
+        return False
+
+    try:
+        key = f"{OAUTH_STATE_PREFIX}{provider}:{state}"
+        # Atomic delete returns 1 if key existed, 0 if not
+        deleted = await _redis_cache.delete(key)
+        if deleted:
+            logger.debug("oauth_state_consumed", provider=provider)
+            return True
+        else:
+            logger.warning(
+                "oauth_state_invalid_attempt",
+                provider=provider,
+                reason="not_found_or_expired",
+            )
+            return False
+    except Exception as e:
+        logger.warning(
+            "oauth_state_validate_failed",
+            provider=provider,
+            error=str(e),
+        )
+        return False
+
+
+def is_redis_available() -> bool:
+    """Check if Redis cache is available.
+
+    Used by OAuth routes to determine if they should fall back to
+    in-memory state storage (not recommended for production).
+
+    Returns:
+        True if Redis is connected and available
+    """
+    return _redis_cache is not None

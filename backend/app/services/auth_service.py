@@ -591,12 +591,17 @@ class AuthService:
     async def get_user_membership(
         self, user_id: UUID, organization_id: UUID
     ) -> Optional[OrganizationMember]:
-        """Get a user's membership in an organization."""
+        """Get a user's ACTIVE membership in an organization.
+
+        CWE-863: Only returns active memberships to prevent suspended/inactive
+        users from accessing organisation resources.
+        """
         result = await self.db.execute(
             select(OrganizationMember).where(
                 and_(
                     OrganizationMember.user_id == user_id,
                     OrganizationMember.organization_id == organization_id,
+                    OrganizationMember.status == MembershipStatus.ACTIVE,
                 )
             )
         )

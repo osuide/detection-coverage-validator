@@ -14,6 +14,11 @@ import structlog
 
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.cache import (
+    store_oauth_state,
+    validate_and_consume_oauth_state,
+    is_redis_available,
+)
 from app.models.user import (
     User,
     Organization,
@@ -42,12 +47,17 @@ settings = get_settings()
 
 
 # === OAuth State Store ===
-# In-memory state store for CSRF protection
-# NOTE: For production with multiple instances, use Redis instead
+# CWE-352: Redis-backed state store for CSRF protection
+# Uses Redis for distributed validation across multiple ECS instances.
+# Falls back to in-memory for local development if Redis unavailable.
 
 
-class CognitoOAuthStateStore:
-    """In-memory OAuth state store with expiration for Cognito flows."""
+class InMemoryCognitoStateStore:
+    """In-memory OAuth state store fallback for local development.
+
+    WARNING: Only use this fallback in development. Production deployments
+    MUST use Redis for proper distributed state validation.
+    """
 
     def __init__(self, expiry_seconds: int = 300):
         self._states: dict[str, float] = {}  # state -> expiry_timestamp
@@ -76,7 +86,8 @@ class CognitoOAuthStateStore:
         return expiry > time.time()
 
 
-_cognito_state_store = CognitoOAuthStateStore()
+# Fallback store for when Redis is not available (development only)
+_fallback_state_store = InMemoryCognitoStateStore()
 
 
 class CognitoConfigResponse(BaseModel):
@@ -170,9 +181,25 @@ async def initiate_sso(
             detail=f"Invalid provider. Must be one of: {list(provider_mapping.keys())}",
         )
 
-    # Generate state for CSRF protection and store it
+    # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
-    _cognito_state_store.store_state(state)
+
+    # Store in Redis (distributed) or fallback to in-memory (development only)
+    if is_redis_available():
+        stored = await store_oauth_state(state, provider="cognito")
+        if not stored:
+            logger.warning("cognito_oauth_state_store_failed")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Unable to initialise SSO flow. Please try again.",
+            )
+    else:
+        # Fallback for local development only
+        logger.warning(
+            "cognito_oauth_using_in_memory_state",
+            message="Redis unavailable - using in-memory state (NOT for production)",
+        )
+        _fallback_state_store.store_state(state)
 
     # Generate PKCE code verifier and challenge
     code_verifier, code_challenge = generate_pkce()
@@ -207,8 +234,17 @@ async def exchange_cognito_token(
             detail="SSO is not configured",
         )
 
-    # Security: Always validate OAuth state for CSRF protection
-    if not _cognito_state_store.validate_and_consume(body.state):
+    # Security: Always validate OAuth state for CSRF protection (Redis or fallback)
+    state_valid = False
+    if is_redis_available():
+        state_valid = await validate_and_consume_oauth_state(
+            body.state, provider="cognito"
+        )
+    else:
+        # Fallback for local development only
+        state_valid = _fallback_state_store.validate_and_consume(body.state)
+
+    if not state_valid:
         logger.warning(
             "cognito_oauth_state_invalid",
             ip=get_client_ip(request),

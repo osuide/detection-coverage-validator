@@ -15,6 +15,11 @@ import structlog
 
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.cache import (
+    store_oauth_state,
+    validate_and_consume_oauth_state,
+    is_redis_available,
+)
 from app.models.user import (
     User,
     Organization,
@@ -41,12 +46,17 @@ router = APIRouter(prefix="/github", tags=["GitHub OAuth"])
 
 
 # === OAuth State Store ===
-# In-memory state store for CSRF protection
-# NOTE: For production with multiple instances, use Redis instead
+# CWE-352: Redis-backed state store for CSRF protection
+# Uses Redis for distributed validation across multiple ECS instances.
+# Falls back to in-memory for local development if Redis unavailable.
 
 
-class OAuthStateStore:
-    """In-memory OAuth state store with expiration."""
+class InMemoryOAuthStateStore:
+    """In-memory OAuth state store fallback for local development.
+
+    WARNING: Only use this fallback in development. Production deployments
+    MUST use Redis for proper distributed state validation.
+    """
 
     def __init__(self, expiry_seconds: int = 300):
         self._states: dict[str, float] = {}  # state -> expiry_timestamp
@@ -77,7 +87,8 @@ class OAuthStateStore:
         return expiry > time.time()
 
 
-_oauth_state_store = OAuthStateStore()
+# Fallback store for when Redis is not available (development only)
+_fallback_state_store = InMemoryOAuthStateStore()
 
 
 class GitHubAuthorizeResponse(BaseModel):
@@ -124,8 +135,26 @@ async def get_authorization_url(redirect_uri: str) -> GitHubAuthorizeResponse:
             detail="GitHub OAuth is not configured",
         )
 
-    # Generate and store state for CSRF protection
-    state = _oauth_state_store.create_state()
+    # Generate state for CSRF protection
+    state = secrets.token_urlsafe(32)
+
+    # Store in Redis (distributed) or fallback to in-memory (development only)
+    if is_redis_available():
+        stored = await store_oauth_state(state, provider="github")
+        if not stored:
+            logger.warning("github_oauth_state_store_failed")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Unable to initialise OAuth flow. Please try again.",
+            )
+    else:
+        # Fallback for local development only
+        logger.warning(
+            "github_oauth_using_in_memory_state",
+            message="Redis unavailable - using in-memory state (NOT for production)",
+        )
+        _fallback_state_store._states[state] = time.time() + 300
+
     authorization_url = github_oauth_service.build_authorization_url(
         redirect_uri=redirect_uri,
         state=state,
@@ -150,8 +179,17 @@ async def exchange_github_token(
             detail="GitHub OAuth is not configured",
         )
 
-    # Validate OAuth state for CSRF protection
-    if not body.state or not _oauth_state_store.validate_and_consume(body.state):
+    # Validate OAuth state for CSRF protection (Redis or fallback)
+    state_valid = False
+    if is_redis_available():
+        state_valid = await validate_and_consume_oauth_state(
+            body.state, provider="github"
+        )
+    else:
+        # Fallback for local development only
+        state_valid = _fallback_state_store.validate_and_consume(body.state)
+
+    if not body.state or not state_valid:
         logger.warning(
             "oauth_state_invalid",
             ip=get_client_ip(request),
