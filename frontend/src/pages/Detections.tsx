@@ -175,6 +175,57 @@ function ComplianceIndicator({ evaluation }: { evaluation?: EvaluationSummary })
   return <span className="text-gray-500 text-sm">-</span>
 }
 
+/** Mobile card component for detection display */
+function DetectionCard({
+  detection,
+  onClick
+}: {
+  detection: Detection
+  onClick: () => void
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-gray-600 cursor-pointer transition-colors"
+    >
+      <div className="flex items-start justify-between mb-3">
+        <h3 className="font-medium text-white line-clamp-2 flex-1 mr-2">{detection.name}</h3>
+        <Eye className="h-4 w-4 text-gray-400 shrink-0" />
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <DetectionTypeBadge type={detection.detection_type} />
+          <span className="text-xs text-gray-400">{detection.region}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+            detection.status === 'active'
+              ? 'bg-green-900/30 text-green-400'
+              : detection.status === 'disabled'
+              ? 'bg-gray-700/30 text-gray-400'
+              : 'bg-red-900/30 text-red-400'
+          }`}>
+            {detection.status}
+          </span>
+          <span className={`text-sm ${
+            detection.mapping_count > 0
+              ? 'text-green-400 font-medium'
+              : 'text-gray-400'
+          }`}>
+            {detection.mapping_count} technique{detection.mapping_count !== 1 ? 's' : ''}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <ComplianceIndicator evaluation={detection.evaluation_summary} />
+          <span className="text-xs text-gray-500">
+            {new Date(detection.discovered_at).toLocaleDateString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Detections() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('')
@@ -183,12 +234,38 @@ export default function Detections() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [selectedDetection, setSelectedDetection] = useState<Detection | null>(null)
 
+  // Fetch detections without region coverage first
   const { data, isLoading } = useQuery({
     queryKey: ['detections'],
-    queryFn: () => detectionsApi.list({ limit: 100 }),
+    queryFn: () => detectionsApi.list({ limit: 500 }),
   })
 
   const detections = data?.items ?? []
+
+  // Get unique cloud account IDs from detections
+  const uniqueAccountIds = useMemo(() => {
+    const ids = new Set(detections.map((d) => d.cloud_account_id))
+    return Array.from(ids)
+  }, [detections])
+
+  // If there's only one account, fetch with region coverage enabled
+  const singleAccountId = uniqueAccountIds.length === 1 ? uniqueAccountIds[0] : null
+  const { data: regionCoverageData } = useQuery({
+    queryKey: ['detections-region-coverage', singleAccountId],
+    queryFn: () =>
+      singleAccountId
+        ? detectionsApi.list({
+            cloud_account_id: singleAccountId,
+            limit: 500,
+            include_region_coverage: true,
+          })
+        : null,
+    enabled: !!singleAccountId,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  })
+
+  // Effective regions from the account (if single account)
+  const effectiveRegions = regionCoverageData?.effective_regions
 
   // Separate aggregated detections from regular ones
   const { securityHubDetections, multiRegionGroups, regularDetections } = useMemo(() => {
@@ -294,8 +371,8 @@ export default function Detections() {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-wrap items-center gap-4 mb-6">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4 mb-6">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
@@ -306,12 +383,12 @@ export default function Detections() {
           />
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Filter className="h-4 w-4 text-gray-400" />
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <Filter className="h-4 w-4 text-gray-400 shrink-0" />
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="border border-gray-600 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+            className="shrink-0 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Types</option>
             {detectionTypes.map(type => (
@@ -324,7 +401,7 @@ export default function Detections() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-600 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+            className="shrink-0 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Statuses</option>
             {statuses.map(status => (
@@ -339,9 +416,9 @@ export default function Detections() {
                 setTypeFilter('')
                 setStatusFilter('')
               }}
-              className="text-sm text-blue-400 hover:text-blue-300"
+              className="shrink-0 text-sm text-blue-400 hover:text-blue-300"
             >
-              Clear filters
+              Clear
             </button>
           )}
         </div>
@@ -395,6 +472,7 @@ export default function Detections() {
               name={group.name}
               detectionType={group.detectionType}
               detections={group.detections}
+              effectiveRegions={effectiveRegions}
               onViewDetails={(detection) => setSelectedDetection(detection)}
             />
           ))}
@@ -422,85 +500,99 @@ export default function Detections() {
           </p>
         </div>
       ) : filteredDetections.length > 0 ? (
-        <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-700">
-              <thead className="bg-gray-700/30">
-                <tr>
-                  <SortHeader field="name">Detection</SortHeader>
-                  <SortHeader field="detection_type">Type</SortHeader>
-                  <SortHeader field="region">Region</SortHeader>
-                  <SortHeader field="status">Status</SortHeader>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Compliance
-                  </th>
-                  <SortHeader field="mapping_count">Mappings</SortHeader>
-                  <SortHeader field="discovered_at">Discovered</SortHeader>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-gray-800 divide-y divide-gray-700">
-                {filteredDetections.map((detection) => (
-                  <tr
-                    key={detection.id}
-                    className="hover:bg-gray-700 cursor-pointer"
-                    onClick={() => setSelectedDetection(detection)}
-                  >
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-white">{detection.name}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <DetectionTypeBadge type={detection.detection_type} />
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-400">
-                      {detection.region}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        detection.status === 'active'
-                          ? 'bg-green-900/30 text-green-400'
-                          : detection.status === 'disabled'
-                          ? 'bg-gray-700/30 text-gray-400'
-                          : 'bg-red-900/30 text-red-400'
-                      }`}>
-                        {detection.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <ComplianceIndicator evaluation={detection.evaluation_summary} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-sm ${
-                        detection.mapping_count > 0
-                          ? 'text-green-400 font-medium'
-                          : 'text-gray-400'
-                      }`}>
-                        {detection.mapping_count} technique{detection.mapping_count !== 1 ? 's' : ''}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-400">
-                      {new Date(detection.discovered_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedDetection(detection)
-                        }}
-                        className="p-2 text-gray-400 hover:text-blue-400 rounded-lg hover:bg-gray-700"
-                        title="View details"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <>
+          {/* Mobile card view */}
+          <div className="md:hidden space-y-3">
+            {filteredDetections.map((detection) => (
+              <DetectionCard
+                key={detection.id}
+                detection={detection}
+                onClick={() => setSelectedDetection(detection)}
+              />
+            ))}
           </div>
-        </div>
+
+          {/* Desktop table view */}
+          <div className="hidden md:block card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-700">
+                <thead className="bg-gray-700/30">
+                  <tr>
+                    <SortHeader field="name">Detection</SortHeader>
+                    <SortHeader field="detection_type">Type</SortHeader>
+                    <SortHeader field="region">Region</SortHeader>
+                    <SortHeader field="status">Status</SortHeader>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Compliance
+                    </th>
+                    <SortHeader field="mapping_count">Mappings</SortHeader>
+                    <SortHeader field="discovered_at">Discovered</SortHeader>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-gray-800 divide-y divide-gray-700">
+                  {filteredDetections.map((detection) => (
+                    <tr
+                      key={detection.id}
+                      className="hover:bg-gray-700 cursor-pointer"
+                      onClick={() => setSelectedDetection(detection)}
+                    >
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-white">{detection.name}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <DetectionTypeBadge type={detection.detection_type} />
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-400">
+                        {detection.region}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          detection.status === 'active'
+                            ? 'bg-green-900/30 text-green-400'
+                            : detection.status === 'disabled'
+                            ? 'bg-gray-700/30 text-gray-400'
+                            : 'bg-red-900/30 text-red-400'
+                        }`}>
+                          {detection.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <ComplianceIndicator evaluation={detection.evaluation_summary} />
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-sm ${
+                          detection.mapping_count > 0
+                            ? 'text-green-400 font-medium'
+                            : 'text-gray-400'
+                        }`}>
+                          {detection.mapping_count} technique{detection.mapping_count !== 1 ? 's' : ''}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-400">
+                        {new Date(detection.discovered_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedDetection(detection)
+                          }}
+                          className="p-2 text-gray-400 hover:text-blue-400 rounded-lg hover:bg-gray-700"
+                          title="View details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       ) : null}
 
       {/* Detail Modal */}

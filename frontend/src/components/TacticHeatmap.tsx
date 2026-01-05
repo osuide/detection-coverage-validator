@@ -4,6 +4,22 @@ interface TacticHeatmapProps {
   tactics: TacticCoverage[]
 }
 
+// Short names for mobile display
+const SHORT_NAMES: Record<string, string> = {
+  'Initial Access': 'Initial',
+  'Execution': 'Exec',
+  'Persistence': 'Persist',
+  'Privilege Escalation': 'Priv Esc',
+  'Defense Evasion': 'Def Evas',
+  'Credential Access': 'Cred',
+  'Discovery': 'Disc',
+  'Lateral Movement': 'Lateral',
+  'Collection': 'Collect',
+  'Command and Control': 'C2',
+  'Exfiltration': 'Exfil',
+  'Impact': 'Impact',
+}
+
 // MITRE ATT&CK Cloud Matrix tactic order
 // Based on official Cloud Matrix (11 tactics) + C2 (detectable via VPC Flow Logs, GuardDuty)
 // Excludes Reconnaissance (TA0043) and Resource Development (TA0042) as they are PRE-compromise
@@ -42,22 +58,24 @@ export default function TacticHeatmap({ tactics }: TacticHeatmapProps) {
     <div className="space-y-2">
       {sortedTactics.map((tactic) => (
         <div key={tactic.tactic_id} className="flex items-center">
-          <div className="w-40 text-sm text-white truncate" title={tactic.tactic_name}>
-            {tactic.tactic_name}
+          <div className="w-20 sm:w-40 text-xs sm:text-sm text-white truncate" title={tactic.tactic_name}>
+            {/* Short name on mobile, full name on larger screens */}
+            <span className="sm:hidden">{SHORT_NAMES[tactic.tactic_name] || tactic.tactic_name}</span>
+            <span className="hidden sm:inline">{tactic.tactic_name}</span>
           </div>
-          <div className="flex-1 mx-3">
-            <div className="h-6 bg-gray-700 rounded-full overflow-hidden">
+          <div className="flex-1 mx-2 sm:mx-3">
+            <div className="h-5 sm:h-6 bg-gray-700 rounded-full overflow-hidden">
               <div
                 className={`h-full ${getColor(tactic.percent)} transition-all duration-300`}
                 style={{ width: `${tactic.percent}%` }}
               />
             </div>
           </div>
-          <div className="w-24 text-right">
-            <span className="text-sm font-medium text-white">
+          <div className="w-16 sm:w-24 text-right">
+            <span className="text-xs sm:text-sm font-medium text-white">
               {tactic.covered}/{tactic.total}
             </span>
-            <span className="text-sm text-gray-400 ml-1">
+            <span className="hidden sm:inline text-sm text-gray-400 ml-1">
               ({tactic.percent.toFixed(0)}%)
             </span>
           </div>

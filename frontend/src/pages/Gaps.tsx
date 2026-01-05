@@ -181,8 +181,8 @@ export default function Gaps() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-4 mb-6">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4 mb-6">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
@@ -193,12 +193,12 @@ export default function Gaps() {
           />
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Filter className="h-4 w-4 text-gray-400" />
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <Filter className="h-4 w-4 text-gray-400 shrink-0" />
           <select
             value={tacticFilter}
             onChange={(e) => setTacticFilter(e.target.value)}
-            className="border border-gray-600 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+            className="shrink-0 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Tactics</option>
             {tactics.map(tactic => (
@@ -209,7 +209,7 @@ export default function Gaps() {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="border border-gray-600 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+            className="shrink-0 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Priorities</option>
             <option value="critical">Critical</option>
@@ -225,15 +225,18 @@ export default function Gaps() {
                 setTacticFilter('')
                 setPriorityFilter('')
               }}
-              className="text-sm text-blue-400 hover:text-blue-300"
+              className="shrink-0 text-sm text-blue-400 hover:text-blue-300"
             >
-              Clear filters
+              Clear
             </button>
           )}
+        </div>
 
+        {/* Toggles - shown below on mobile */}
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           {/* Low priority toggle */}
           {!priorityFilter && lowGaps.length > 0 && (
-            <label className="flex items-center space-x-2 cursor-pointer ml-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={showLowPriority}
@@ -241,7 +244,7 @@ export default function Gaps() {
                 className="rounded-sm border-gray-600 text-blue-600 focus:ring-blue-500"
               />
               <span className="text-sm text-gray-400">
-                Show low priority ({lowGaps.length})
+                Low priority ({lowGaps.length})
               </span>
             </label>
           )}

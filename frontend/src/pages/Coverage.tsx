@@ -52,51 +52,51 @@ export default function Coverage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">MITRE ATT&CK Coverage</h1>
-          <p className="text-gray-400">
+          <p className="text-gray-400 text-sm sm:text-base">
             Version {coverage.mitre_version} - Last updated {new Date(coverage.created_at).toLocaleString()}
           </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           {/* View Mode Toggle */}
           <div className="flex bg-gray-800 rounded-lg p-1">
             <button
               onClick={() => setViewMode('heatmap')}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`flex items-center px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'heatmap'
                   ? 'bg-gray-600 text-white shadow-xs'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              <Grid3X3 className="h-4 w-4 mr-1.5" />
-              Heatmap
+              <Grid3X3 className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Heatmap</span>
             </button>
             <button
               onClick={() => setViewMode('tactics')}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`flex items-center px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'tactics'
                   ? 'bg-gray-600 text-white shadow-xs'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              <List className="h-4 w-4 mr-1.5" />
-              Tactics
+              <List className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Tactics</span>
             </button>
           </div>
           <button
             onClick={() => refetch()}
             className="btn-secondary flex items-center"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            <RefreshCw className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </div>
 
       {/* Summary Cards - Clickable */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
         <button
           onClick={() => setActiveModal('covered')}
           className="stat-card text-center hover:bg-gray-50 hover:shadow-md transition-all cursor-pointer group"

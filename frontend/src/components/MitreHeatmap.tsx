@@ -90,8 +90,8 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
 
   return (
     <div>
-      {/* Legend */}
-      <div className="flex items-center space-x-6 mb-4 text-sm">
+      {/* Legend - wraps on mobile */}
+      <div className="flex flex-wrap items-center gap-3 sm:gap-6 mb-4 text-sm">
         <div className="flex items-center">
           <div className="w-4 h-4 bg-gray-600 rounded-sm mr-2"></div>
           <span className="text-gray-300">No Coverage</span>
@@ -108,6 +108,13 @@ export default function MitreHeatmap({ techniques, onTechniqueClick }: MitreHeat
           <div className="w-4 h-4 bg-green-500 rounded-sm mr-2"></div>
           <span className="text-gray-300">2+ Detections</span>
         </div>
+      </div>
+
+      {/* Mobile scroll indicator */}
+      <div className="md:hidden text-center text-xs text-gray-400 mb-2 flex items-center justify-center gap-2">
+        <span>←</span>
+        <span>Scroll to view all tactics</span>
+        <span>→</span>
       </div>
 
       {/* Heatmap Grid */}

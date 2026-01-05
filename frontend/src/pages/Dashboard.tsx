@@ -288,7 +288,7 @@ export default function Dashboard() {
       {/* Detection Sources */}
       <div className="card mb-8">
         <h3 className="text-lg font-semibold text-white mb-4">Detection Sources</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
           {Object.entries(detectionSourceConfig).map(([type, config]) => {
             const count = sourceCounts[type] || 0
             const Icon = config.icon

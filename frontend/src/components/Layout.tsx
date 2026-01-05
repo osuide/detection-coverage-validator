@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import {
   LayoutDashboard,
@@ -21,6 +21,8 @@ import {
   ClipboardCheck,
   FileBarChart,
   CheckCircle2,
+  Menu,
+  X,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
@@ -60,6 +62,19 @@ export default function Layout({ children }: LayoutProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(
     location.pathname.startsWith('/settings')
   )
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Lock scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [sidebarOpen])
 
   const handleLogout = async () => {
     await logout()
@@ -70,11 +85,37 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-900">
+      {/* Mobile header - visible only on small screens */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4">
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="p-2 text-gray-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+        >
+          {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+        <A13ELogo size="sm" showTagline={false} />
+        <div className="w-10" /> {/* Spacer for balance */}
+      </div>
+
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-slate-900 flex flex-col">
-        <div className="flex h-16 items-center justify-center border-b border-slate-800">
+      <div className={clsx(
+        'fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 flex flex-col',
+        'transform transition-transform duration-200 ease-in-out',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      )}>
+        <div className="hidden lg:flex h-16 items-center justify-center border-b border-slate-800">
           <A13ELogo size="sm" showTagline={false} />
         </div>
+        {/* Spacer for mobile header */}
+        <div className="lg:hidden h-16" />
 
         {/* Organization info */}
         {organization && (
@@ -92,13 +133,14 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Main navigation */}
-        <nav className="mt-4 px-3 flex-1">
+        <nav className="mt-4 px-3 flex-1 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href
             return (
               <Link
                 key={item.name}
                 to={item.href}
+                onClick={() => setSidebarOpen(false)}
                 className={clsx(
                   'flex items-center px-3 py-2 mt-1 rounded-lg text-sm font-medium transition-colors',
                   isActive
@@ -150,6 +192,7 @@ export default function Layout({ children }: LayoutProps) {
                     <Link
                       key={item.name}
                       to={item.href}
+                      onClick={() => setSidebarOpen(false)}
                       className={clsx(
                         'flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                         isActive
@@ -192,7 +235,7 @@ export default function Layout({ children }: LayoutProps) {
                 <Link
                   to="/settings/profile"
                   className="flex items-center px-4 py-2 text-sm text-slate-300 hover:bg-slate-700"
-                  onClick={() => setShowUserMenu(false)}
+                  onClick={() => { setShowUserMenu(false); setSidebarOpen(false); }}
                 >
                   <User className="h-4 w-4 mr-2" />
                   Profile
@@ -211,8 +254,8 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Main content */}
-      <div className="pl-64">
-        <main className="p-8">
+      <div className="lg:pl-64 pt-16 lg:pt-0">
+        <main className="p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>

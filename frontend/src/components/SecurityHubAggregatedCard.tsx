@@ -345,6 +345,25 @@ export function SecurityHubAggregatedCard({
           </div>
 
           {/* Centre: Compact inline stats - Compliance data */}
+          {/* Mobile: compact row below header */}
+          <div className="md:hidden flex flex-wrap items-center gap-2 mt-2">
+            {failedCount > 0 && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-900/30">
+                <XCircle className="h-3 w-3 text-red-400" />
+                <span className="text-xs font-medium text-red-400">{failedCount}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-900/30">
+              <Shield className="h-3 w-3 text-green-400" />
+              <span className="text-xs font-medium text-green-400">{config.techniques_covered_count}</span>
+            </div>
+            <span className={`text-xs font-semibold ${
+              compliancePercent >= 80 ? 'text-green-400' : compliancePercent >= 50 ? 'text-yellow-400' : 'text-red-400'
+            }`}>
+              {compliancePercent}%
+            </span>
+          </div>
+          {/* Desktop: full stats row */}
           <div className="hidden md:flex items-center gap-6">
             {/* Compliance progress bar */}
             <div className="flex items-center gap-2">
