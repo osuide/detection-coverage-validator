@@ -1154,6 +1154,7 @@ class ScanService:
                 detection.description = raw.description
                 detection.target_services = raw.target_services
                 detection.status = self._determine_detection_status(raw)
+                detection.is_managed = raw.is_managed
                 detection.updated_at = datetime.now(timezone.utc)
                 # Update evaluation summary if provided
                 if raw.evaluation_summary:
