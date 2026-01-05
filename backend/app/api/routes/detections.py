@@ -16,6 +16,7 @@ from app.core.security import (
     require_scope,
     get_allowed_account_filter,
 )
+from app.core.service_registry import get_all_regions
 from app.models.cloud_account import CloudAccount
 from app.models.detection import Detection, DetectionType, DetectionStatus
 from app.models.mapping import DetectionMapping
@@ -95,6 +96,10 @@ async def list_detections(
     status: Optional[DetectionStatus] = None,
     region: Optional[str] = None,
     search: Optional[str] = None,
+    include_region_coverage: bool = Query(
+        False,
+        description="Include effective regions for regional coverage analysis",
+    ),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
     auth: AuthContext = Depends(get_auth_context),
@@ -103,6 +108,10 @@ async def list_detections(
     """List detections with optional filters.
 
     API keys require 'read:detections' scope.
+
+    When include_region_coverage=true and cloud_account_id is specified,
+    the response includes effective_regions and provider for regional
+    coverage gap analysis.
     """
     # Security: Get allowed accounts for ACL filtering
     allowed_accounts = get_allowed_account_filter(auth)
@@ -204,13 +213,32 @@ async def list_detections(
 
     pages = (total + limit - 1) // limit if total else 0
 
-    return DetectionListResponse(
-        items=items,
-        total=total,
-        page=skip // limit + 1,
-        page_size=limit,
-        pages=pages,
-    )
+    # Build response with optional region coverage data
+    response_data = {
+        "items": items,
+        "total": total,
+        "page": skip // limit + 1,
+        "page_size": limit,
+        "pages": pages,
+    }
+
+    # Include effective regions for regional coverage analysis
+    if include_region_coverage and cloud_account_id:
+        # Fetch the cloud account to get its region configuration
+        account_result = await db.execute(
+            select(CloudAccount).where(
+                CloudAccount.id == cloud_account_id,
+                CloudAccount.organization_id == auth.organization_id,
+            )
+        )
+        account = account_result.scalar_one_or_none()
+        if account:
+            all_regions = get_all_regions(account.provider.value)
+            effective_regions = account.get_effective_regions(all_regions)
+            response_data["effective_regions"] = effective_regions
+            response_data["provider"] = account.provider.value
+
+    return DetectionListResponse(**response_data)
 
 
 class DetectionSourceCount(BaseModel):

@@ -71,3 +71,7 @@ class DetectionListResponse(BaseModel):
     page: int
     page_size: int
     pages: int
+    # Optional: regions in scope for the cloud account (for regional coverage analysis)
+    effective_regions: Optional[list[str]] = None
+    # Optional: cloud provider for this account (needed for regional detection type checking)
+    provider: Optional[str] = None

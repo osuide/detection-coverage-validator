@@ -310,9 +310,26 @@ export interface DetectionSourceCountsResponse {
   total: number
 }
 
+export interface DetectionListResponse {
+  items: Detection[]
+  total: number
+  page: number
+  page_size: number
+  pages: number
+  // Optional: regions in scope for the cloud account (for regional coverage analysis)
+  effective_regions?: string[]
+  // Optional: cloud provider for this account (needed for regional detection type checking)
+  provider?: 'aws' | 'gcp'
+}
+
 export const detectionsApi = {
-  list: (params?: { cloud_account_id?: string; page?: number; limit?: number }) =>
-    api.get<{ items: Detection[]; total: number }>('/detections', { params }).then(r => r.data),
+  list: (params?: {
+    cloud_account_id?: string
+    page?: number
+    limit?: number
+    include_region_coverage?: boolean
+  }) =>
+    api.get<DetectionListResponse>('/detections', { params }).then(r => r.data),
   get: (id: string) => api.get<DetectionDetail>(`/detections/${id}`).then(r => r.data),
   getMappings: (id: string) =>
     api.get<{ detection_id: string; detection_name: string; mappings: DetectionMapping[] }>(
