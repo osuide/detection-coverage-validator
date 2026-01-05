@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Shield, Search, Filter, ChevronDown, Eye, Activity, Zap, CheckCircle, Lock, AlertTriangle, XCircle, HelpCircle, Bell, MapPin } from 'lucide-react'
+import { Shield, Search, Filter, ChevronDown, Eye, Activity, Zap, CheckCircle, Lock, AlertTriangle, XCircle, HelpCircle, Bell, MapPin, Cloud } from 'lucide-react'
 import { detectionsApi, Detection, EvaluationSummary } from '../services/api'
 import { useState, useMemo } from 'react'
 import DetectionDetailModal from '../components/DetectionDetailModal'
@@ -175,6 +175,18 @@ function ComplianceIndicator({ evaluation }: { evaluation?: EvaluationSummary })
   return <span className="text-gray-500 text-sm">-</span>
 }
 
+/** Badge indicating AWS/GCP-managed detection (vs user-created) */
+function ManagedBadge({ isManaged }: { isManaged: boolean }) {
+  if (!isManaged) return null
+
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-sky-900/30 text-sky-400 border border-sky-700/50">
+      <Cloud className="h-3 w-3 mr-1" />
+      AWS Managed
+    </span>
+  )
+}
+
 /** Mobile card component for detection display */
 function DetectionCard({
   detection,
@@ -221,6 +233,11 @@ function DetectionCard({
             {new Date(detection.discovered_at).toLocaleDateString()}
           </span>
         </div>
+        {detection.is_managed && (
+          <div className="pt-2 border-t border-gray-700 mt-2">
+            <ManagedBadge isManaged={detection.is_managed} />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -230,6 +247,7 @@ export default function Detections() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [managedFilter, setManagedFilter] = useState<'all' | 'managed' | 'custom'>('all')
   const [sortField, setSortField] = useState<SortField>('discovered_at')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [selectedDetection, setSelectedDetection] = useState<Detection | null>(null)
@@ -304,6 +322,12 @@ export default function Detections() {
 
   if (statusFilter) {
     filteredDetections = filteredDetections.filter(d => d.status === statusFilter)
+  }
+
+  if (managedFilter !== 'all') {
+    filteredDetections = filteredDetections.filter(d =>
+      managedFilter === 'managed' ? d.is_managed : !d.is_managed
+    )
   }
 
   // Apply sorting
@@ -409,12 +433,48 @@ export default function Detections() {
             ))}
           </select>
 
-          {(typeFilter || statusFilter || search) && (
+          {/* Managed/Custom filter toggle */}
+          <div className="flex items-center rounded-lg border border-gray-600 overflow-hidden">
+            <button
+              onClick={() => setManagedFilter('all')}
+              className={`px-3 py-2 text-sm transition-colors ${
+                managedFilter === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setManagedFilter('managed')}
+              className={`px-3 py-2 text-sm transition-colors flex items-center gap-1 ${
+                managedFilter === 'managed'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              <Cloud className="h-3 w-3" />
+              <span className="hidden sm:inline">AWS</span> Managed
+            </button>
+            <button
+              onClick={() => setManagedFilter('custom')}
+              className={`px-3 py-2 text-sm transition-colors ${
+                managedFilter === 'custom'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              Custom
+            </button>
+          </div>
+
+          {(typeFilter || statusFilter || search || managedFilter !== 'all') && (
             <button
               onClick={() => {
                 setSearch('')
                 setTypeFilter('')
                 setStatusFilter('')
+                setManagedFilter('all')
               }}
               className="shrink-0 text-sm text-blue-400 hover:text-blue-300"
             >
@@ -540,7 +600,10 @@ export default function Detections() {
                       onClick={() => setSelectedDetection(detection)}
                     >
                       <td className="px-6 py-4">
-                        <div className="font-medium text-white">{detection.name}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-white">{detection.name}</span>
+                          <ManagedBadge isManaged={detection.is_managed} />
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <DetectionTypeBadge type={detection.detection_type} />

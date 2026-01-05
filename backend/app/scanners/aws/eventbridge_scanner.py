@@ -9,6 +9,37 @@ from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
 from app.scanners.aws.service_mappings import extract_services_from_event_pattern
 
+# Patterns indicating AWS-managed EventBridge rules
+# These are created by AWS services and should not be modified by users
+AWS_MANAGED_RULE_PATTERNS = [
+    "DO-NOT-DELETE-",  # AWS Control Tower, Config delivery channel
+    "AWSServiceRule",  # AWS service-created rules
+    "aws.partner/",  # AWS Partner event source rules
+    "AwsHealthEvent",  # AWS Health events
+    "SecurityHub",  # Security Hub managed rules
+]
+
+
+def is_aws_managed_rule(
+    rule_name: str,
+    managed_by: str | None = None,
+) -> bool:
+    """Determine if an EventBridge rule is AWS-managed.
+
+    Args:
+        rule_name: The name of the EventBridge rule
+        managed_by: The ManagedBy field from AWS API (if available)
+
+    Returns:
+        True if the rule is AWS-managed, False otherwise
+    """
+    # AWS API provides ManagedBy field for some managed rules
+    if managed_by:
+        return True
+
+    # Check against known patterns
+    return any(pattern in rule_name for pattern in AWS_MANAGED_RULE_PATTERNS)
+
 
 class EventBridgeScanner(BaseScanner):
     """Scanner for Amazon EventBridge rules.
@@ -109,6 +140,7 @@ class EventBridgeScanner(BaseScanner):
         event_pattern_str = rule.get("EventPattern")
         description = rule.get("Description")
         schedule = rule.get("ScheduleExpression")
+        managed_by = rule.get("ManagedBy")
 
         # Parse event pattern if present
         event_pattern = None
@@ -128,6 +160,9 @@ class EventBridgeScanner(BaseScanner):
             "state": state,
         }
 
+        # Determine if this is an AWS-managed rule
+        is_managed = is_aws_managed_rule(name, managed_by)
+
         return RawDetection(
             name=name,
             detection_type=DetectionType.EVENTBRIDGE_RULE,
@@ -141,11 +176,13 @@ class EventBridgeScanner(BaseScanner):
                 "EventPattern": event_pattern_str,
                 "ScheduleExpression": schedule,
                 "Description": description,
+                "ManagedBy": managed_by,
             },
             event_pattern=event_pattern,
             description=description or f"EventBridge rule: {name}",
             target_services=target_services or None,
             evaluation_summary=evaluation_summary,
+            is_managed=is_managed,
         )
 
     def extract_cloudtrail_events(

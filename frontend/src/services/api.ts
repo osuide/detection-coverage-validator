@@ -155,6 +155,8 @@ export interface Detection {
   evaluation_updated_at?: string
   // Raw configuration (for aggregated detections like Security Hub standards)
   raw_config?: Record<string, unknown>
+  // Whether this is an AWS/GCP-managed detection (vs user-created)
+  is_managed: boolean
 }
 
 export interface TacticCoverage {
