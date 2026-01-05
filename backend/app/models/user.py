@@ -1,10 +1,11 @@
 """User and authentication models."""
 
-import uuid
 import enum
+import logging
 import secrets
+import uuid
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import List, Optional
 
 from cryptography.fernet import Fernet
 from sqlalchemy import (
@@ -22,6 +23,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class UserRole(str, enum.Enum):
@@ -94,34 +97,97 @@ class User(Base):
         except Exception:
             return None
 
+    @staticmethod
+    def _is_production() -> bool:
+        """Check if running in production environment."""
+        settings = get_settings()
+        return settings.environment in ("production", "prod")
+
     @property
     def mfa_secret(self) -> Optional[str]:
-        """Get decrypted MFA secret."""
+        """Get decrypted MFA secret.
+
+        Security: CWE-311 fix - logs warnings and refuses plaintext in production.
+        """
         if not self._mfa_secret_encrypted:
             return None
 
         key = self._get_mfa_encryption_key()
         if not key:
-            # No encryption key - return as-is (legacy/development mode)
+            # Security: In production, refuse to return unencrypted MFA secrets
+            if self._is_production():
+                logger.error(
+                    "mfa_secret_encryption_missing",
+                    extra={
+                        "user_id": str(self.id),
+                        "security": "CREDENTIAL_ENCRYPTION_KEY required in production",
+                    },
+                )
+                raise RuntimeError(
+                    "MFA secrets cannot be accessed without encryption key in production"
+                )
+            # Development/test: warn and return as-is
+            logger.warning(
+                "mfa_secret_unencrypted_access",
+                extra={
+                    "user_id": str(self.id),
+                    "environment": "development",
+                },
+            )
             return self._mfa_secret_encrypted
 
         try:
             fernet = Fernet(key)
             return fernet.decrypt(self._mfa_secret_encrypted.encode()).decode()
-        except Exception:
-            # If decryption fails, assume it's unencrypted legacy data
+        except Exception as e:
+            # Security: Log decryption failures - could indicate data corruption or key mismatch
+            logger.warning(
+                "mfa_secret_decryption_failed",
+                extra={
+                    "user_id": str(self.id),
+                    "error": str(e),
+                    "action": "returning_as_legacy_plaintext",
+                },
+            )
+            # Only allow plaintext fallback in non-production
+            if self._is_production():
+                raise RuntimeError(
+                    "MFA secret decryption failed in production - data may be corrupted"
+                )
             return self._mfa_secret_encrypted
 
     @mfa_secret.setter
     def mfa_secret(self, value: Optional[str]) -> None:
-        """Set encrypted MFA secret."""
+        """Set encrypted MFA secret.
+
+        Security: CWE-311 fix - refuses to store plaintext in production.
+        """
         if value is None:
             self._mfa_secret_encrypted = None
             return
 
         key = self._get_mfa_encryption_key()
         if not key:
-            # No encryption key - store as-is (development mode)
+            # Security: In production, refuse to store unencrypted MFA secrets
+            if self._is_production():
+                logger.error(
+                    "mfa_secret_encryption_required",
+                    extra={
+                        "user_id": str(self.id) if hasattr(self, "id") else "new_user",
+                        "security": "CREDENTIAL_ENCRYPTION_KEY required in production",
+                    },
+                )
+                raise RuntimeError(
+                    "MFA secrets cannot be stored without encryption key in production"
+                )
+            # Development/test: warn and store as-is
+            logger.warning(
+                "mfa_secret_storing_unencrypted",
+                extra={
+                    "user_id": str(self.id) if hasattr(self, "id") else "new_user",
+                    "environment": "development",
+                },
+            )
             self._mfa_secret_encrypted = value
             return
 

@@ -286,6 +286,9 @@ module "backend" {
   workspace_service_account_email = var.workspace_service_account_email
   workspace_admin_email           = var.workspace_admin_email
   support_crm_spreadsheet_id      = var.support_crm_spreadsheet_id
+
+  # SES domain for scoped email permissions (CWE-732 fix)
+  ses_domain = var.domain_name
 }
 
 # Frontend (S3 + CloudFront)
@@ -422,6 +425,23 @@ resource "aws_guardduty_detector" "main" {
     Name        = "a13e-${var.environment}-guardduty"
     Environment = var.environment
   }
+}
+
+# ============================================================================
+# CloudTrail - Audit Logging
+# ============================================================================
+# Security: CWE-778 fix - enables comprehensive audit logging for:
+# - All AWS API calls (management events)
+# - Secrets Manager access (data events)
+# - Multi-region coverage with log file integrity validation
+
+module "cloudtrail" {
+  source = "./modules/cloudtrail"
+
+  environment               = var.environment
+  enable_data_events        = var.environment == "prod" # S3 data events only in production (cost)
+  log_retention_days        = var.environment == "prod" ? 365 : 90
+  cloudwatch_retention_days = var.environment == "prod" ? 180 : 30
 }
 
 # ============================================================================

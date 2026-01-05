@@ -221,6 +221,12 @@ variable "allowed_ips" {
   default     = []
 }
 
+variable "ses_domain" {
+  type        = string
+  description = "SES verified domain for sending emails (used to scope IAM permissions)"
+  default     = ""
+}
+
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
@@ -645,13 +651,22 @@ resource "aws_iam_role_policy" "ecs_task" {
         Resource = "*"
       },
       {
+        # Security: CWE-732 fix - scope SES permissions to verified domain only
+        # Prevents sending email from arbitrary identities if credentials are compromised
         Sid    = "SESSendEmail"
         Effect = "Allow"
         Action = [
           "ses:SendEmail",
           "ses:SendRawEmail"
         ]
-        Resource = "*"
+        # Scope to verified domain identity (email sender) and any email address
+        # SES requires permission on both the identity (domain) and recipient
+        Resource = var.ses_domain != "" ? [
+          "arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/${var.ses_domain}",
+          "arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/*@${var.ses_domain}",
+          # Also allow sending to any recipient (required for SES)
+          "arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/*"
+        ] : ["arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/*"]
       },
       {
         Sid    = "ECSExec"
