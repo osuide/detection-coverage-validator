@@ -54,7 +54,12 @@ jobs:
 
       - name: Terraform Init
         working-directory: ./infrastructure/terraform
-        run: terraform init
+        env:
+          TF_ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+        run: |
+          # Use environment-specific state file to isolate staging/prod infrastructure
+          terraform init -reconfigure \
+            -backend-config="key=${TF_ENVIRONMENT}/terraform.tfstate"
 
       - name: Terraform Plan
         working-directory: ./infrastructure/terraform
