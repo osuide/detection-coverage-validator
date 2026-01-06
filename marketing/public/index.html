@@ -944,6 +944,36 @@
     </div>
   </footer>
 
+  <!-- Environment-aware link rewriting -->
+  <script>
+    (function() {
+      // Detect if we're on staging (CloudFront dev domain or explicit staging)
+      const hostname = window.location.hostname;
+      const isStaging = hostname.includes('cloudfront.net') ||
+                        hostname.includes('staging') ||
+                        hostname === 'localhost' ||
+                        hostname === '127.0.0.1';
+
+      if (isStaging) {
+        // Rewrite production URLs to staging equivalents
+        const mappings = {
+          'https://app.a13e.com': 'https://staging.a13e.com',
+          'https://docs.a13e.com': 'https://docs.staging.a13e.com'
+        };
+
+        document.querySelectorAll('a[href]').forEach(link => {
+          let href = link.getAttribute('href');
+          for (const [prod, staging] of Object.entries(mappings)) {
+            if (href.startsWith(prod)) {
+              link.setAttribute('href', href.replace(prod, staging));
+              break;
+            }
+          }
+        });
+      }
+    })();
+  </script>
+
   <!-- Structured Data for SEO -->
   <script type="application/ld+json">
   {
