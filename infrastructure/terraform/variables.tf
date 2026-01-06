@@ -180,6 +180,12 @@ variable "cookie_domain" {
 # GuardDuty Configuration
 # ============================================================================
 
+variable "enable_guardduty" {
+  description = "Enable GuardDuty detector creation. Set to false if detector already exists in the account (e.g., created by staging)."
+  type        = bool
+  default     = true
+}
+
 variable "guardduty_finding_publishing_frequency" {
   description = "Frequency of GuardDuty finding exports. FIFTEEN_MINUTES for prod, SIX_HOURS for staging."
   type        = string

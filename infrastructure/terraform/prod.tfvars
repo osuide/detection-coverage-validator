@@ -14,9 +14,10 @@ redis_node_type   = "cache.t3.small" # 2 vCPU, 1.37GB RAM
 # =============================================================================
 # Domain Configuration
 # =============================================================================
-# Production uses app.a13e.com (subdomain="" means no prefix)
+# Production uses app.a13e.com for frontend, api.a13e.com for API
+# Marketing site (a13e.com) is deployed separately via staging (shared resource)
 domain_name  = "a13e.com"
-subdomain    = "" # Empty for production: app.a13e.com, api.a13e.com
+subdomain    = "app" # Production: app.a13e.com, api.app.a13e.com
 enable_https = true
 
 # =============================================================================
@@ -69,8 +70,9 @@ waf_allowed_ips = []
 # =============================================================================
 # Monitoring
 # =============================================================================
-# More frequent GuardDuty publishing for production
-guardduty_finding_publishing_frequency = "FIFTEEN_MINUTES"
+# GuardDuty: Only one detector per AWS account - staging creates it
+# Production shares the detector created by staging
+enable_guardduty = false
 
 # =============================================================================
 # Features
