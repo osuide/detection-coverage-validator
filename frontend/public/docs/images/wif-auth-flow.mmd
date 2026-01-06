@@ -1,0 +1,18 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#1e3a5f', 'primaryTextColor': '#fff', 'primaryBorderColor': '#3b82f6', 'lineColor': '#64748b', 'secondaryColor': '#0f172a', 'tertiaryColor': '#1e293b', 'actorTextColor': '#fff', 'actorBkg': '#1e3a5f', 'actorBorder': '#3b82f6', 'signalColor': '#64748b', 'signalTextColor': '#e2e8f0', 'noteBkgColor': '#1e293b', 'noteTextColor': '#e2e8f0', 'noteBorderColor': '#3b82f6'}}}%%
+
+sequenceDiagram
+    participant A13E as A13E Backend<br/>(AWS)
+    participant WIF as GCP Workload<br/>Identity Pool
+    participant SA as Your GCP<br/>Service Account
+    participant GCP as GCP Security<br/>Services
+
+    Note over A13E,GCP: Credential-Free Authentication Flow
+
+    A13E->>A13E: 1. Sign JWT with<br/>AWS credentials
+    A13E->>WIF: 2. Present signed JWT
+    WIF->>WIF: Validate AWS identity<br/>against trust policy
+    WIF->>SA: 3. Request token<br/>impersonation
+    SA-->>WIF: Grant access
+    WIF-->>A13E: Issue short-lived<br/>GCP access token<br/>(1 hour max)
+    A13E->>GCP: 4. Read security<br/>configuration
+    GCP-->>A13E: Return detection data

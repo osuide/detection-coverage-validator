@@ -67,16 +67,9 @@ A13E uses **read-only permissions** following the principle of least privilege.
 
 ## How WIF Works
 
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   A13E Backend  │     │  GCP Workload    │     │  Your GCP       │
-│   (AWS)         │────▶│  Identity Pool   │────▶│  Service Acct   │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-        │                        │                        │
-        │ 1. Signs JWT with      │ 2. Validates AWS       │ 3. Issues GCP
-        │    AWS credentials     │    identity            │    access token
-        └────────────────────────┴────────────────────────┘
-```
+![Workload Identity Federation Authentication Flow](./images/wif-auth-flow.png)
+
+*A13E's credential-free authentication using Workload Identity Federation. The AWS backend signs a JWT, GCP validates the identity, and issues a short-lived token (maximum 1 hour) to access your security configuration.*
 
 1. A13E authenticates using its AWS IAM role
 2. GCP's WIF pool validates the AWS identity against the configured trust
