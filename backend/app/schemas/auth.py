@@ -76,7 +76,7 @@ class SignupRequest(BaseModel):
     """Signup request."""
 
     email: ValidatedEmail  # Blocks disposable email domains
-    password: str = Field(..., min_length=12)
+    password: str = Field(..., min_length=12, max_length=72)
     full_name: str = Field(..., min_length=2, max_length=255)
     organization_name: str = Field(..., min_length=2, max_length=255)
     terms_accepted: bool = True
@@ -118,7 +118,7 @@ class ResetPasswordRequest(BaseModel):
     """Reset password request."""
 
     token: str
-    password: str = Field(..., min_length=12)
+    password: str = Field(..., min_length=12, max_length=72)
 
     @field_validator("password")
     @classmethod
@@ -140,7 +140,7 @@ class ChangePasswordRequest(BaseModel):
     """Change password request."""
 
     current_password: str
-    new_password: str = Field(..., min_length=12)
+    new_password: str = Field(..., min_length=12, max_length=72)
 
     @field_validator("new_password")
     @classmethod
@@ -279,7 +279,7 @@ class AcceptInviteRequest(BaseModel):
 
     token: str
     full_name: str = Field(..., min_length=2, max_length=255)
-    password: str = Field(..., min_length=12)
+    password: str = Field(..., min_length=12, max_length=72)
 
     @field_validator("password")
     @classmethod
