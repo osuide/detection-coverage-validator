@@ -58,6 +58,27 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 # =============================================================================
+# Computed Domain Names
+# These ensure consistent domain naming across all modules
+# =============================================================================
+locals {
+  # Frontend domain follows main subdomain
+  frontend_domain = var.subdomain != "" ? "${var.subdomain}.${var.domain_name}" : var.domain_name
+
+  # API subdomain: if api_subdomain is null, follow main subdomain; otherwise use specified value
+  _api_prefix = var.api_subdomain != null ? var.api_subdomain : var.subdomain
+  api_domain  = local._api_prefix != "" ? "api.${local._api_prefix}.${var.domain_name}" : "api.${var.domain_name}"
+
+  # Docs subdomain: same pattern as API
+  _docs_prefix = var.docs_subdomain != null ? var.docs_subdomain : var.subdomain
+  docs_domain  = local._docs_prefix != "" ? "docs.${local._docs_prefix}.${var.domain_name}" : "docs.${var.domain_name}"
+
+  # Full URLs
+  frontend_url = var.domain_name != "" ? "https://${local.frontend_domain}" : "http://localhost:3001"
+  api_url      = var.domain_name != "" ? "https://${local.api_domain}" : "http://localhost:8000"
+}
+
+# =============================================================================
 # OAuth Configuration Checks
 # These ensure SSO credentials are set before applying to staging/prod
 # =============================================================================
@@ -227,8 +248,8 @@ module "security" {
   }
 
   environment     = var.environment
-  api_domain      = var.subdomain != "" ? "api.${var.subdomain}.${var.domain_name}" : "api.${var.domain_name}"
-  frontend_domain = var.subdomain != "" ? "${var.subdomain}.${var.domain_name}" : var.domain_name
+  api_domain      = local.api_domain
+  frontend_domain = local.frontend_domain
   allowed_ips     = var.waf_allowed_ips
 }
 
@@ -246,7 +267,7 @@ module "backend" {
   database_security_group_id = module.database.security_group_id
   redis_security_group_id    = module.cache.security_group_id
   ecr_repository_url         = module.ecr.repository_url
-  domain_name                = var.domain_name != "" ? (var.subdomain != "" ? "api.${var.subdomain}.${var.domain_name}" : "api.${var.domain_name}") : ""
+  domain_name                = var.domain_name != "" ? local.api_domain : ""
   # Certificate and HTTPS are enabled in phase 2 after initial deployment
   certificate_arn           = var.enable_https && var.domain_name != "" ? module.dns[0].alb_certificate_arn : ""
   enable_https              = var.enable_https
@@ -261,7 +282,7 @@ module "backend" {
   cognito_client_id    = var.enable_cognito ? module.cognito[0].web_client_id : ""
   cognito_domain       = var.enable_cognito ? module.cognito[0].cognito_domain_url : ""
   cognito_issuer       = var.enable_cognito ? module.cognito[0].issuer : ""
-  frontend_url         = var.domain_name != "" ? (var.subdomain != "" ? "https://${var.subdomain}.${var.domain_name}" : "https://${var.domain_name}") : "http://localhost:3001"
+  frontend_url         = local.frontend_url
 
   # Google OAuth (via Cognito)
   google_client_id = var.google_client_id
@@ -308,7 +329,7 @@ module "frontend" {
   }
 
   environment     = var.environment
-  domain_name     = var.enable_https && var.domain_name != "" ? (var.subdomain != "" ? "${var.subdomain}.${var.domain_name}" : var.domain_name) : ""
+  domain_name     = var.enable_https && var.domain_name != "" ? local.frontend_domain : ""
   certificate_arn = var.enable_https && var.domain_name != "" ? module.dns[0].cloudfront_certificate_arn : ""
   api_endpoint    = module.backend.api_endpoint
   lambda_edge_arn = var.enable_https && var.domain_name != "" ? module.security[0].lambda_edge_arn : ""
@@ -331,7 +352,7 @@ module "docs" {
   }
 
   environment     = var.environment
-  domain_name     = var.enable_https && var.domain_name != "" ? (var.subdomain != "" ? "docs.${var.subdomain}.${var.domain_name}" : "docs.${var.domain_name}") : ""
+  domain_name     = var.enable_https && var.domain_name != "" ? local.docs_domain : ""
   certificate_arn = var.enable_https && var.domain_name != "" ? module.dns[0].docs_certificate_arn : ""
   lambda_edge_arn = var.enable_https && var.domain_name != "" ? module.security[0].lambda_edge_arn : ""
   waf_acl_arn     = var.enable_https && var.domain_name != "" ? module.security[0].waf_acl_arn : ""
