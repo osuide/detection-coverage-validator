@@ -208,6 +208,11 @@ module "dns" {
   enable_docs                 = var.enable_docs
   docs_cloudfront_domain_name = var.enable_docs ? module.docs[0].cloudfront_domain_name : ""
   docs_cloudfront_zone_id     = var.enable_docs ? module.docs[0].cloudfront_zone_id : "Z2FDTNDATAQYW2"
+
+  # Marketing site (a13e.com - root domain)
+  enable_marketing                 = var.enable_marketing
+  marketing_cloudfront_domain_name = var.enable_marketing ? module.marketing[0].cloudfront_domain_name : ""
+  marketing_cloudfront_zone_id     = var.enable_marketing ? module.marketing[0].cloudfront_zone_id : "Z2FDTNDATAQYW2"
 }
 
 # Security (Lambda@Edge CSP + WAF)
@@ -326,6 +331,28 @@ module "docs" {
   environment     = var.environment
   domain_name     = var.enable_https && var.domain_name != "" ? (var.subdomain != "" ? "docs.${var.subdomain}.${var.domain_name}" : "docs.${var.domain_name}") : ""
   certificate_arn = var.enable_https && var.domain_name != "" ? module.dns[0].docs_certificate_arn : ""
+  lambda_edge_arn = var.enable_https && var.domain_name != "" ? module.security[0].lambda_edge_arn : ""
+  waf_acl_arn     = var.enable_https && var.domain_name != "" ? module.security[0].waf_acl_arn : ""
+}
+
+# =============================================================================
+# Marketing Site (a13e.com - root domain)
+# =============================================================================
+# Static landing page hosted via S3 + CloudFront at the root domain.
+# Enabled via enable_marketing variable in tfvars.
+
+module "marketing" {
+  count  = var.enable_marketing ? 1 : 0
+  source = "./modules/marketing"
+
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  environment     = var.environment
+  domain_name     = var.domain_name
+  certificate_arn = var.enable_https && var.domain_name != "" ? module.dns[0].marketing_certificate_arn : ""
   lambda_edge_arn = var.enable_https && var.domain_name != "" ? module.security[0].lambda_edge_arn : ""
   waf_acl_arn     = var.enable_https && var.domain_name != "" ? module.security[0].waf_acl_arn : ""
 }

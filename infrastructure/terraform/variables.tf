@@ -228,6 +228,16 @@ variable "enable_docs" {
 }
 
 # ============================================================================
+# Marketing Site (Root Domain)
+# ============================================================================
+
+variable "enable_marketing" {
+  description = "Enable marketing landing page at root domain (a13e.com)"
+  type        = bool
+  default     = false
+}
+
+# ============================================================================
 # NAT Gateway Configuration (Production)
 # ============================================================================
 # Required for Secure by Design compliance - moves ECS to private subnets

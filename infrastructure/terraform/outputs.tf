@@ -124,6 +124,22 @@ output "docs_url" {
   value       = var.enable_docs && var.enable_https && var.domain_name != "" ? "https://${var.subdomain != "" ? "docs.${var.subdomain}.${var.domain_name}" : "docs.${var.domain_name}"}" : (var.enable_docs ? module.docs[0].cloudfront_url : null)
 }
 
+# Marketing site outputs (only when enabled)
+output "marketing_s3_bucket_name" {
+  description = "S3 bucket name for marketing site deployment"
+  value       = var.enable_marketing ? module.marketing[0].s3_bucket_name : null
+}
+
+output "marketing_cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for marketing site cache invalidation"
+  value       = var.enable_marketing ? module.marketing[0].cloudfront_distribution_id : null
+}
+
+output "marketing_url" {
+  description = "Marketing site URL"
+  value       = var.enable_marketing && var.enable_https && var.domain_name != "" ? "https://${var.domain_name}" : (var.enable_marketing ? module.marketing[0].cloudfront_url : null)
+}
+
 # Google Workspace WIF outputs
 # WIF is managed separately in ../terraform-gcp-wif/
 # Run: cd ../terraform-gcp-wif && terraform output

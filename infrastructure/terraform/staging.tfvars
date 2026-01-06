@@ -81,6 +81,14 @@ enable_codebuild_tests = true
 enable_docs = true
 
 # ============================================================================
+# Marketing Site (Root Domain)
+# ============================================================================
+# Enable marketing landing page at a13e.com (root domain).
+# Uses S3 + CloudFront with the same security controls as frontend.
+# Note: This is shared across staging and production - only deploy once.
+enable_marketing = true
+
+# ============================================================================
 # CloudTrail Audit Logging (CWE-778)
 # ============================================================================
 # Enables audit logging for all AWS API calls and Secrets Manager access.

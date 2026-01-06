@@ -68,6 +68,25 @@ variable "docs_cloudfront_zone_id" {
   default     = "Z2FDTNDATAQYW2" # CloudFront's static zone ID
 }
 
+# Marketing site variables (root domain)
+variable "enable_marketing" {
+  type        = bool
+  description = "Enable marketing site at root domain (a13e.com)"
+  default     = false
+}
+
+variable "marketing_cloudfront_domain_name" {
+  type        = string
+  description = "CloudFront distribution domain name for marketing site"
+  default     = ""
+}
+
+variable "marketing_cloudfront_zone_id" {
+  type        = string
+  description = "CloudFront hosted zone ID for marketing site"
+  default     = "Z2FDTNDATAQYW2" # CloudFront's static zone ID
+}
+
 data "aws_route53_zone" "main" {
   name         = "${var.domain_name}."
   private_zone = false
@@ -280,4 +299,94 @@ output "docs_domain" {
 
 output "docs_certificate_arn" {
   value = var.enable_docs ? aws_acm_certificate_validation.docs[0].certificate_arn : ""
+}
+
+# =============================================================================
+# Marketing Site (a13e.com - root domain)
+# =============================================================================
+
+# ACM Certificate for Marketing CloudFront (must be in us-east-1)
+# Includes both root domain and www subdomain
+resource "aws_acm_certificate" "marketing" {
+  count                     = var.enable_marketing ? 1 : 0
+  provider                  = aws.us_east_1
+  domain_name               = var.domain_name
+  subject_alternative_names = ["www.${var.domain_name}"]
+  validation_method         = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name        = "a13e-${var.environment}-marketing-cert"
+    Environment = var.environment
+  }
+}
+
+# DNS Validation Records for Marketing cert
+resource "aws_route53_record" "marketing_cert_validation" {
+  for_each = var.enable_marketing ? {
+    for dvo in aws_acm_certificate.marketing[0].domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  } : {}
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = data.aws_route53_zone.main.zone_id
+}
+
+# Certificate Validation for Marketing
+resource "aws_acm_certificate_validation" "marketing" {
+  count                   = var.enable_marketing ? 1 : 0
+  provider                = aws.us_east_1
+  certificate_arn         = aws_acm_certificate.marketing[0].arn
+  validation_record_fqdns = [for record in aws_route53_record.marketing_cert_validation : record.fqdn]
+}
+
+# Route 53 Record for Marketing - Root Domain (a13e.com)
+resource "aws_route53_record" "marketing" {
+  count   = var.enable_marketing && var.marketing_cloudfront_domain_name != "" ? 1 : 0
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = var.domain_name
+  type    = "A"
+
+  alias {
+    name                   = var.marketing_cloudfront_domain_name
+    zone_id                = var.marketing_cloudfront_zone_id
+    evaluate_target_health = false
+  }
+
+  depends_on = [aws_acm_certificate_validation.marketing]
+}
+
+# Route 53 Record for Marketing - WWW subdomain (www.a13e.com)
+resource "aws_route53_record" "marketing_www" {
+  count   = var.enable_marketing && var.marketing_cloudfront_domain_name != "" ? 1 : 0
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "www.${var.domain_name}"
+  type    = "A"
+
+  alias {
+    name                   = var.marketing_cloudfront_domain_name
+    zone_id                = var.marketing_cloudfront_zone_id
+    evaluate_target_health = false
+  }
+
+  depends_on = [aws_acm_certificate_validation.marketing]
+}
+
+# Marketing outputs
+output "marketing_domain" {
+  value = var.enable_marketing ? var.domain_name : ""
+}
+
+output "marketing_certificate_arn" {
+  value = var.enable_marketing ? aws_acm_certificate_validation.marketing[0].certificate_arn : ""
 }
