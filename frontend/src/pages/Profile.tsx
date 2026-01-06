@@ -18,6 +18,27 @@ export default function Profile() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Password validation state (aligned with Signup requirements)
+  const [passwordValidation, setPasswordValidation] = useState({
+    length: false,
+    lowercase: false,
+    uppercase: false,
+    number: false,
+    special: false,
+  })
+
+  const validatePassword = (pwd: string) => {
+    setPasswordValidation({
+      length: pwd.length >= 12,
+      lowercase: /[a-z]/.test(pwd),
+      uppercase: /[A-Z]/.test(pwd),
+      number: /\d/.test(pwd),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(pwd),
+    })
+  }
+
+  const isPasswordValid = Object.values(passwordValidation).every(Boolean)
+
   // MFA modal state
   const [showMFASetup, setShowMFASetup] = useState(false)
   const [showDisableMFA, setShowDisableMFA] = useState(false)
@@ -77,8 +98,8 @@ export default function Profile() {
       return
     }
 
-    if (newPassword.length < 8) {
-      setMessage({ type: 'error', text: 'Password must be at least 8 characters' })
+    if (!isPasswordValid) {
+      setMessage({ type: 'error', text: 'Password must be at least 12 characters with uppercase, lowercase, number, and special character' })
       return
     }
 
@@ -331,12 +352,34 @@ export default function Profile() {
                 type="password"
                 id="newPassword"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => {
+                  setNewPassword(e.target.value)
+                  validatePassword(e.target.value)
+                }}
                 className="w-full px-4 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter new password"
                 required
-                minLength={8}
+                minLength={12}
               />
+              {newPassword && (
+                <div className="mt-2 text-xs space-y-1">
+                  <div className={passwordValidation.length ? 'text-green-400' : 'text-gray-500'}>
+                    {passwordValidation.length ? '✓' : '○'} 12+ characters
+                  </div>
+                  <div className={passwordValidation.lowercase ? 'text-green-400' : 'text-gray-500'}>
+                    {passwordValidation.lowercase ? '✓' : '○'} Lowercase letter
+                  </div>
+                  <div className={passwordValidation.uppercase ? 'text-green-400' : 'text-gray-500'}>
+                    {passwordValidation.uppercase ? '✓' : '○'} Uppercase letter
+                  </div>
+                  <div className={passwordValidation.number ? 'text-green-400' : 'text-gray-500'}>
+                    {passwordValidation.number ? '✓' : '○'} Number
+                  </div>
+                  <div className={passwordValidation.special ? 'text-green-400' : 'text-gray-500'}>
+                    {passwordValidation.special ? '✓' : '○'} Special character
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-1">
@@ -350,13 +393,13 @@ export default function Profile() {
                 className="w-full px-4 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Confirm new password"
                 required
-                minLength={8}
+                minLength={12}
               />
             </div>
           </div>
           <button
             type="submit"
-            disabled={saving || !currentPassword || !newPassword || !confirmPassword}
+            disabled={saving || !currentPassword || !newPassword || !confirmPassword || !isPasswordValid}
             className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Key className="h-4 w-4 mr-2" />
