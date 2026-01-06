@@ -51,7 +51,7 @@ urllib3==2.6.2
 # Security & Authentication
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.21
-bcrypt==4.3.0
+bcrypt==5.0.0
 PyJWT[crypto]==2.10.1
 pyotp==2.9.0
 webauthn==2.7.0  # FIDO2/WebAuthn for passkeys and hardware keys
