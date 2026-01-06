@@ -200,6 +200,8 @@ module "dns" {
   environment            = var.environment
   domain_name            = var.domain_name
   subdomain              = var.subdomain
+  api_subdomain          = var.api_subdomain
+  docs_subdomain         = var.docs_subdomain
   alb_dns_name           = module.backend.alb_dns_name
   alb_zone_id            = module.backend.alb_zone_id
   cloudfront_domain_name = module.frontend.cloudfront_domain_name

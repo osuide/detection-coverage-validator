@@ -25,6 +25,18 @@ variable "subdomain" {
   default     = ""
 }
 
+variable "api_subdomain" {
+  type        = string
+  description = "API subdomain prefix. If null, follows main subdomain pattern. Set to empty string for api.domain.com"
+  default     = null
+}
+
+variable "docs_subdomain" {
+  type        = string
+  description = "Docs subdomain prefix. If null, follows main subdomain pattern. Set to empty string for docs.domain.com"
+  default     = null
+}
+
 variable "alb_dns_name" {
   type        = string
   description = "ALB DNS name for API"
@@ -94,8 +106,16 @@ data "aws_route53_zone" "main" {
 
 locals {
   frontend_domain = var.subdomain != "" ? "${var.subdomain}.${var.domain_name}" : var.domain_name
-  api_domain      = var.subdomain != "" ? "api.${var.subdomain}.${var.domain_name}" : "api.${var.domain_name}"
-  docs_domain     = var.subdomain != "" ? "docs.${var.subdomain}.${var.domain_name}" : "docs.${var.domain_name}"
+
+  # API subdomain: if api_subdomain is null, follow main subdomain pattern; otherwise use specified value
+  # Examples: api_subdomain=null + subdomain="staging" → api.staging.a13e.com
+  #           api_subdomain="" + subdomain="app" → api.a13e.com
+  _api_prefix = var.api_subdomain != null ? var.api_subdomain : var.subdomain
+  api_domain  = local._api_prefix != "" ? "api.${local._api_prefix}.${var.domain_name}" : "api.${var.domain_name}"
+
+  # Docs subdomain: same pattern as API
+  _docs_prefix = var.docs_subdomain != null ? var.docs_subdomain : var.subdomain
+  docs_domain  = local._docs_prefix != "" ? "docs.${local._docs_prefix}.${var.domain_name}" : "docs.${var.domain_name}"
 }
 
 # ACM Certificate for CloudFront (must be in us-east-1)

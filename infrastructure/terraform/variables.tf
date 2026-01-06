@@ -40,6 +40,18 @@ variable "subdomain" {
   default     = ""
 }
 
+variable "api_subdomain" {
+  description = "API subdomain prefix. If null, follows main subdomain pattern. Set to empty string for api.domain.com"
+  type        = string
+  default     = null
+}
+
+variable "docs_subdomain" {
+  description = "Docs subdomain prefix. If null, follows main subdomain pattern. Set to empty string for docs.domain.com"
+  type        = string
+  default     = null
+}
+
 variable "enable_https" {
   description = "Enable HTTPS (set to true after initial deployment when certificates are validated)"
   type        = bool

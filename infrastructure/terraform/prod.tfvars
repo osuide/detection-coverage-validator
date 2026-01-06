@@ -14,11 +14,16 @@ redis_node_type   = "cache.t3.small" # 2 vCPU, 1.37GB RAM
 # =============================================================================
 # Domain Configuration
 # =============================================================================
-# Production uses app.a13e.com for frontend, api.a13e.com for API
-# Marketing site (a13e.com) is deployed separately via staging (shared resource)
-domain_name  = "a13e.com"
-subdomain    = "app" # Production: app.a13e.com, api.app.a13e.com
-enable_https = true
+# Production URLs:
+#   - Frontend: app.a13e.com
+#   - API: api.a13e.com (not api.app.a13e.com)
+#   - Docs: docs.a13e.com (not docs.app.a13e.com)
+# Marketing site (a13e.com) is deployed via staging (shared resource)
+domain_name    = "a13e.com"
+subdomain      = "app" # Frontend at app.a13e.com
+api_subdomain  = ""    # API at api.a13e.com (root level)
+docs_subdomain = ""    # Docs at docs.a13e.com (root level)
+enable_https   = true
 
 # =============================================================================
 # NAT Gateway (Secure by Design)
