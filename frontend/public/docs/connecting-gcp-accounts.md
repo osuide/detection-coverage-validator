@@ -138,7 +138,7 @@ terraform output service_account_email
 3. Enter:
    - **Service Account Email**: From Terraform output (e.g., `a13e-scanner@your-project.iam.gserviceaccount.com`)
    - **WIF Pool ID**: `a13e-pool` (default)
-   - **WIF Provider ID**: `aws` (default)
+   - **WIF Provider ID**: `a13e-aws` (default)
 4. Click **Continue**
 5. Click **Validate Connection**
 6. Wait for validation to complete
@@ -204,7 +204,7 @@ gcloud iam workload-identity-pools create a13e-pool \
 Replace `A13E_AWS_ACCOUNT_ID` with the value from the wizard:
 
 ```bash
-gcloud iam workload-identity-pools providers create-aws aws \
+gcloud iam workload-identity-pools providers create-aws a13e-aws \
   --project=YOUR_PROJECT_ID \
   --location=global \
   --workload-identity-pool=a13e-pool \
@@ -231,7 +231,7 @@ gcloud iam service-accounts add-iam-policy-binding \
 3. Enter:
    - **Service Account Email**: `a13e-scanner@YOUR_PROJECT_ID.iam.gserviceaccount.com`
    - **WIF Pool ID**: `a13e-pool`
-   - **WIF Provider ID**: `aws`
+   - **WIF Provider ID**: `a13e-aws`
 4. Click **Validate Connection**
 5. Click **Done** when validation succeeds
 
@@ -279,7 +279,7 @@ The WIF pool or provider may be misconfigured:
 
 2. Verify the AWS provider exists:
    ```bash
-   gcloud iam workload-identity-pools providers describe aws \
+   gcloud iam workload-identity-pools providers describe a13e-aws \
      --workload-identity-pool=a13e-pool \
      --location=global --project=YOUR_PROJECT_ID
    ```
