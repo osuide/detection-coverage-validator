@@ -257,8 +257,9 @@ resource "aws_acm_certificate_validation" "docs" {
 }
 
 # Route 53 Record for Docs (CloudFront)
+# When enable_docs is true, CloudFront domain is always available from the docs module
 resource "aws_route53_record" "docs" {
-  count   = var.enable_docs && var.docs_cloudfront_domain_name != "" ? 1 : 0
+  count   = var.enable_docs ? 1 : 0
   zone_id = data.aws_route53_zone.main.zone_id
   name    = local.docs_domain
   type    = "A"

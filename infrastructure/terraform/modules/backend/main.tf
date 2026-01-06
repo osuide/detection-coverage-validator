@@ -705,8 +705,8 @@ resource "aws_secretsmanager_secret_version" "jwt_secret" {
 }
 
 resource "aws_secretsmanager_secret" "credential_encryption_key" {
-  count = var.credential_encryption_key != "" ? 1 : 0
-  name  = "a13e/${var.environment}/credential-encryption-key"
+  # Always create - key is always provided (either from var or generated random_password)
+  name = "a13e/${var.environment}/credential-encryption-key"
 
   tags = {
     Name        = "a13e-${var.environment}-credential-encryption-key"
@@ -720,8 +720,7 @@ resource "aws_secretsmanager_secret" "credential_encryption_key" {
 }
 
 resource "aws_secretsmanager_secret_version" "credential_encryption_key" {
-  count         = var.credential_encryption_key != "" ? 1 : 0
-  secret_id     = aws_secretsmanager_secret.credential_encryption_key[0].id
+  secret_id     = aws_secretsmanager_secret.credential_encryption_key.id
   secret_string = var.credential_encryption_key
 }
 
@@ -831,8 +830,8 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
       ]
       Resource = concat(
         [aws_secretsmanager_secret.jwt_secret.arn],
-        [aws_secretsmanager_secret.support_api_key.arn], # Always included - support system
-        var.credential_encryption_key != "" ? [aws_secretsmanager_secret.credential_encryption_key[0].arn] : [],
+        [aws_secretsmanager_secret.support_api_key.arn],           # Always included - support system
+        [aws_secretsmanager_secret.credential_encryption_key.arn], # Always created - cloud cred encryption
         var.stripe_secret_key != "" ? [aws_secretsmanager_secret.stripe_secret_key[0].arn] : [],
         var.stripe_webhook_secret != "" ? [aws_secretsmanager_secret.stripe_webhook_secret[0].arn] : [],
         var.github_client_secret != "" ? [aws_secretsmanager_secret.github_client_secret[0].arn] : []
@@ -920,10 +919,10 @@ resource "aws_ecs_task_definition" "backend" {
         valueFrom = aws_secretsmanager_secret.jwt_secret.arn
       }
       ],
-      var.credential_encryption_key != "" ? [{
+      [{
         name      = "CREDENTIAL_ENCRYPTION_KEY"
-        valueFrom = aws_secretsmanager_secret.credential_encryption_key[0].arn
-      }] : [],
+        valueFrom = aws_secretsmanager_secret.credential_encryption_key.arn
+      }],
       var.stripe_secret_key != "" ? [{
         name      = "STRIPE_SECRET_KEY"
         valueFrom = aws_secretsmanager_secret.stripe_secret_key[0].arn
