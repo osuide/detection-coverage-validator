@@ -18,6 +18,8 @@ const markdownFiles: Record<string, string> = {
   'team-management': '/docs/team-management.md',
   'billing': '/docs/billing-subscription.md',
   'api-keys': '/docs/api-keys.md',
+  'security-policy': '/docs/security-policy.md',
+  'security-thanks': '/docs/security-thanks.md',
 };
 
 // Parse headings for Table of Contents

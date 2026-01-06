@@ -75,6 +75,22 @@ export const docPages: DocPage[] = [
     icon: 'Key',
     order: 8,
   },
+  {
+    slug: 'security-policy',
+    title: 'Security Policy',
+    description: 'Our vulnerability disclosure policy and security commitments.',
+    readTime: '5 min',
+    icon: 'Shield',
+    order: 9,
+  },
+  {
+    slug: 'security-thanks',
+    title: 'Security Thanks',
+    description: 'Recognising security researchers who help keep A13E secure.',
+    readTime: '2 min',
+    icon: 'Award',
+    order: 10,
+  },
 ];
 
 export function getDocBySlug(slug: string): DocPage | undefined {
