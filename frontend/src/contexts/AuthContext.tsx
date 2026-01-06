@@ -70,8 +70,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } = useAuthStore()
 
   // Initialise auth on mount - restore session from httpOnly cookie
+  // Skip on OAuth callback pages - they handle auth themselves via setAuth()
   useEffect(() => {
     if (!isInitialised) {
+      const isOAuthCallback = window.location.pathname === '/auth/callback'
+      if (isOAuthCallback) {
+        // OAuth callback will call setAuth() after exchanging the code
+        // Mark as initialised so the callback component renders (not loading spinner)
+        // The callback will set proper auth state via setAuth()
+        useAuthStore.getState().setInitialised(true)
+        return
+      }
       authActions.restoreSession()
     }
   }, [isInitialised])
