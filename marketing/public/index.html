@@ -947,10 +947,15 @@
   <!-- Environment-aware link rewriting -->
   <script>
     (function() {
-      // Detect if we're on staging (CloudFront dev domain or explicit staging)
+      // Detect if we're on staging:
+      // - CloudFront dev domain (before custom domain setup)
+      // - ?staging query parameter (for testing)
+      // - localhost/127.0.0.1 (local development)
       const hostname = window.location.hostname;
+      const params = new URLSearchParams(window.location.search);
       const isStaging = hostname.includes('cloudfront.net') ||
                         hostname.includes('staging') ||
+                        params.has('staging') ||
                         hostname === 'localhost' ||
                         hostname === '127.0.0.1';
 

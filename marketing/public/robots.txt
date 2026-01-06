@@ -1,9 +1,95 @@
+# A13E Marketing Site - robots.txt
 # https://www.robotstxt.org/robotstxt.html
+
+# =============================================================================
+# Default rules for all crawlers
+# =============================================================================
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /_next/
+Disallow: /private/
+Crawl-delay: 1
 
-# Sitemap
+# =============================================================================
+# Block AI training crawlers
+# We do not consent to our content being used for AI/ML training
+# =============================================================================
+
+# OpenAI
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+# Google AI (separate from search indexing)
+User-agent: Google-Extended
+Disallow: /
+
+# Common Crawl (used by many AI companies)
+User-agent: CCBot
+Disallow: /
+
+# Anthropic
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+# ByteDance / TikTok
+User-agent: Bytespider
+Disallow: /
+
+# Meta / Facebook
+User-agent: FacebookBot
+Disallow: /
+
+# Amazon
+User-agent: Amazonbot
+Disallow: /
+
+# Perplexity AI
+User-agent: PerplexityBot
+Disallow: /
+
+# Diffbot
+User-agent: Diffbot
+Disallow: /
+
+# Omgili
+User-agent: omgili
+Disallow: /
+
+# Cohere
+User-agent: cohere-ai
+Disallow: /
+
+# =============================================================================
+# Allow legitimate search engines (explicit)
+# =============================================================================
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 2
+
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 1
+
+# =============================================================================
+# Sitemap and Security
+# =============================================================================
 Sitemap: https://a13e.com/sitemap.xml
 
-# Security
-# See /.well-known/security.txt for security contact information
+# Security contact information
+# See /.well-known/security.txt for vulnerability disclosure
