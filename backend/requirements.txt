@@ -86,3 +86,8 @@ factory-boy==3.3.3
 black==25.12.0
 ruff==0.14.10
 mypy==1.19.1
+
+# Security pins for transitive dependencies (Snyk)
+protobuf>=4.25.8  # SNYK-PYTHON-PROTOBUF-10364902
+requests>=2.32.4  # SNYK-PYTHON-REQUESTS-10305723, SNYK-PYTHON-REQUESTS-6928867
+zipp>=3.19.1  # SNYK-PYTHON-ZIPP-7430899
