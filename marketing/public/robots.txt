@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://a13e.com/sitemap.xml
+
+# Security
+# See /.well-known/security.txt for security contact information

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="a13e-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="50%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="a13e-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+  <!-- Hexagonal shield shape -->
+  <path d="M24 2L44 14V34L24 46L4 34V14L24 2Z" fill="url(#a13e-grad)" stroke="url(#a13e-glow)" stroke-width="1"/>
+  <!-- Inner geometric pattern - stylized "A" -->
+  <path d="M24 10L34 30H28L26 26H22L20 30H14L24 10Z" fill="white" fill-opacity="0.95"/>
+  <path d="M24 18L26.5 24H21.5L24 18Z" fill="url(#a13e-grad)"/>
+  <!-- Accent lines representing "13" -->
+  <line x1="12" y1="36" x2="18" y2="36" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="21" y1="36" x2="27" y2="36" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="30" y1="36" x2="36" y2="36" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+</svg>

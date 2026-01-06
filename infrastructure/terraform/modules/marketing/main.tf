@@ -1,0 +1,216 @@
+# Marketing Module - S3 + CloudFront
+# Serves the marketing landing page at a13e.com (root domain)
+
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws, aws.us_east_1]
+    }
+  }
+}
+
+variable "environment" {
+  type        = string
+  description = "Environment name (staging, prod)"
+}
+
+variable "domain_name" {
+  type        = string
+  description = "Root domain for marketing site (e.g., a13e.com)"
+}
+
+variable "certificate_arn" {
+  type        = string
+  description = "ACM certificate ARN (must be in us-east-1 for CloudFront)"
+  default     = ""
+}
+
+variable "lambda_edge_arn" {
+  type        = string
+  description = "Lambda@Edge function ARN for security headers"
+  default     = ""
+}
+
+variable "waf_acl_arn" {
+  type        = string
+  description = "WAF Web ACL ARN for CloudFront"
+  default     = ""
+}
+
+resource "random_id" "bucket_suffix" {
+  byte_length = 4
+}
+
+# S3 Bucket for marketing static files
+resource "aws_s3_bucket" "marketing" {
+  bucket = "a13e-${var.environment}-marketing-${random_id.bucket_suffix.hex}"
+
+  tags = {
+    Name        = "a13e-${var.environment}-marketing"
+    Environment = var.environment
+    Purpose     = "Marketing Landing Page"
+  }
+}
+
+# Block all public access - CloudFront uses OAC
+resource "aws_s3_bucket_public_access_block" "marketing" {
+  bucket = aws_s3_bucket.marketing.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Enable versioning for rollback capability
+resource "aws_s3_bucket_versioning" "marketing" {
+  bucket = aws_s3_bucket.marketing.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# CloudFront Origin Access Control (secure S3 access)
+resource "aws_cloudfront_origin_access_control" "marketing" {
+  name                              = "a13e-${var.environment}-marketing-oac"
+  description                       = "OAC for a13e ${var.environment} marketing site"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+# S3 Bucket Policy - Only allow CloudFront access
+resource "aws_s3_bucket_policy" "marketing" {
+  bucket = aws_s3_bucket.marketing.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "AllowCloudFrontServicePrincipal"
+      Effect = "Allow"
+      Principal = {
+        Service = "cloudfront.amazonaws.com"
+      }
+      Action   = "s3:GetObject"
+      Resource = "${aws_s3_bucket.marketing.arn}/*"
+      Condition = {
+        StringEquals = {
+          "AWS:SourceArn" = aws_cloudfront_distribution.marketing.arn
+        }
+      }
+    }]
+  })
+}
+
+# CloudFront Distribution for marketing site
+resource "aws_cloudfront_distribution" "marketing" {
+  enabled             = true
+  is_ipv6_enabled     = true
+  default_root_object = "index.html"
+  price_class         = "PriceClass_100"
+  aliases             = var.certificate_arn != "" ? [var.domain_name, "www.${var.domain_name}"] : []
+  comment             = "a13e ${var.environment} marketing landing page"
+  web_acl_id          = var.waf_acl_arn != "" ? var.waf_acl_arn : null
+
+  origin {
+    domain_name              = aws_s3_bucket.marketing.bucket_regional_domain_name
+    origin_id                = "S3-${aws_s3_bucket.marketing.id}"
+    origin_access_control_id = aws_cloudfront_origin_access_control.marketing.id
+  }
+
+  default_cache_behavior {
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "S3-${aws_s3_bucket.marketing.id}"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    # Longer TTL for static marketing site (1 hour default, 1 day max)
+    min_ttl     = 0
+    default_ttl = 3600
+    max_ttl     = 86400
+
+    # Lambda@Edge for security headers
+    dynamic "lambda_function_association" {
+      for_each = var.lambda_edge_arn != "" ? [1] : []
+      content {
+        event_type   = "origin-response"
+        lambda_arn   = var.lambda_edge_arn
+        include_body = false
+      }
+    }
+  }
+
+  # Custom error response - return index.html for 404s (single page site)
+  custom_error_response {
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 60
+  }
+
+  custom_error_response {
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 60
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = var.certificate_arn == ""
+    acm_certificate_arn            = var.certificate_arn != "" ? var.certificate_arn : null
+    ssl_support_method             = var.certificate_arn != "" ? "sni-only" : null
+    minimum_protocol_version       = var.certificate_arn != "" ? "TLSv1.2_2021" : null
+  }
+
+  tags = {
+    Name        = "a13e-${var.environment}-marketing"
+    Environment = var.environment
+    Purpose     = "Marketing Landing Page"
+  }
+}
+
+# Outputs
+output "cloudfront_url" {
+  value       = "https://${aws_cloudfront_distribution.marketing.domain_name}"
+  description = "CloudFront distribution URL"
+}
+
+output "cloudfront_domain_name" {
+  value       = aws_cloudfront_distribution.marketing.domain_name
+  description = "CloudFront domain name for DNS alias"
+}
+
+output "cloudfront_distribution_id" {
+  value       = aws_cloudfront_distribution.marketing.id
+  description = "CloudFront distribution ID for cache invalidation"
+}
+
+output "cloudfront_zone_id" {
+  value       = aws_cloudfront_distribution.marketing.hosted_zone_id
+  description = "CloudFront hosted zone ID for Route 53 alias"
+}
+
+output "s3_bucket_name" {
+  value       = aws_s3_bucket.marketing.bucket
+  description = "S3 bucket name for deployment"
+}
+
+output "s3_bucket_arn" {
+  value       = aws_s3_bucket.marketing.arn
+  description = "S3 bucket ARN"
+}
