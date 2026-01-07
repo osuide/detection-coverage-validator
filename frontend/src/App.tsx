@@ -100,6 +100,7 @@ function App() {
         <Route path="/admin/*" element={
           <AdminAuthProvider>
             <Routes>
+              <Route index element={<Navigate to="login" replace />} />
               <Route path="login" element={<AdminLogin />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="settings" element={<AdminSettings />} />
