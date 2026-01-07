@@ -69,8 +69,9 @@ cookie_domain  = ".a13e.com"
 # =============================================================================
 # Security
 # =============================================================================
-# WAF IP restriction disabled - public access
-waf_allowed_ips = []
+# WAF IP restriction enabled - Austin's IP only during pre-launch testing
+# Set to [] when ready for public launch
+waf_allowed_ips = ["81.174.169.212/32"]
 
 # =============================================================================
 # Monitoring
