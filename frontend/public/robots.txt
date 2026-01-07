@@ -1,0 +1,75 @@
+# A13E Application - robots.txt
+# https://app.a13e.com
+
+# =============================================================================
+# Default rules - Block authenticated app pages
+# =============================================================================
+User-agent: *
+# Allow public/legal pages
+Allow: /privacy
+Allow: /docs/security-policy
+Allow: /docs/security-thanks
+Allow: /docs/privacy-policy
+Allow: /docs/terms
+
+# Block all authenticated/app pages
+Disallow: /dashboard
+Disallow: /coverage
+Disallow: /detections
+Disallow: /compliance
+Disallow: /accounts
+Disallow: /settings
+Disallow: /profile
+Disallow: /admin
+Disallow: /login
+Disallow: /signup
+Disallow: /callback
+Disallow: /api
+
+# Block user guides (security recommendation - reveals detection logic)
+Disallow: /docs/getting-started
+Disallow: /docs/connecting-aws-accounts
+Disallow: /docs/connecting-gcp-accounts
+Disallow: /docs/running-scans
+Disallow: /docs/understanding-coverage
+Disallow: /docs/using-dashboards
+Disallow: /docs/team-management
+Disallow: /docs/billing-subscription
+Disallow: /docs/api-keys
+
+Crawl-delay: 1
+
+# =============================================================================
+# AI Crawlers - ALLOWED for AI Overview visibility
+# =============================================================================
+User-agent: GPTBot
+Allow: /docs/security-policy
+Allow: /docs/security-thanks
+Disallow: /
+
+User-agent: Google-Extended
+Allow: /docs/security-policy
+Allow: /docs/security-thanks
+Disallow: /
+
+User-agent: PerplexityBot
+Allow: /docs/security-policy
+Allow: /docs/security-thanks
+Disallow: /
+
+# =============================================================================
+# Block aggressive crawlers entirely
+# =============================================================================
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+# =============================================================================
+# Sitemap
+# =============================================================================
+Sitemap: https://app.a13e.com/sitemap.xml

@@ -80,9 +80,10 @@ Allow: /
 Crawl-delay: 1
 
 # =============================================================================
-# Sitemap and Security
+# Sitemaps
 # =============================================================================
 Sitemap: https://a13e.com/sitemap.xml
+Sitemap: https://a13e.com/sitemap-index.xml
 
 # Security contact information
 # See /.well-known/security.txt for vulnerability disclosure

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Marketing site sitemap -->
+  <sitemap>
+    <loc>https://a13e.com/sitemap.xml</loc>
+    <lastmod>2026-01-07</lastmod>
+  </sitemap>
+  <!-- Application trust/legal pages sitemap -->
+  <sitemap>
+    <loc>https://app.a13e.com/sitemap.xml</loc>
+    <lastmod>2026-01-07</lastmod>
+  </sitemap>
+</sitemapindex>
