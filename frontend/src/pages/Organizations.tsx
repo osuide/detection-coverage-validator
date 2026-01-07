@@ -19,24 +19,35 @@ import {
   cloudOrganizationsApi,
   CloudOrganization,
 } from '../services/organizationsApi'
+import { billingApi, Subscription, hasOrgFeatures } from '../services/billingApi'
+import { useAuthStore } from '../stores/authStore'
 
 export default function Organizations() {
   const queryClient = useQueryClient()
   const [showConnectModal, setShowConnectModal] = useState(false)
+  const accessToken = useAuthStore((state) => state.accessToken)
 
-  const { data: organizations, isLoading, error } = useQuery({
-    queryKey: ['cloud-organizations'],
-    queryFn: cloudOrganizationsApi.list,
-    retry: (failureCount, error: unknown) => {
-      // Don't retry on 403 (feature not available)
-      const axiosError = error as { response?: { status?: number } }
-      if (axiosError?.response?.status === 403) return false
-      return failureCount < 3
-    },
+  // Fetch subscription to check tier before making org API calls
+  const { data: subscription, isLoading: subscriptionLoading } = useQuery<Subscription>({
+    queryKey: ['subscription'],
+    queryFn: () => billingApi.getSubscription(accessToken!),
+    enabled: !!accessToken,
   })
 
-  // Check if this is a 403 feature-not-available error
-  const isFeatureRestricted = (error as { response?: { status?: number } })?.response?.status === 403
+  // Check if user has org features (Pro/Enterprise only)
+  const canAccessOrgFeatures = subscription ? hasOrgFeatures(subscription.tier) : false
+
+  const { data: organizations, isLoading: orgsLoading } = useQuery({
+    queryKey: ['cloud-organizations'],
+    queryFn: cloudOrganizationsApi.list,
+    // Only fetch if user has Pro/Enterprise tier - prevents 403 errors
+    enabled: canAccessOrgFeatures,
+  })
+
+  const isLoading = subscriptionLoading || (canAccessOrgFeatures && orgsLoading)
+
+  // Show upgrade message for users without org features (Free/Individual)
+  const isFeatureRestricted = subscription && !hasOrgFeatures(subscription.tier)
 
   // Ensure organizations is always an array to prevent .map errors
   const safeOrganizations = Array.isArray(organizations) ? organizations : []
