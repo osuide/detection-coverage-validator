@@ -18,7 +18,7 @@ export default function Coverage() {
 
   const { selectedAccount } = useSelectedAccount()
 
-  const { data: coverage, isLoading, refetch } = useQuery({
+  const { data: coverage, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['coverage', selectedAccount?.id],
     queryFn: () => coverageApi.get(selectedAccount!.id),
     enabled: !!selectedAccount,
@@ -87,10 +87,11 @@ export default function Coverage() {
           </div>
           <button
             onClick={() => refetch()}
-            className="btn-secondary flex items-center"
+            disabled={isFetching}
+            className="btn-secondary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Refresh</span>
+            <RefreshCw className={`h-4 w-4 sm:mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isFetching ? 'Refreshing...' : 'Refresh'}</span>
           </button>
         </div>
       </div>
