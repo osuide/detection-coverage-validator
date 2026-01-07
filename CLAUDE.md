@@ -210,6 +210,25 @@ lifecycle {
 }
 ```
 
+**WAFv2 IP Set Deletion** ([Issue #17601](https://github.com/hashicorp/terraform-provider-aws/issues/17601)): Terraform tries to delete IP sets before updating the WAF ACL that references them, causing `WAFAssociatedItemException`. Fix already applied to `modules/security/main.tf`:
+```hcl
+# On both aws_wafv2_ip_set and aws_wafv2_web_acl resources
+lifecycle {
+  create_before_destroy = true
+}
+```
+
+### Environment Switching
+
+Staging and production use separate state files. Switch with:
+```bash
+# Production
+terraform init -backend-config=backend-prod.hcl -reconfigure
+
+# Staging
+terraform init -backend-config=backend-staging.hcl -reconfigure
+```
+
 ## Infrastructure
 
 ```
