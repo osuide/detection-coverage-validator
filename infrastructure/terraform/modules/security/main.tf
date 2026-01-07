@@ -169,20 +169,17 @@ exports.handler = async (event) => {
     value: 'same-site'
   }];
 
-  // X-Robots-Tag: Block AI training crawlers while allowing search indexing
-  // This supplements robots.txt with HTTP header enforcement
+  // X-Robots-Tag: Block aggressive/training-only crawlers
+  // ALLOW: GPTBot, ChatGPT-User, Google-Extended, PerplexityBot, Amazonbot
+  //        (for AI Overviews and search integration)
+  // BLOCK: CCBot, Bytespider, FacebookBot, cohere-ai (bulk data collection)
   headers['x-robots-tag'] = [
-    { key: 'X-Robots-Tag', value: 'noai, noimageai' },
-    { key: 'X-Robots-Tag', value: 'GPTBot: noindex, nofollow' },
-    { key: 'X-Robots-Tag', value: 'ChatGPT-User: noindex, nofollow' },
-    { key: 'X-Robots-Tag', value: 'Google-Extended: noindex, nofollow' },
     { key: 'X-Robots-Tag', value: 'CCBot: noindex, nofollow' },
-    { key: 'X-Robots-Tag', value: 'anthropic-ai: noindex, nofollow' },
     { key: 'X-Robots-Tag', value: 'Bytespider: noindex, nofollow' },
-    { key: 'X-Robots-Tag', value: 'PerplexityBot: noindex, nofollow' },
-    { key: 'X-Robots-Tag', value: 'Amazonbot: noindex, nofollow' },
     { key: 'X-Robots-Tag', value: 'FacebookBot: noindex, nofollow' },
-    { key: 'X-Robots-Tag', value: 'cohere-ai: noindex, nofollow' }
+    { key: 'X-Robots-Tag', value: 'cohere-ai: noindex, nofollow' },
+    { key: 'X-Robots-Tag', value: 'Diffbot: noindex, nofollow' },
+    { key: 'X-Robots-Tag', value: 'omgili: noindex, nofollow' }
   ];
 
   return response;
