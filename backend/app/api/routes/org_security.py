@@ -50,9 +50,10 @@ class SecuritySettingsUpdateRequest(BaseModel):
 
     require_mfa: Optional[bool] = None
     mfa_grace_period_days: Optional[int] = Field(None, ge=1, le=30)
+    # CWE-613: Session timeout max 7 days for security-sensitive application
     session_timeout_minutes: Optional[int] = Field(
-        None, ge=15, le=43200
-    )  # 15 min to 30 days
+        None, ge=15, le=10080
+    )  # 15 min to 7 days
     idle_timeout_minutes: Optional[int] = Field(
         None, ge=5, le=1440
     )  # 5 min to 24 hours
@@ -181,6 +182,20 @@ async def update_security_settings(
             organization_id=auth.organization_id,
         )
         db.add(settings_obj)
+
+    # CWE-613: Validate idle_timeout <= session_timeout
+    new_session_timeout = (
+        body.session_timeout_minutes or settings_obj.session_timeout_minutes
+    )
+    new_idle_timeout = body.idle_timeout_minutes or settings_obj.idle_timeout_minutes
+    if new_idle_timeout > new_session_timeout:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Idle timeout ({new_idle_timeout} min) cannot exceed "
+                f"session timeout ({new_session_timeout} min)"
+            ),
+        )
 
     # Update fields if provided
     update_data = body.model_dump(exclude_unset=True)

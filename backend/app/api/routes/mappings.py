@@ -9,6 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
+from app.core.sql_utils import escape_like_pattern
 from app.core.security import AuthContext, get_auth_context, require_scope
 from app.models.cloud_account import CloudAccount
 from app.models.mapping import DetectionMapping, MappingSource
@@ -139,9 +140,11 @@ async def list_techniques(
     if platform:
         query = query.where(Technique.platforms.contains([platform]))
     if search:
+        # CWE-89: Escape LIKE wildcards to prevent pattern injection
+        escaped_search = escape_like_pattern(search)
         query = query.where(
-            (Technique.name.ilike(f"%{search}%"))
-            | (Technique.technique_id.ilike(f"%{search}%"))
+            (Technique.name.ilike(f"%{escaped_search}%", escape="\\"))
+            | (Technique.technique_id.ilike(f"%{escaped_search}%", escape="\\"))
         )
 
     query = query.order_by(Technique.technique_id)

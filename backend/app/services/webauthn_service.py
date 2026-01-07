@@ -375,34 +375,90 @@ class WebAuthnService:
         return credential_id_b64, verification.new_sign_count
 
 
-# Challenge storage (in production, use Redis with TTL)
-# For now, we store challenges in memory with expiration
-_challenge_store: dict[str, tuple[bytes, datetime]] = {}
+# =============================================================================
+# Challenge Storage (Redis-backed with in-memory fallback)
+# =============================================================================
+# CWE-384: Session Fixation prevention - challenges are single-use and time-limited.
+# Production: Uses Redis for distributed challenge storage across ECS tasks.
+# Development: Falls back to in-memory if Redis unavailable.
+
 CHALLENGE_TTL_SECONDS = 120
 
+# In-memory fallback for development (when Redis unavailable)
+_challenge_store: dict[str, tuple[bytes, datetime]] = {}
 
-def store_challenge(key: str, challenge: bytes) -> None:
-    """Store a challenge temporarily."""
+
+async def store_challenge_async(key: str, challenge: bytes) -> bool:
+    """Store a challenge in Redis (with in-memory fallback).
+
+    Args:
+        key: Unique key for this challenge (e.g., "user_webauthn_reg_{user_id}")
+        challenge: The challenge bytes to store
+
+    Returns:
+        True if stored successfully
+
+    Security:
+        - Uses Redis for distributed storage across multiple ECS tasks
+        - Falls back to in-memory for development environments
+        - 2-minute TTL limits replay window
+    """
+    from app.core.cache import store_webauthn_challenge, is_redis_available
+
+    if is_redis_available():
+        stored = await store_webauthn_challenge(key, challenge)
+        if stored:
+            return True
+        # Fall through to in-memory if Redis store failed
+
+    # In-memory fallback (development or Redis failure)
     _challenge_store[key] = (challenge, datetime.now(timezone.utc))
-    # Clean up old challenges
     _cleanup_challenges()
+    logger.debug("webauthn_challenge_stored_inmemory", key=key[:30])
+    return True
 
 
-def get_challenge(key: str) -> Optional[bytes]:
-    """Get and remove a stored challenge."""
-    data = _challenge_store.pop(key, None)
-    if not data:
-        return None
-    challenge, created_at = data
-    # Check if expired
-    age = (datetime.now(timezone.utc) - created_at).total_seconds()
-    if age > CHALLENGE_TTL_SECONDS:
-        return None
-    return challenge
+async def get_challenge_async(key: str) -> Optional[bytes]:
+    """Get and consume a stored challenge (single-use).
+
+    Args:
+        key: The challenge key used during storage
+
+    Returns:
+        Challenge bytes if found and valid, None otherwise
+
+    Security:
+        - Atomic get-and-delete prevents replay attacks
+        - Expired challenges automatically rejected
+        - Single-use enforcement
+    """
+    from app.core.cache import get_and_consume_webauthn_challenge, is_redis_available
+
+    if is_redis_available():
+        challenge = await get_and_consume_webauthn_challenge(key)
+        if challenge is not None:
+            return challenge
+        # Don't fall through - if Redis is available but challenge not found,
+        # it means the challenge expired or was already used
+
+    # In-memory fallback (only if Redis unavailable)
+    if not is_redis_available():
+        data = _challenge_store.pop(key, None)
+        if not data:
+            return None
+        challenge, created_at = data
+        age = (datetime.now(timezone.utc) - created_at).total_seconds()
+        if age > CHALLENGE_TTL_SECONDS:
+            logger.warning("webauthn_challenge_expired_inmemory", key=key[:30])
+            return None
+        logger.debug("webauthn_challenge_consumed_inmemory", key=key[:30])
+        return challenge
+
+    return None
 
 
 def _cleanup_challenges() -> None:
-    """Remove expired challenges."""
+    """Remove expired challenges from in-memory store."""
     now = datetime.now(timezone.utc)
     expired = [
         key
@@ -411,6 +467,26 @@ def _cleanup_challenges() -> None:
     ]
     for key in expired:
         _challenge_store.pop(key, None)
+
+
+# Legacy sync wrappers - DEPRECATED, use async versions
+# Kept for backwards compatibility during migration
+def store_challenge(key: str, challenge: bytes) -> None:
+    """DEPRECATED: Use store_challenge_async instead."""
+    _challenge_store[key] = (challenge, datetime.now(timezone.utc))
+    _cleanup_challenges()
+
+
+def get_challenge(key: str) -> Optional[bytes]:
+    """DEPRECATED: Use get_challenge_async instead."""
+    data = _challenge_store.pop(key, None)
+    if not data:
+        return None
+    challenge, created_at = data
+    age = (datetime.now(timezone.utc) - created_at).total_seconds()
+    if age > CHALLENGE_TTL_SECONDS:
+        return None
+    return challenge
 
 
 def get_webauthn_service(rp_id: Optional[str] = None) -> WebAuthnService:

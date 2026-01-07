@@ -8,6 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.sql_utils import escape_like_pattern
 from app.models.admin import AdminUser, AdminAuditLog
 from app.api.deps import get_current_admin
 
@@ -59,9 +60,13 @@ async def list_audit_logs(
         count_query = count_query.where(AdminAuditLog.action == action)
 
     if admin_email:
-        query = query.where(AdminAuditLog.admin_email.ilike(f"%{admin_email}%"))
+        # CWE-89: Escape LIKE wildcards to prevent pattern injection
+        escaped_email = escape_like_pattern(admin_email)
+        query = query.where(
+            AdminAuditLog.admin_email.ilike(f"%{escaped_email}%", escape="\\")
+        )
         count_query = count_query.where(
-            AdminAuditLog.admin_email.ilike(f"%{admin_email}%")
+            AdminAuditLog.admin_email.ilike(f"%{escaped_email}%", escape="\\")
         )
 
     # Get total count

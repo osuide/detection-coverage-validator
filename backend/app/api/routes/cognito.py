@@ -269,10 +269,22 @@ async def initiate_sso(
                 detail="Unable to initialise SSO flow. Please try again.",
             )
     else:
+        # CWE-384: Fail closed in production - in-memory only for development
+        settings = get_settings()
+        if settings.environment != "development":
+            logger.error(
+                "cognito_oauth_redis_unavailable_production",
+                environment=settings.environment,
+                message="Redis unavailable in production - OAuth cannot proceed",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable. Please try again.",
+            )
         # Fallback for local development only
         logger.warning(
             "cognito_oauth_using_in_memory_state",
-            message="Redis unavailable - using in-memory state (NOT for production)",
+            message="Redis unavailable - using in-memory state (development only)",
         )
         _fallback_state_store.store_state(state)
 
@@ -320,6 +332,18 @@ async def exchange_cognito_token(
             body.state, provider="cognito"
         )
     else:
+        # CWE-384: Fail closed in production - in-memory only for development
+        settings = get_settings()
+        if settings.environment != "development":
+            logger.error(
+                "cognito_oauth_redis_unavailable_validation",
+                environment=settings.environment,
+                message="Redis unavailable - cannot validate OAuth state",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable. Please try again.",
+            )
         # Fallback for local development only
         state_valid = _fallback_state_store.validate_and_consume(body.state)
 

@@ -67,16 +67,19 @@ class OrgGuardDutyScanner(BaseScanner):
         try:
             client = self.session.client("guardduty", region_name=region)
 
-            # List detectors in this region
+            # List detectors in this region (use run_sync to avoid blocking)
             detector_ids = []
             paginator = client.get_paginator("list_detectors")
-            for page in paginator.paginate():
+            pages = await self.run_sync(lambda: list(paginator.paginate()))
+            for page in pages:
                 detector_ids.extend(page.get("DetectorIds", []))
 
             for detector_id in detector_ids:
-                # Get detector details
+                # Get detector details (use run_sync to avoid blocking)
                 try:
-                    detector = client.get_detector(DetectorId=detector_id)
+                    detector = await self.run_sync(
+                        client.get_detector, DetectorId=detector_id
+                    )
 
                     # Check if this is an organisation configuration
                     org_config = await self._get_org_configuration(
@@ -130,8 +133,8 @@ class OrgGuardDutyScanner(BaseScanner):
     ) -> Optional[dict]:
         """Get organisation configuration for a detector."""
         try:
-            response = client.describe_organization_configuration(
-                DetectorId=detector_id
+            response = await self.run_sync(
+                client.describe_organization_configuration, DetectorId=detector_id
             )
             return {
                 "auto_enable": response.get("AutoEnable", False),
@@ -154,7 +157,10 @@ class OrgGuardDutyScanner(BaseScanner):
         members = []
         try:
             paginator = client.get_paginator("list_members")
-            for page in paginator.paginate(DetectorId=detector_id):
+            pages = await self.run_sync(
+                lambda: list(paginator.paginate(DetectorId=detector_id))
+            )
+            for page in pages:
                 for member in page.get("Members", []):
                     members.append(
                         {

@@ -257,7 +257,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
     status = "Enabled"
 
     expiration {
-      days = 90 # Keep logs for 90 days
+      days = 365 # Keep logs for 1 year (compliance requirement)
     }
 
     noncurrent_version_expiration {
@@ -451,7 +451,7 @@ resource "aws_lb" "main" {
 
   # Security: Enable access logs for debugging, security analysis, and compliance
   # Logs include: client IP, request path, latency, response codes
-  # Retained for 90 days via lifecycle policy on the S3 bucket
+  # Retained for 365 days via lifecycle policy on the S3 bucket
   access_logs {
     bucket  = aws_s3_bucket.alb_logs.id
     prefix  = "alb-logs"
@@ -626,7 +626,7 @@ resource "aws_iam_role_policy" "ecs_task" {
         Action = [
           "sts:AssumeRole"
         ]
-        Resource = "arn:aws:iam::*:role/*"
+        Resource = "arn:aws:iam::*:role/a13e-scanner-*" # Security: Restrict to a13e scanner roles only
         Condition = {
           StringLike = {
             "sts:ExternalId" = "a13e-*"

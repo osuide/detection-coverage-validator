@@ -225,10 +225,22 @@ async def get_authorization_url(
                 detail="Unable to initialise OAuth flow. Please try again.",
             )
     else:
+        # CWE-384: Fail closed in production - in-memory only for development
+        settings = get_settings()
+        if settings.environment != "development":
+            logger.error(
+                "github_oauth_redis_unavailable_production",
+                environment=settings.environment,
+                message="Redis unavailable in production - OAuth cannot proceed",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable. Please try again.",
+            )
         # Fallback for local development only
         logger.warning(
             "github_oauth_using_in_memory_state",
-            message="Redis unavailable - using in-memory state (NOT for production)",
+            message="Redis unavailable - using in-memory state (development only)",
         )
         _fallback_state_store._states[state] = time.time() + 300
 
@@ -267,6 +279,18 @@ async def exchange_github_token(
             body.state, provider="github"
         )
     else:
+        # CWE-384: Fail closed in production - in-memory only for development
+        settings = get_settings()
+        if settings.environment != "development":
+            logger.error(
+                "github_oauth_redis_unavailable_validation",
+                environment=settings.environment,
+                message="Redis unavailable - cannot validate OAuth state",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable. Please try again.",
+            )
         # Fallback for local development only
         state_valid = _fallback_state_store.validate_and_consume(body.state)
 

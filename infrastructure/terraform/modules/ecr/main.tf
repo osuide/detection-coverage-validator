@@ -6,7 +6,7 @@ variable "environment" {
 
 resource "aws_ecr_repository" "backend" {
   name                 = "a13e-${var.environment}-backend"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE" # Security: Prevent image tag overwrites
 
   image_scanning_configuration {
     scan_on_push = true

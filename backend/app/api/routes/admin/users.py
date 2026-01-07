@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.core.database import get_db
+from app.core.sql_utils import escape_like_pattern
 from app.core.security import get_client_ip
 from app.models.admin import AdminUser, AdminRole
 from app.models.user import (
@@ -88,9 +89,11 @@ async def list_users(
         count_query = count_query.where(User.is_active.is_(False))
 
     if search:
+        # CWE-89: Escape LIKE wildcards to prevent pattern injection
+        escaped_search = escape_like_pattern(search)
         search_filter = or_(
-            User.email.ilike(f"%{search}%"),
-            User.full_name.ilike(f"%{search}%"),
+            User.email.ilike(f"%{escaped_search}%", escape="\\"),
+            User.full_name.ilike(f"%{escaped_search}%", escape="\\"),
         )
         query = query.where(search_filter)
         count_query = count_query.where(search_filter)

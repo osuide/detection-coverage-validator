@@ -1,6 +1,7 @@
 """Billing and subscription API routes."""
 
 from typing import Optional
+from urllib.parse import urlparse
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -23,6 +24,106 @@ from app.services.scan_limit_service import ScanLimitService
 logger = structlog.get_logger()
 router = APIRouter()
 settings = get_settings()
+
+
+# === CWE-601: Open Redirect Prevention for Stripe URLs ===
+# Validate that redirect URLs are from trusted domains
+ALLOWED_STRIPE_REDIRECT_DOMAINS: dict[str, list[str]] = {
+    "production": ["app.a13e.com"],
+    "staging": ["staging.a13e.com"],
+    "development": ["localhost", "127.0.0.1"],
+    "test": ["localhost", "127.0.0.1", "testserver"],
+}
+
+
+def validate_stripe_redirect_url(url: str, request_ip: str | None = None) -> bool:
+    """Validate Stripe redirect URL against trusted domains.
+
+    CWE-601: Prevents open redirect attacks by ensuring redirect URLs
+    only point to trusted domains.
+
+    Args:
+        url: The URL to validate
+        request_ip: Optional IP for logging
+
+    Returns:
+        True if valid
+
+    Raises:
+        HTTPException: If URL is invalid or from untrusted domain
+    """
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        logger.warning(
+            "stripe_redirect_url_parse_failed",
+            url=url[:50] if url else None,
+            ip=request_ip,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid redirect URL format",
+        )
+
+    # Must have scheme and netloc
+    if not parsed.scheme or not parsed.netloc:
+        logger.warning(
+            "stripe_redirect_url_invalid_format",
+            url=url[:50] if url else None,
+            ip=request_ip,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid redirect URL format",
+        )
+
+    # Must be HTTPS in production/staging (HTTP allowed in development)
+    env = settings.environment.lower()
+    if env in ("production", "staging", "prod"):
+        if parsed.scheme != "https":
+            logger.warning(
+                "stripe_redirect_url_not_https",
+                url=url[:50] if url else None,
+                scheme=parsed.scheme,
+                ip=request_ip,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Redirect URL must use HTTPS",
+            )
+
+    # Normalise environment name
+    if env in ("prod",):
+        env = "production"
+    elif env in ("dev",):
+        env = "development"
+
+    # Get allowed domains for environment
+    allowed_domains = ALLOWED_STRIPE_REDIRECT_DOMAINS.get(env, [])
+
+    # Also allow development domains in staging for testing
+    if env == "staging":
+        allowed_domains = allowed_domains + ALLOWED_STRIPE_REDIRECT_DOMAINS.get(
+            "development", []
+        )
+
+    # Extract hostname (without port)
+    hostname = parsed.hostname or ""
+
+    if hostname not in allowed_domains:
+        logger.warning(
+            "stripe_redirect_url_untrusted_domain",
+            url=url[:50] if url else None,
+            hostname=hostname,
+            allowed=allowed_domains,
+            ip=request_ip,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Redirect URL must be from a trusted domain",
+        )
+
+    return True
 
 
 # Request/Response Models
@@ -442,6 +543,11 @@ async def create_checkout(
             detail="Stripe billing is not configured",
         )
 
+    # CWE-601: Validate redirect URLs against trusted domains
+    client_ip = get_client_ip(request)
+    validate_stripe_redirect_url(body.success_url, client_ip)
+    validate_stripe_redirect_url(body.cancel_url, client_ip)
+
     try:
         result = await stripe_service.create_checkout_session(
             db=db,
@@ -496,6 +602,9 @@ async def create_portal(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Stripe billing is not configured",
         )
+
+    # CWE-601: Validate return URL against trusted domains
+    validate_stripe_redirect_url(body.return_url, get_client_ip(request))
 
     try:
         result = await stripe_service.create_portal_session(
@@ -620,12 +729,13 @@ async def stripe_webhook(
 
     except Exception as e:
         await db.rollback()
+        # CWE-209: Disable full traceback in production to prevent info disclosure
         logger.error(
             "stripe_webhook_handler_error",
             event_id=event_id,
             event_type=event_type,
             error=str(e),
-            exc_info=True,
+            exc_info=(settings.environment == "development"),
         )
         # Return 500 to trigger Stripe retries for failed webhook processing
         # This ensures we don't silently lose billing events

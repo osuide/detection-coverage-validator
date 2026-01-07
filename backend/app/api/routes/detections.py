@@ -16,6 +16,7 @@ from app.core.security import (
     require_scope,
     get_allowed_account_filter,
 )
+from app.core.sql_utils import escape_like_pattern
 from app.core.service_registry import get_all_regions
 from app.models.cloud_account import CloudAccount
 from app.models.detection import Detection, DetectionType, DetectionStatus
@@ -150,7 +151,9 @@ async def list_detections(
     if region:
         query = query.where(Detection.region == region)
     if search:
-        query = query.where(Detection.name.ilike(f"%{search}%"))
+        # CWE-89: Escape LIKE wildcards to prevent pattern injection
+        escaped_search = escape_like_pattern(search)
+        query = query.where(Detection.name.ilike(f"%{escaped_search}%", escape="\\"))
 
     # Get total count
     count_query = (
@@ -174,7 +177,9 @@ async def list_detections(
     if region:
         count_query = count_query.where(Detection.region == region)
     if search:
-        count_query = count_query.where(Detection.name.ilike(f"%{search}%"))
+        count_query = count_query.where(
+            Detection.name.ilike(f"%{escaped_search}%", escape="\\")
+        )
 
     total_result = await db.execute(count_query)
     total = total_result.scalar()

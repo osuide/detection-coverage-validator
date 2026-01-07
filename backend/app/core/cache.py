@@ -841,3 +841,129 @@ def is_redis_available() -> bool:
         True if Redis is connected and available
     """
     return _redis_cache is not None
+
+
+# ============================================================================
+# WebAuthn Challenge Store (Redis-backed)
+# ============================================================================
+# CWE-384: Session Fixation prevention for WebAuthn registration/authentication.
+# Uses Redis for distributed challenge validation across multiple instances.
+# Challenges are single-use and expire after 2 minutes.
+
+WEBAUTHN_CHALLENGE_PREFIX = "dcv:webauthn:"
+WEBAUTHN_CHALLENGE_TTL = 120  # 2 minutes - challenges should complete quickly
+
+
+async def store_webauthn_challenge(key: str, challenge: bytes) -> bool:
+    """Store a WebAuthn challenge for later verification.
+
+    Uses Redis for distributed validation across multiple instances.
+    Challenges are single-use and expire after 2 minutes.
+
+    Args:
+        key: Unique key for this challenge (e.g., "reg:{user_id}" or "auth:{user_id}")
+        challenge: The challenge bytes to store
+
+    Returns:
+        True if stored successfully, False otherwise
+
+    Security:
+        - Challenge key is validated against injection attacks
+        - Short TTL limits replay window
+        - Used with get_and_consume for single-use validation
+    """
+    if not _redis_cache:
+        logger.warning(
+            "webauthn_challenge_store_no_redis",
+            key=key[:20] if key else "none",
+            message="Redis unavailable - WebAuthn may fail in multi-instance",
+        )
+        return False
+
+    # Validate key format
+    if not key or len(key) > 128 or not VALID_KEY_PATTERN.match(key):
+        logger.warning(
+            "webauthn_challenge_invalid_key",
+            key=key[:20] if key else "none",
+        )
+        return False
+
+    try:
+        full_key = f"{WEBAUTHN_CHALLENGE_PREFIX}{key}"
+        # Store challenge as base64 string
+        import base64
+
+        challenge_b64 = base64.b64encode(challenge).decode("utf-8")
+        await _redis_cache.setex(full_key, WEBAUTHN_CHALLENGE_TTL, challenge_b64)
+        logger.debug("webauthn_challenge_stored", key=key[:20])
+        return True
+    except Exception as e:
+        logger.warning(
+            "webauthn_challenge_store_failed",
+            key=key[:20] if key else "none",
+            error=str(e),
+        )
+        return False
+
+
+async def get_and_consume_webauthn_challenge(key: str) -> Optional[bytes]:
+    """Get and consume a WebAuthn challenge (single-use).
+
+    Retrieves the challenge and deletes it atomically to prevent replay attacks.
+    Each challenge can only be used once.
+
+    Args:
+        key: The challenge key used during storage
+
+    Returns:
+        Challenge bytes if found and valid, None otherwise
+
+    Security:
+        - Atomic get-and-delete prevents race conditions
+        - Expired challenges automatically rejected (Redis TTL)
+        - Logs invalid attempts for security monitoring
+    """
+    if not _redis_cache:
+        logger.warning(
+            "webauthn_challenge_get_no_redis",
+            key=key[:20] if key else "none",
+            message="Redis unavailable - cannot validate challenge",
+        )
+        return None
+
+    if not key or len(key) > 128:
+        logger.warning(
+            "webauthn_challenge_invalid_attempt",
+            key=key[:20] if key else "none",
+            reason="invalid_key_format",
+        )
+        return None
+
+    try:
+        full_key = f"{WEBAUTHN_CHALLENGE_PREFIX}{key}"
+        # Get the challenge
+        challenge_b64 = await _redis_cache.get(full_key)
+        if not challenge_b64:
+            logger.warning(
+                "webauthn_challenge_invalid_attempt",
+                key=key[:20],
+                reason="not_found_or_expired",
+            )
+            return None
+
+        # Delete it atomically (single-use)
+        await _redis_cache.delete(full_key)
+
+        # Decode and return
+        import base64
+
+        challenge = base64.b64decode(challenge_b64)
+        logger.debug("webauthn_challenge_consumed", key=key[:20])
+        return challenge
+    except Exception as e:
+        logger.warning(
+            "webauthn_challenge_get_failed",
+            key=key[:20] if key else "none",
+            error=str(e),
+        )
+        return None

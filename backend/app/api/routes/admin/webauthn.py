@@ -12,8 +12,8 @@ from app.models.admin import AdminUser
 from app.api.deps import get_current_admin
 from app.services.webauthn_service import (
     get_webauthn_service,
-    store_challenge,
-    get_challenge,
+    store_challenge_async,
+    get_challenge_async,
 )
 
 router = APIRouter(prefix="/webauthn", tags=["Admin WebAuthn"])
@@ -85,8 +85,8 @@ async def get_registration_options(
         authenticator_type=body.authenticator_type,
     )
 
-    # Store challenge for verification
-    store_challenge(f"admin_webauthn_reg_{admin.id}", challenge)
+    # Store challenge for verification (Redis-backed for multi-instance support)
+    await store_challenge_async(f"admin_webauthn_reg_{admin.id}", challenge)
 
     return WebAuthnRegistrationOptionsResponse(options=options_json)
 
@@ -103,8 +103,8 @@ async def verify_registration(
     """
     webauthn = get_webauthn_service()
 
-    # Get stored challenge
-    challenge = get_challenge(f"admin_webauthn_reg_{admin.id}")
+    # Get stored challenge (Redis-backed for multi-instance support)
+    challenge = await get_challenge_async(f"admin_webauthn_reg_{admin.id}")
     if not challenge:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

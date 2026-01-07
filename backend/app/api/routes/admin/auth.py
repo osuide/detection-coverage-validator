@@ -686,7 +686,10 @@ async def get_webauthn_auth_options(
     and we return a challenge for their security key.
     """
     from sqlalchemy import select
-    from app.services.webauthn_service import get_webauthn_service, store_challenge
+    from app.services.webauthn_service import (
+        get_webauthn_service,
+        store_challenge_async,
+    )
     from app.core.security import get_client_ip
 
     auth_service = get_admin_auth_service(db)
@@ -739,8 +742,8 @@ async def get_webauthn_auth_options(
         credentials=credentials
     )
 
-    # Store challenge with admin ID
-    store_challenge(f"admin_webauthn_auth_{admin.id}", challenge)
+    # Store challenge with admin ID (Redis-backed for multi-instance support)
+    await store_challenge_async(f"admin_webauthn_auth_{admin.id}", challenge)
 
     # Create temporary auth token
     from app.core.security import create_access_token
@@ -771,7 +774,7 @@ async def verify_webauthn_auth(
     """
     import json
     from sqlalchemy import select
-    from app.services.webauthn_service import get_webauthn_service, get_challenge
+    from app.services.webauthn_service import get_webauthn_service, get_challenge_async
     from app.core.security import decode_token, get_client_ip
     from datetime import datetime, timezone
 
@@ -800,8 +803,8 @@ async def verify_webauthn_auth(
             detail="Invalid authentication token",
         )
 
-    # Get stored challenge
-    challenge = get_challenge(f"admin_webauthn_auth_{admin.id}")
+    # Get stored challenge (Redis-backed for multi-instance support)
+    challenge = await get_challenge_async(f"admin_webauthn_auth_{admin.id}")
     if not challenge:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

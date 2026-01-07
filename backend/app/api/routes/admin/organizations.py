@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.sql_utils import escape_like_pattern
 from app.models.admin import AdminUser
 from app.models.user import Organization, OrganizationMember, User
 from app.models.billing import Subscription
@@ -84,9 +85,11 @@ async def list_organizations(
     query = select(Organization)
 
     if search:
+        # CWE-89: Escape LIKE wildcards to prevent pattern injection
+        escaped_search = escape_like_pattern(search)
         query = query.where(
-            Organization.name.ilike(f"%{search}%")
-            | Organization.slug.ilike(f"%{search}%")
+            Organization.name.ilike(f"%{escaped_search}%", escape="\\")
+            | Organization.slug.ilike(f"%{escaped_search}%", escape="\\")
         )
 
     if is_active is not None:

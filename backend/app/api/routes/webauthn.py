@@ -19,8 +19,8 @@ from app.core.security import AuthContext, get_auth_context
 from app.models.user import User
 from app.services.webauthn_service import (
     get_webauthn_service,
-    store_challenge,
-    get_challenge,
+    store_challenge_async,
+    get_challenge_async,
 )
 
 router = APIRouter(prefix="/me/webauthn", tags=["User WebAuthn"])
@@ -102,8 +102,8 @@ async def get_registration_options(
         authenticator_type=body.authenticator_type,
     )
 
-    # Store challenge for verification
-    store_challenge(f"user_webauthn_reg_{user.id}", challenge)
+    # Store challenge for verification (Redis-backed for multi-instance support)
+    await store_challenge_async(f"user_webauthn_reg_{user.id}", challenge)
 
     return WebAuthnRegistrationOptionsResponse(options=options_json)
 
@@ -128,8 +128,8 @@ async def verify_registration(
     user = auth.user
     webauthn = get_webauthn_service()
 
-    # Get stored challenge
-    challenge = get_challenge(f"user_webauthn_reg_{user.id}")
+    # Get stored challenge (Redis-backed for multi-instance support)
+    challenge = await get_challenge_async(f"user_webauthn_reg_{user.id}")
     if not challenge:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -312,8 +312,8 @@ async def get_webauthn_login_options(
         credentials=credentials
     )
 
-    # Store challenge with user ID
-    store_challenge(f"user_webauthn_auth_{user.id}", challenge)
+    # Store challenge with user ID (Redis-backed for multi-instance support)
+    await store_challenge_async(f"user_webauthn_auth_{user.id}", challenge)
 
     # Create temporary auth token
     auth_token = create_access_token(
@@ -374,8 +374,8 @@ async def verify_webauthn_login(
             detail="Invalid authentication token",
         )
 
-    # Get stored challenge
-    challenge = get_challenge(f"user_webauthn_auth_{user.id}")
+    # Get stored challenge (Redis-backed for multi-instance support)
+    challenge = await get_challenge_async(f"user_webauthn_auth_{user.id}")
     if not challenge:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
