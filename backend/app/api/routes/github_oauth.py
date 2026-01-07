@@ -226,11 +226,11 @@ async def get_authorization_url(
             )
     else:
         # CWE-384: Fail closed in production - in-memory only for development
-        settings = get_settings()
-        if settings.environment != "development":
+        current_env = get_settings().environment
+        if current_env != "development":
             logger.error(
                 "github_oauth_redis_unavailable_production",
-                environment=settings.environment,
+                environment=current_env,
                 message="Redis unavailable in production - OAuth cannot proceed",
             )
             raise HTTPException(
@@ -280,11 +280,11 @@ async def exchange_github_token(
         )
     else:
         # CWE-384: Fail closed in production - in-memory only for development
-        settings = get_settings()
-        if settings.environment != "development":
+        current_env = get_settings().environment
+        if current_env != "development":
             logger.error(
                 "github_oauth_redis_unavailable_validation",
-                environment=settings.environment,
+                environment=current_env,
                 message="Redis unavailable - cannot validate OAuth state",
             )
             raise HTTPException(
