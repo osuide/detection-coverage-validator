@@ -95,6 +95,13 @@ enable_cloudtrail = true
 force_reload_compliance = false
 
 # =============================================================================
+# Marketing Site (Root Domain - a13e.com)
+# =============================================================================
+# Marketing landing page moved from staging to prod.
+# Serves a13e.com and www.a13e.com via CloudFront + S3.
+enable_marketing = true
+
+# =============================================================================
 # Support System (Google Workspace Integration)
 # =============================================================================
 # API key for Google Apps Script - set via environment variable:

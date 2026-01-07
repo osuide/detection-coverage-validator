@@ -83,10 +83,10 @@ enable_docs = true
 # ============================================================================
 # Marketing Site (Root Domain)
 # ============================================================================
-# Enable marketing landing page at a13e.com (root domain).
-# Uses S3 + CloudFront with the same security controls as frontend.
-# Note: This is shared across staging and production - only deploy once.
-enable_marketing = true
+# MOVED TO PRODUCTION - Marketing site now deployed via prod.tfvars
+# This ensures the root domain (a13e.com) remains available during staging hibernation.
+# Route53 records and CloudFront CNAME aliases can only exist in one environment.
+enable_marketing = false
 
 # ============================================================================
 # CloudTrail Audit Logging (CWE-778)
