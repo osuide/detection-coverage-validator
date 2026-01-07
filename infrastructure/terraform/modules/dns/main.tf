@@ -372,8 +372,9 @@ resource "aws_acm_certificate_validation" "marketing" {
 }
 
 # Route 53 Record for Marketing - Root Domain (a13e.com)
+# Note: count only uses enable_marketing since CloudFront domain is always available when module is created
 resource "aws_route53_record" "marketing" {
-  count   = var.enable_marketing && var.marketing_cloudfront_domain_name != "" ? 1 : 0
+  count   = var.enable_marketing ? 1 : 0
   zone_id = data.aws_route53_zone.main.zone_id
   name    = var.domain_name
   type    = "A"
@@ -389,7 +390,7 @@ resource "aws_route53_record" "marketing" {
 
 # Route 53 Record for Marketing - WWW subdomain (www.a13e.com)
 resource "aws_route53_record" "marketing_www" {
-  count   = var.enable_marketing && var.marketing_cloudfront_domain_name != "" ? 1 : 0
+  count   = var.enable_marketing ? 1 : 0
   zone_id = data.aws_route53_zone.main.zone_id
   name    = "www.${var.domain_name}"
   type    = "A"
