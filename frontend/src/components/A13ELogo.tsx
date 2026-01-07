@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Link } from 'react-router'
 
 interface A13ELogoProps {
@@ -16,7 +17,12 @@ const sizes = {
   xl: { icon: 64, text: 'text-4xl', tagline: 'text-base' },
 }
 
-function LogoIcon({ size = 40 }: { size?: number }) {
+function LogoIcon({ size = 40, instanceId }: { size?: number; instanceId: string }) {
+  // Use unique IDs to prevent SVG gradient conflicts when multiple logos are on the page
+  const gradId = `a13e-grad-${instanceId}`
+  const glowGradId = `a13e-glow-${instanceId}`
+  const glowFilterId = `glow-${instanceId}`
+
   return (
     <svg
       width={size}
@@ -27,16 +33,16 @@ function LogoIcon({ size = 40 }: { size?: number }) {
       className="shrink-0"
     >
       <defs>
-        <linearGradient id="a13e-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#3B82F6" />
           <stop offset="50%" stopColor="#06B6D4" />
           <stop offset="100%" stopColor="#8B5CF6" />
         </linearGradient>
-        <linearGradient id="a13e-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={glowGradId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#60A5FA" />
           <stop offset="100%" stopColor="#A78BFA" />
         </linearGradient>
-        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+        <filter id={glowFilterId} x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="2" result="coloredBlur" />
           <feMerge>
             <feMergeNode in="coloredBlur" />
@@ -47,10 +53,10 @@ function LogoIcon({ size = 40 }: { size?: number }) {
       {/* Hexagonal shield shape */}
       <path
         d="M24 2L44 14V34L24 46L4 34V14L24 2Z"
-        fill="url(#a13e-grad)"
-        stroke="url(#a13e-glow)"
+        fill={`url(#${gradId})`}
+        stroke={`url(#${glowGradId})`}
         strokeWidth="1"
-        filter="url(#glow)"
+        filter={`url(#${glowFilterId})`}
       />
       {/* Stylized "A" */}
       <path
@@ -58,7 +64,7 @@ function LogoIcon({ size = 40 }: { size?: number }) {
         fill="white"
         fillOpacity="0.95"
       />
-      <path d="M24 18L26.5 24H21.5L24 18Z" fill="url(#a13e-grad)" />
+      <path d="M24 18L26.5 24H21.5L24 18Z" fill={`url(#${gradId})`} />
       {/* Three accent lines (representing 13 / trinity / stability) */}
       <line
         x1="12"
@@ -102,11 +108,12 @@ export default function A13ELogo({
   linkTo = '/',
   className = '',
 }: A13ELogoProps) {
+  const instanceId = useId()
   const sizeConfig = sizes[size]
 
   const content = (
     <div className={`flex items-center gap-3 ${className}`}>
-      {variant !== 'wordmark' && <LogoIcon size={sizeConfig.icon} />}
+      {variant !== 'wordmark' && <LogoIcon size={sizeConfig.icon} instanceId={instanceId} />}
 
       {variant !== 'icon' && showText && (
         <div className="flex flex-col">
@@ -148,9 +155,10 @@ export default function A13ELogo({
 
 // Compact version for tight spaces
 export function A13ELogoCompact({ className = '' }: { className?: string }) {
+  const instanceId = useId()
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <LogoIcon size={28} />
+      <LogoIcon size={28} instanceId={instanceId} />
       <span className="font-bold text-sm bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
         A13E
       </span>
@@ -160,5 +168,6 @@ export function A13ELogoCompact({ className = '' }: { className?: string }) {
 
 // Just the icon
 export function A13EIcon({ size = 40 }: { size?: number }) {
-  return <LogoIcon size={size} />
+  const instanceId = useId()
+  return <LogoIcon size={size} instanceId={instanceId} />
 }
