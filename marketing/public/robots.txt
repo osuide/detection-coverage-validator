@@ -13,58 +13,51 @@ Disallow: /private/
 Crawl-delay: 1
 
 # =============================================================================
-# Block AI training crawlers
-# We do not consent to our content being used for AI/ML training
+# AI Crawlers - ALLOWED for AI Overview visibility
+# Blocking these prevents appearing in AI-generated search summaries
 # =============================================================================
 
-# OpenAI
+# OpenAI - Allow for ChatGPT search integration
 User-agent: GPTBot
-Disallow: /
+Allow: /
 
 User-agent: ChatGPT-User
-Disallow: /
+Allow: /
 
-# Google AI (separate from search indexing)
+# Google AI - Required for Google AI Overviews
 User-agent: Google-Extended
-Disallow: /
+Allow: /
 
-# Common Crawl (used by many AI companies)
+# Amazon - Allow for Alexa/search integration
+User-agent: Amazonbot
+Allow: /
+
+# Perplexity - Popular AI search engine
+User-agent: PerplexityBot
+Allow: /
+
+# =============================================================================
+# Block aggressive/training-only crawlers
+# =============================================================================
+
+# Common Crawl (bulk dataset collection)
 User-agent: CCBot
-Disallow: /
-
-# Anthropic
-User-agent: anthropic-ai
-Disallow: /
-
-User-agent: Claude-Web
 Disallow: /
 
 # ByteDance / TikTok
 User-agent: Bytespider
 Disallow: /
 
-# Meta / Facebook
+# Meta / Facebook (aggressive crawling)
 User-agent: FacebookBot
 Disallow: /
 
-# Amazon
-User-agent: Amazonbot
-Disallow: /
-
-# Perplexity AI
-User-agent: PerplexityBot
-Disallow: /
-
-# Diffbot
+# Diffbot (data extraction)
 User-agent: Diffbot
 Disallow: /
 
 # Omgili
 User-agent: omgili
-Disallow: /
-
-# Cohere
-User-agent: cohere-ai
 Disallow: /
 
 # =============================================================================

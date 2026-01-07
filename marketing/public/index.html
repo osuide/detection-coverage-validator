@@ -979,15 +979,24 @@
     })();
   </script>
 
-  <!-- Structured Data for SEO -->
+  <!-- Structured Data for SEO: SoftwareApplication -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "A13E Detection Coverage Validator",
     "applicationCategory": "SecurityApplication",
+    "applicationSubCategory": "Cloud Security",
     "operatingSystem": "Web",
-    "description": "Map your AWS and GCP security detections to MITRE ATT&CK. Identify coverage gaps. Get remediation guidance.",
+    "description": "Map your AWS and GCP security detections to MITRE ATT&CK framework. Identify coverage gaps, prioritise remediation, and strengthen your cloud security posture with Infrastructure-as-Code templates.",
+    "featureList": [
+      "MITRE ATT&CK mapping for AWS GuardDuty, Security Hub, CloudWatch, EventBridge, Config Rules",
+      "GCP Security Command Center integration",
+      "Coverage gap analysis with prioritised remediation guidance",
+      "Infrastructure-as-Code templates (Terraform, CloudFormation) for detection deployment",
+      "Compliance framework mapping (CIS Controls v8, NIST 800-53, ISO 27001)",
+      "Coverage trending and historical analysis"
+    ],
     "offers": {
       "@type": "AggregateOffer",
       "priceCurrency": "GBP",
@@ -995,11 +1004,89 @@
       "highPrice": "250",
       "offerCount": "4"
     },
-    "publisher": {
+    "provider": {
       "@type": "Organization",
       "name": "A13E",
       "url": "https://a13e.com"
     }
+  }
+  </script>
+
+  <!-- Structured Data for SEO: Organization -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "A13E",
+    "url": "https://a13e.com",
+    "logo": "https://a13e.com/a13e-icon.svg",
+    "description": "Cloud security detection coverage validation for AWS and GCP, mapped to MITRE ATT&CK framework",
+    "foundingDate": "2025",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer support",
+      "email": "support@a13e.com"
+    },
+    "areaServed": "Worldwide",
+    "knowsAbout": [
+      "Cloud Security",
+      "MITRE ATT&CK Framework",
+      "AWS Security",
+      "GCP Security",
+      "Detection Engineering",
+      "Threat Detection",
+      "Security Posture Management"
+    ]
+  }
+  </script>
+
+  <!-- Structured Data for SEO: FAQPage -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is MITRE ATT&CK coverage mapping?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "MITRE ATT&CK coverage mapping connects your existing security detections (GuardDuty findings, Security Hub controls, CloudWatch alarms) to specific adversary techniques in the ATT&CK framework. This reveals which attack techniques you can detect and which represent gaps in your coverage."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Which cloud platforms does A13E support?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A13E supports AWS and GCP. For AWS, we scan GuardDuty, Security Hub, CloudWatch Alarms, EventBridge Rules, Config Rules, and Lambda functions. For GCP, we integrate with Security Command Center."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How does A13E help with compliance?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A13E maps your detection coverage to compliance frameworks including CIS Controls v8, NIST 800-53, and ISO 27001. This helps demonstrate security controls to auditors and identify compliance gaps."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What permissions does A13E need in my AWS account?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A13E requires read-only access via cross-account IAM role. We use SecurityAudit managed policy plus specific read permissions for GuardDuty, Security Hub, CloudWatch, and EventBridge. No write access is ever required."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How quickly can I get started with A13E?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You can connect your cloud accounts and get your first coverage report in under 15 minutes. Deploy our CloudFormation template or Terraform module, run a scan, and instantly see your MITRE ATT&CK coverage heatmap."
+        }
+      }
+    ]
   }
   </script>
 </body>
