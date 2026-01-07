@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, RefreshCw, Grid3X3, List, CheckCircle, AlertTriangle, XCircle, Shield } from 'lucide-react'
 import { useState } from 'react'
 import { coverageApi } from '../services/api'
@@ -15,13 +15,24 @@ type ModalType = 'covered' | 'partial' | 'uncovered' | 'total' | null
 export default function Coverage() {
   const [viewMode, setViewMode] = useState<ViewMode>('heatmap')
   const [activeModal, setActiveModal] = useState<ModalType>(null)
+  const queryClient = useQueryClient()
 
   const { selectedAccount } = useSelectedAccount()
 
-  const { data: coverage, isLoading, isFetching, refetch } = useQuery({
+  const { data: coverage, isLoading } = useQuery({
     queryKey: ['coverage', selectedAccount?.id],
     queryFn: () => coverageApi.get(selectedAccount!.id),
     enabled: !!selectedAccount,
+  })
+
+  // Mutation to recalculate coverage (not just refetch cached data)
+  const recalculateMutation = useMutation({
+    mutationFn: () => coverageApi.calculate(selectedAccount!.id),
+    onSuccess: () => {
+      // Invalidate queries to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['coverage', selectedAccount?.id] })
+      queryClient.invalidateQueries({ queryKey: ['techniques', selectedAccount?.id] })
+    },
   })
 
   const { data: techniques, isLoading: techniquesLoading } = useQuery({
@@ -86,12 +97,12 @@ export default function Coverage() {
             </button>
           </div>
           <button
-            onClick={() => refetch()}
-            disabled={isFetching}
+            onClick={() => recalculateMutation.mutate()}
+            disabled={recalculateMutation.isPending}
             className="btn-secondary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw className={`h-4 w-4 sm:mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{isFetching ? 'Refreshing...' : 'Refresh'}</span>
+            <RefreshCw className={`h-4 w-4 sm:mr-2 ${recalculateMutation.isPending ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{recalculateMutation.isPending ? 'Recalculating...' : 'Recalculate'}</span>
           </button>
         </div>
       </div>
