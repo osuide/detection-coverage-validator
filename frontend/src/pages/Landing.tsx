@@ -552,10 +552,6 @@ export default function Landing() {
                 </li>
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                  <span className="text-gray-300">PDF export (watermarked)</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                   <span className="text-gray-300">Remediation templates</span>
                 </li>
               </ul>

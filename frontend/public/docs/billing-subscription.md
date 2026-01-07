@@ -25,7 +25,6 @@ Understand A13E's subscription plans, pricing, and how to manage your account.
 | Data retention | 30 days |
 | Coverage heatmap | ✓ |
 | Gap analysis | ✓ |
-| PDF reports | ✓ (watermarked) |
 | Remediation templates | ✓ |
 | Support | Documentation |
 
@@ -126,7 +125,7 @@ Contact sales@a13e.com or click **Contact Sales** in Settings → Billing.
 | Audit logs | ✗ | ✓ | ✓ | ✓ |
 | SSO integration | ✗ | ✗ | ✗ | ✓ |
 | **Reporting & Integration** |
-| PDF reports | ✓ | ✓ | ✓ | ✓ |
+| PDF reports | ✗ | ✓ | ✓ | ✓ |
 | CSV exports | ✗ | ✓ | ✓ | ✓ |
 | Email alerts | ✗ | ✓ | ✓ | ✓ |
 | Webhooks | ✗ | ✗ | ✓ | ✓ |
