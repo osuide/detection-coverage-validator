@@ -110,13 +110,13 @@ enable_marketing = true
 # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 # =============================================================================
-# Google Workspace WIF Integration (Optional)
+# Google Workspace WIF Integration
 # =============================================================================
-# Enable after initial production deployment
 # Uses Workload Identity Federation - no service account keys required
-enable_workspace_wif            = false
-workspace_gcp_project_id        = ""
-workspace_gcp_project_number    = ""
+# Same Google Workspace as staging (shared Gmail, Sheets, Drive)
+enable_workspace_wif            = true
+workspace_gcp_project_id        = "a13e-workspace-automation"
+workspace_gcp_project_number    = "323306277338"
 workspace_admin_email           = "austin@a13e.com"
-workspace_service_account_email = ""
-support_crm_spreadsheet_id      = ""
+workspace_service_account_email = "workspace-automation@a13e-workspace-automation.iam.gserviceaccount.com"
+support_crm_spreadsheet_id      = "1UMVumA3LyD5fLjd32EQYi_h3oaQiOrvkpbn3oyDZSsU"
