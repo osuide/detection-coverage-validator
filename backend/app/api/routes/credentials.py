@@ -834,19 +834,19 @@ def _read_template(relative_path: str) -> str:
 
 
 @router.get("/templates/aws/cloudformation", response_class=PlainTextResponse)
-async def get_aws_cloudformation_template() -> dict:
+async def get_aws_cloudformation_template() -> str:
     """Download AWS CloudFormation template."""
     return _read_template("aws_cloudformation.yaml")
 
 
 @router.get("/templates/aws/terraform", response_class=PlainTextResponse)
-async def get_aws_terraform_template() -> dict:
+async def get_aws_terraform_template() -> str:
     """Download AWS Terraform module."""
     return _read_template("terraform/aws/main.tf")
 
 
 @router.get("/templates/gcp/terraform", response_class=PlainTextResponse)
-async def get_gcp_terraform_template() -> dict:
+async def get_gcp_terraform_template() -> str:
     """Download GCP Terraform module."""
     return _read_template("terraform/gcp/main.tf")
 
