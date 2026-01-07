@@ -252,74 +252,57 @@ resource "aws_wafv2_web_acl" "frontend" {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>A13E - Coming Soon</title>
+  <title>A13E - Cloud Security Detection Coverage</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #e2e8f0;
-    }
-    .container {
-      text-align: center;
-      padding: 2rem;
-      max-width: 600px;
-    }
-    .logo {
-      font-size: 3rem;
-      font-weight: bold;
-      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 1.5rem;
-    }
-    h1 {
-      font-size: 2.5rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      color: #f8fafc;
-    }
-    p {
-      font-size: 1.125rem;
-      color: #94a3b8;
-      line-height: 1.7;
-      margin-bottom: 2rem;
-    }
-    .badge {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      background: rgba(59, 130, 246, 0.1);
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      border-radius: 9999px;
-      font-size: 0.875rem;
-      color: #60a5fa;
-    }
-    .shield {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 2rem;
-      opacity: 0.8;
-    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#e2e8f0;overflow:hidden}
+    .bg{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(59,130,246,0.15) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(139,92,246,0.1) 0%,transparent 40%)}
+    .c{position:relative;text-align:center;padding:2rem;max-width:540px}
+    .icon{width:72px;height:72px;margin:0 auto 1.5rem;position:relative}
+    .icon svg{width:100%;height:100%}
+    .icon::before{content:'';position:absolute;inset:-8px;background:linear-gradient(135deg,rgba(59,130,246,0.2),rgba(139,92,246,0.2));border-radius:50%;filter:blur(20px)}
+    .logo{font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,#3b82f6 0%,#06b6d4 50%,#8b5cf6 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.5rem;letter-spacing:-0.02em}
+    .tag{font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;margin-bottom:2rem}
+    h1{font-size:2.25rem;font-weight:700;margin-bottom:1rem;color:#f8fafc;line-height:1.2}
+    h1 span{background:linear-gradient(135deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    p{font-size:1rem;color:#94a3b8;line-height:1.7;margin-bottom:2rem}
+    .chips{display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:2rem}
+    .chip{padding:0.375rem 0.75rem;background:rgba(30,41,59,0.8);border:1px solid #334155;border-radius:6px;font-size:0.75rem;color:#cbd5e1;display:flex;align-items:center;gap:0.375rem}
+    .chip svg{width:14px;height:14px}
+    .form{display:flex;gap:0.5rem;max-width:360px;margin:0 auto 1.5rem}
+    .form input{flex:1;padding:0.75rem 1rem;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#f1f5f9;font-size:0.875rem}
+    .form input::placeholder{color:#64748b}
+    .form input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+    .form button{padding:0.75rem 1.25rem;background:linear-gradient(135deg,#3b82f6,#6366f1);border:none;border-radius:8px;color:#fff;font-weight:600;font-size:0.875rem;cursor:pointer;white-space:nowrap}
+    .form button:hover{opacity:0.9}
+    .badge{display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 1rem;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:9999px;font-size:0.8rem;color:#4ade80}
+    .badge::before{content:'';width:6px;height:6px;background:#4ade80;border-radius:50%;animation:pulse 2s infinite}
+    @keyframes pulse{0%%,100%%{opacity:1}50%%{opacity:0.5}}
   </style>
 </head>
 <body>
-  <div class="container">
-    <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#3b82f6"/>
-      <path d="M9 12l2 2 4-4" stroke="#22c55e" stroke-width="2"/>
-    </svg>
+  <div class="bg"></div>
+  <div class="c">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="url(#g)" stroke-width="1.5" fill="rgba(59,130,246,0.1)"/>
+        <path d="M9 12l2 2 4-4" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs><linearGradient id="g" x1="4" y1="2" x2="20" y2="22"><stop stop-color="#3b82f6"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+      </svg>
+    </div>
     <div class="logo">A13E</div>
-    <h1>Coming Soon</h1>
-    <p>
-      We're building something powerful for cloud security teams.
-      Our Detection Coverage Validator will help you identify and close
-      gaps in your MITRE ATT&CK coverage.
-    </p>
+    <div class="tag">Detection Coverage Validator</div>
+    <h1>Know Your <span>Coverage Gaps</span></h1>
+    <p>We're building something powerful for cloud security teams. Map your AWS and GCP detections to MITRE ATT&CK, identify coverage gaps, and get actionable remediation guidance.</p>
+    <div class="chips">
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>AWS</span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="#4285f4" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0110 10"/></svg>GCP</span>
+      <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>MITRE ATT&CK</span>
+    </div>
+    <form class="form" onsubmit="return false">
+      <input type="email" placeholder="Enter your email for updates" />
+      <button type="submit">Notify Me</button>
+    </form>
     <span class="badge">Private Beta</span>
   </div>
 </body>
