@@ -225,6 +225,12 @@ resource "aws_wafv2_ip_set" "allowed_ips" {
     Name        = "a13e-${var.environment}-allowed-ips"
     Environment = var.environment
   }
+
+  # Fix for Terraform AWS provider bug #17601
+  # Ensures IP set is replaced before WAF ACL tries to delete it
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # ============================================================================
@@ -237,14 +243,14 @@ resource "aws_wafv2_web_acl" "frontend" {
   description = "WAF ACL for A13E ${var.environment} frontend - OWASP protection"
   scope       = "CLOUDFRONT"
 
-  # Custom response for blocked requests - "Coming Soon" page (must be under 4KB)
+  # Custom response for blocked requests - redirect to production (must be under 4KB)
   dynamic "custom_response_body" {
     for_each = length(var.allowed_ips) > 0 ? [1] : []
     content {
       key          = "coming-soon"
       content_type = "TEXT_HTML"
       content      = <<-HTML
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>A13E - Coming Soon</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#e2e8f0}.c{text-align:center;padding:2rem;max-width:500px}.i{width:64px;height:64px;margin:0 auto 1.5rem}.i svg{width:100%%;height:100%%}.l{font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,#3b82f6,#06b6d4,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.5rem}.t{font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:2rem}h1{font-size:2rem;font-weight:700;margin-bottom:1rem;color:#f8fafc}h1 span{color:#3b82f6}p{color:#94a3b8;line-height:1.7;margin-bottom:1.5rem}.tags{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem}.tag{padding:.25rem .75rem;background:#1e293b;border:1px solid #334155;border-radius:6px;font-size:.75rem;color:#cbd5e1}.b{display:inline-flex;align-items:center;gap:.5rem;padding:.5rem 1rem;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:9999px;font-size:.8rem;color:#4ade80}.b::before{content:'';width:6px;height:6px;background:#4ade80;border-radius:50%%}</style></head><body><div class="c"><div class="i"><svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="url(#g)" stroke-width="1.5" fill="rgba(59,130,246,0.1)"/><path d="M9 12l2 2 4-4" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="g" x1="4" y1="2" x2="20" y2="22"><stop stop-color="#3b82f6"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs></svg></div><div class="l">A13E</div><div class="t">Detection Coverage Validator</div><h1>Know Your <span>Coverage Gaps</span></h1><p>Map your AWS and GCP detections to MITRE ATT&CK, identify coverage gaps, and get actionable remediation guidance.</p><div class="tags"><span class="tag">AWS</span><span class="tag">GCP</span><span class="tag">MITRE ATT&CK</span></div><span class="b">Private Beta</span></div></body></html>
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta http-equiv="refresh" content="0;url=https://app.a13e.com"><title>Redirecting to A13E</title><script>window.location.replace("https://app.a13e.com")</script><style>body{font-family:system-ui,sans-serif;background:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#e2e8f0;text-align:center}a{color:#3b82f6}</style></head><body><p>Redirecting to <a href="https://app.a13e.com">app.a13e.com</a>...</p></body></html>
       HTML
     }
   }
@@ -439,6 +445,12 @@ resource "aws_wafv2_web_acl" "frontend" {
 
   tags = {
     Name = "a13e-${var.environment}-frontend-waf"
+  }
+
+  # Fix for Terraform AWS provider bug #17601
+  # Ensures WAF ACL is updated before IP set deletion
+  lifecycle {
+    create_before_destroy = true
   }
 }
 

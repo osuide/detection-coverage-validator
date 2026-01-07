@@ -49,8 +49,8 @@ enable_cognito = true
 # WAF IP Restriction
 # ============================================================================
 # Restrict staging access to specific IPs only (CIDR notation)
-# Set to [] to allow all traffic (authentication handles access control)
-waf_allowed_ips = []
+# Blocked users are redirected to production (app.a13e.com)
+waf_allowed_ips = ["81.174.169.212/32"]
 
 # ============================================================================
 # Compliance Data Migration
