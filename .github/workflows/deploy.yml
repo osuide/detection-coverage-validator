@@ -117,6 +117,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push backend image
+        id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
@@ -124,21 +125,39 @@ jobs:
         run: |
           docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f infrastructure/docker/Dockerfile.backend .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          # Also tag and push as :latest for ECS task definition
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Update ECS Task Definition
+        id: update-task-def
+        env:
+          ECS_TASK_DEFINITION: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
+          IMAGE: ${{ steps.build-image.outputs.image }}
+        run: |
+          # Get current task definition
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition $ECS_TASK_DEFINITION --query 'taskDefinition')
+
+          # Update the image in the container definition
+          NEW_TASK_DEF=$(echo $TASK_DEF | jq --arg IMAGE "$IMAGE" '
+            .containerDefinitions[0].image = $IMAGE |
+            del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+          ')
+
+          # Register new task definition
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF" --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "Registered new task definition: $NEW_TASK_DEF_ARN"
+          echo "task_def_arn=$NEW_TASK_DEF_ARN" >> $GITHUB_OUTPUT
 
       - name: Run Database Migrations
         env:
           ECS_CLUSTER: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
-          ECS_TASK_DEFINITION: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
+          ECS_TASK_DEFINITION: ${{ steps.update-task-def.outputs.task_def_arn }}
           SUBNETS: ${{ needs.deploy-infrastructure.outputs.vpc_public_subnets }}
           SECURITY_GROUP: ${{ needs.deploy-infrastructure.outputs.ecs_security_group }}
         run: |
           # Get subnet IDs as comma-separated list (using public subnets for internet access)
           SUBNET_LIST=$(echo $SUBNETS | jq -r 'join(",")')
 
-          echo "Running database migrations..."
+          echo "Running database migrations with task definition: $ECS_TASK_DEFINITION..."
           TASK_ARN=$(aws ecs run-task \
             --cluster $ECS_CLUSTER \
             --task-definition $ECS_TASK_DEFINITION \
@@ -171,15 +190,17 @@ jobs:
 
           echo "Migrations completed successfully!"
 
-      - name: Force ECS Service Redeployment
+      - name: Deploy ECS Service with New Task Definition
         env:
           ECS_CLUSTER: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
           ECS_SERVICE: a13e-${{ github.event.inputs.environment || 'staging' }}-backend
+          TASK_DEF_ARN: ${{ steps.update-task-def.outputs.task_def_arn }}
         run: |
-          echo "Triggering ECS service redeployment..."
+          echo "Deploying ECS service with new task definition: $TASK_DEF_ARN..."
           aws ecs update-service \
             --cluster $ECS_CLUSTER \
             --service $ECS_SERVICE \
+            --task-definition $TASK_DEF_ARN \
             --force-new-deployment
 
           echo "Waiting for deployment to stabilize (up to 15 minutes)..."
