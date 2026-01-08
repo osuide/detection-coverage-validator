@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { Bell, AlertTriangle, AlertCircle, Info, Check, Filter, Clock } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { EvaluationAlertItem, evaluationHistoryApi } from '../../services/api'
+import { EvaluationAlertItem, EvaluationAlertsResponse, evaluationHistoryApi } from '../../services/api'
 
 interface ComplianceAlertsListProps {
   alerts: EvaluationAlertItem[]
@@ -167,45 +167,111 @@ export function ComplianceAlertsList({
 
   const acknowledgeMutation = useMutation({
     mutationFn: (alertId: string) => evaluationHistoryApi.acknowledgeAlert(alertId),
-    onMutate: (alertId) => {
+    onMutate: async (alertId) => {
       setAcknowledgingId(alertId)
+
+      // Cancel any outgoing refetches to prevent overwriting optimistic update
+      if (accountId) {
+        await queryClient.cancelQueries({ queryKey: ['evaluation-alerts', accountId] })
+      }
+
+      // Snapshot the previous value
+      const previousData = accountId
+        ? queryClient.getQueryData<EvaluationAlertsResponse>(['evaluation-alerts', accountId])
+        : undefined
+
+      // Optimistically update the cache
+      if (accountId && previousData) {
+        queryClient.setQueryData<EvaluationAlertsResponse>(['evaluation-alerts', accountId], {
+          ...previousData,
+          alerts: previousData.alerts.map((alert) =>
+            alert.id === alertId
+              ? { ...alert, is_acknowledged: true, acknowledged_at: new Date().toISOString() }
+              : alert
+          ),
+          summary: {
+            ...previousData.summary,
+            unacknowledged: Math.max(0, previousData.summary.unacknowledged - 1),
+          },
+        })
+      }
+
+      return { previousData }
     },
     onSuccess: (_data, alertId) => {
       toast.success('Alert acknowledged')
-      // Invalidate alerts query to refresh the list
-      if (accountId) {
-        queryClient.invalidateQueries({ queryKey: ['evaluation-alerts', accountId] })
-      }
       onAcknowledge?.(alertId)
     },
-    onError: (error) => {
+    onError: (error, _alertId, context) => {
       console.error('Failed to acknowledge alert:', error)
       toast.error('Failed to acknowledge alert')
+
+      // Rollback to the previous value on error
+      if (accountId && context?.previousData) {
+        queryClient.setQueryData(['evaluation-alerts', accountId], context.previousData)
+      }
     },
     onSettled: () => {
       setAcknowledgingId(null)
+      // Refetch to ensure server state is in sync
+      if (accountId) {
+        queryClient.invalidateQueries({ queryKey: ['evaluation-alerts', accountId] })
+      }
     },
   })
 
   const unacknowledgeMutation = useMutation({
     mutationFn: (alertId: string) => evaluationHistoryApi.unacknowledgeAlert(alertId),
-    onMutate: (alertId) => {
+    onMutate: async (alertId) => {
       setUnacknowledgingId(alertId)
+
+      // Cancel any outgoing refetches to prevent overwriting optimistic update
+      if (accountId) {
+        await queryClient.cancelQueries({ queryKey: ['evaluation-alerts', accountId] })
+      }
+
+      // Snapshot the previous value
+      const previousData = accountId
+        ? queryClient.getQueryData<EvaluationAlertsResponse>(['evaluation-alerts', accountId])
+        : undefined
+
+      // Optimistically update the cache
+      if (accountId && previousData) {
+        queryClient.setQueryData<EvaluationAlertsResponse>(['evaluation-alerts', accountId], {
+          ...previousData,
+          alerts: previousData.alerts.map((alert) =>
+            alert.id === alertId
+              ? { ...alert, is_acknowledged: false, acknowledged_at: null }
+              : alert
+          ),
+          summary: {
+            ...previousData.summary,
+            unacknowledged: previousData.summary.unacknowledged + 1,
+          },
+        })
+      }
+
+      return { previousData }
     },
     onSuccess: (_data, alertId) => {
       toast.success('Alert reopened')
-      // Invalidate alerts query to refresh the list
-      if (accountId) {
-        queryClient.invalidateQueries({ queryKey: ['evaluation-alerts', accountId] })
-      }
       onUnacknowledge?.(alertId)
     },
-    onError: (error) => {
+    onError: (error, _alertId, context) => {
       console.error('Failed to unacknowledge alert:', error)
       toast.error('Failed to reopen alert')
+
+      // Rollback to the previous value on error
+      if (accountId && context?.previousData) {
+        queryClient.setQueryData(['evaluation-alerts', accountId], context.previousData)
+      }
     },
     onSettled: () => {
       setUnacknowledgingId(null)
+      // Refetch to ensure server state is in sync
+      if (accountId) {
+        queryClient.invalidateQueries({ queryKey: ['evaluation-alerts', accountId] })
+      }
     },
   })
 

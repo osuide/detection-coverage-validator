@@ -56,7 +56,9 @@ from app.services.evaluation_history_service import (
 # Cache control headers
 TREND_CACHE_HEADER = "private, max-age=300"  # 5 minutes
 SUMMARY_CACHE_HEADER = "private, max-age=600"  # 10 minutes
-ALERTS_CACHE_HEADER = "private, max-age=60"  # 1 minute
+ALERTS_CACHE_HEADER = (
+    "private, no-cache, must-revalidate"  # Always revalidate after mutations
+)
 ORG_CACHE_HEADER = "private, max-age=900"  # 15 minutes
 
 # Unhealthy states for calculations
