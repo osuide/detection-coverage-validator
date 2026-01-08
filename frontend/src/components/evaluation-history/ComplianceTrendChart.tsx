@@ -188,9 +188,9 @@ export function ComplianceTrendChart({
         </div>
       </div>
 
-      {/* Chart */}
-      <div className="h-64 min-w-0">
-        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+      {/* Chart - Use fixed height to prevent Recharts -1 dimension error during render */}
+      <div className="min-w-0">
+        <ResponsiveContainer width="100%" height={256}>
           <AreaChart
             data={data}
             margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
