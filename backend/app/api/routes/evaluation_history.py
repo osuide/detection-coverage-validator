@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.security import AuthContext, require_role
+from app.core.security import AuthContext, require_role, require_feature
 from app.models.user import UserRole
 from app.models.cloud_account import CloudAccount
 from app.models.detection import Detection
@@ -209,6 +209,7 @@ def _calculate_trend(current: float, previous: float) -> str:
 @router.get(
     "/detections/{detection_id}/history",
     response_model=DetectionEvaluationHistoryResponse,
+    dependencies=[Depends(require_feature("historical_trends"))],
 )
 async def get_detection_evaluation_history(
     detection_id: UUID,
@@ -375,6 +376,7 @@ async def get_detection_evaluation_history(
 @router.get(
     "/accounts/{cloud_account_id}/summary",
     response_model=AccountEvaluationSummaryResponse,
+    dependencies=[Depends(require_feature("historical_trends"))],
 )
 async def get_account_evaluation_summary(
     cloud_account_id: UUID,
@@ -521,6 +523,7 @@ async def get_account_evaluation_summary(
 @router.get(
     "/accounts/{cloud_account_id}/trends",
     response_model=EvaluationTrendsResponse,
+    dependencies=[Depends(require_feature("historical_trends"))],
 )
 async def get_account_evaluation_trends(
     cloud_account_id: UUID,
@@ -624,6 +627,7 @@ async def get_account_evaluation_trends(
 @router.get(
     "/accounts/{cloud_account_id}/alerts",
     response_model=EvaluationAlertsResponse,
+    dependencies=[Depends(require_feature("alerts"))],
 )
 async def get_account_evaluation_alerts(
     cloud_account_id: UUID,
@@ -769,6 +773,7 @@ async def get_account_evaluation_alerts(
 @router.post(
     "/alerts/{alert_id}/acknowledge",
     response_model=AcknowledgeAlertResponse,
+    dependencies=[Depends(require_feature("alerts"))],
 )
 async def acknowledge_evaluation_alert(
     alert_id: UUID,
@@ -808,6 +813,7 @@ async def acknowledge_evaluation_alert(
 @router.get(
     "/organisation/summary",
     response_model=OrganisationEvaluationSummaryResponse,
+    dependencies=[Depends(require_feature("historical_trends"))],
 )
 async def get_organisation_evaluation_summary(
     response: Response,

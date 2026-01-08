@@ -13,7 +13,13 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, get_client_ip, require_role
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    get_client_ip,
+    require_role,
+    require_feature,
+)
 from app.models.user import (
     APIKey,
     UserRole,
@@ -107,7 +113,7 @@ async def log_api_key_action(
     db.add(log)
 
 
-@router.get("/scopes")
+@router.get("/scopes", dependencies=[Depends(require_feature("api_access"))])
 async def list_available_scopes(
     auth: AuthContext = Depends(get_auth_context),
 ) -> dict:
@@ -130,7 +136,11 @@ async def list_available_scopes(
     }
 
 
-@router.get("", response_model=list[APIKeyResponse])
+@router.get(
+    "",
+    response_model=list[APIKeyResponse],
+    dependencies=[Depends(require_feature("api_access"))],
+)
 async def list_api_keys(
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
@@ -170,7 +180,10 @@ async def list_api_keys(
 
 
 @router.post(
-    "", response_model=APIKeyCreatedResponse, status_code=status.HTTP_201_CREATED
+    "",
+    response_model=APIKeyCreatedResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_feature("api_access"))],
 )
 async def create_api_key(
     request: Request,
@@ -266,7 +279,11 @@ async def create_api_key(
     )
 
 
-@router.get("/{key_id}", response_model=APIKeyResponse)
+@router.get(
+    "/{key_id}",
+    response_model=APIKeyResponse,
+    dependencies=[Depends(require_feature("api_access"))],
+)
 async def get_api_key(
     key_id: UUID,
     auth: AuthContext = Depends(require_role(UserRole.OWNER, UserRole.ADMIN)),
@@ -313,7 +330,11 @@ async def get_api_key(
     )
 
 
-@router.patch("/{key_id}", response_model=APIKeyResponse)
+@router.patch(
+    "/{key_id}",
+    response_model=APIKeyResponse,
+    dependencies=[Depends(require_feature("api_access"))],
+)
 async def update_api_key(
     request: Request,
     key_id: UUID,
@@ -383,7 +404,11 @@ async def update_api_key(
     )
 
 
-@router.delete("/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{key_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_feature("api_access"))],
+)
 async def revoke_api_key(
     request: Request,
     key_id: UUID,

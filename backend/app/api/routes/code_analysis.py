@@ -18,7 +18,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_scope
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    require_scope,
+    require_feature,
+)
 from app.models.cloud_account import CloudAccount
 from app.models.code_analysis import (
     CodeAnalysisConsent,
@@ -112,7 +117,10 @@ async def get_disclosure() -> DisclosureResponse:
 @router.get(
     "/status/{cloud_account_id}",
     response_model=FeatureStatusResponse,
-    dependencies=[Depends(require_scope("read:code_analysis"))],
+    dependencies=[
+        Depends(require_feature("code_analysis")),
+        Depends(require_scope("read:code_analysis")),
+    ],
 )
 async def get_feature_status(
     cloud_account_id: UUID,
@@ -181,7 +189,10 @@ async def get_feature_status(
 @router.post(
     "/consent",
     response_model=ConsentResponse,
-    dependencies=[Depends(require_scope("write:code_analysis"))],
+    dependencies=[
+        Depends(require_feature("code_analysis")),
+        Depends(require_scope("write:code_analysis")),
+    ],
 )
 async def give_consent(
     request: ConsentRequest,
@@ -201,20 +212,7 @@ async def give_consent(
     org = auth_ctx.organization
     current_user = auth_ctx.user
 
-    # Verify tier
-    result = await db.execute(
-        select(Subscription).where(Subscription.organization_id == org.id)
-    )
-    subscription = result.scalar_one_or_none()
-
-    if not subscription or subscription.tier not in [
-        AccountTier.SUBSCRIBER,
-        AccountTier.ENTERPRISE,
-    ]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Code analysis requires Subscriber or Enterprise tier. Please upgrade your subscription.",
-        )
+    # Tier verification handled by require_feature("code_analysis") dependency
 
     # Verify account belongs to org
     result = await db.execute(
@@ -296,7 +294,10 @@ async def give_consent(
 
 @router.delete(
     "/consent/{cloud_account_id}",
-    dependencies=[Depends(require_scope("write:code_analysis"))],
+    dependencies=[
+        Depends(require_feature("code_analysis")),
+        Depends(require_scope("write:code_analysis")),
+    ],
 )
 async def revoke_consent(
     cloud_account_id: UUID,

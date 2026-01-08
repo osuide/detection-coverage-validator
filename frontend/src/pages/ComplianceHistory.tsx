@@ -7,10 +7,12 @@
 
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { History } from 'lucide-react'
+import { History, Lock, TrendingUp } from 'lucide-react'
 import { Link } from 'react-router'
 import { evaluationHistoryApi } from '../services/api'
+import { billingApi, Subscription, hasHistoricalTrends, hasAlerts } from '../services/billingApi'
 import { useSelectedAccount } from '../hooks/useSelectedAccount'
+import { useAuthStore } from '../stores/authStore'
 import {
   ComplianceTrendChart,
   ComplianceAlertsList,
@@ -21,6 +23,18 @@ import { PageHeader } from '../components/navigation'
 export default function ComplianceHistory() {
   const { selectedAccount, isLoading: accountsLoading, hasAccounts } = useSelectedAccount()
   const [trendDays, setTrendDays] = useState(30)
+  const accessToken = useAuthStore((state) => state.accessToken)
+
+  // Fetch subscription to check tier before making feature API calls
+  const { data: subscription, isLoading: subscriptionLoading } = useQuery<Subscription>({
+    queryKey: ['subscription'],
+    queryFn: () => billingApi.getSubscription(accessToken!),
+    enabled: !!accessToken,
+  })
+
+  // Check if user has required features
+  const canAccessHistoricalTrends = subscription ? hasHistoricalTrends(subscription.tier) : false
+  const canAccessAlerts = subscription ? hasAlerts(subscription.tier) : false
 
   // Calculate date range for queries - memoized to prevent infinite refetch loop
   // Without useMemo, new Date strings are created every render, changing the queryKey
@@ -33,7 +47,7 @@ export default function ComplianceHistory() {
     }
   }, [trendDays])
 
-  // Fetch account summary
+  // Fetch account summary - only if user has historical trends feature
   const { data: summaryData, isLoading: summaryLoading, error: summaryError } = useQuery({
     queryKey: ['evaluation-summary', selectedAccount?.id, startDate, endDate],
     queryFn: () =>
@@ -41,11 +55,11 @@ export default function ComplianceHistory() {
         start_date: startDate,
         end_date: endDate,
       }),
-    enabled: !!selectedAccount,
+    enabled: !!selectedAccount && canAccessHistoricalTrends,
     retry: 1,
   })
 
-  // Fetch trends data
+  // Fetch trends data - only if user has historical trends feature
   const { data: trendsData, isLoading: trendsLoading, error: trendsError } = useQuery({
     queryKey: ['evaluation-trends', selectedAccount?.id, startDate, endDate],
     queryFn: () =>
@@ -53,23 +67,26 @@ export default function ComplianceHistory() {
         start_date: startDate,
         end_date: endDate,
       }),
-    enabled: !!selectedAccount,
+    enabled: !!selectedAccount && canAccessHistoricalTrends,
     retry: 1,
   })
 
-  // Fetch alerts
+  // Fetch alerts - only if user has alerts feature
   const { data: alertsData, isLoading: alertsLoading, error: alertsError } = useQuery({
     queryKey: ['evaluation-alerts', selectedAccount?.id],
     queryFn: () =>
       evaluationHistoryApi.getAccountAlerts(selectedAccount!.id, {
         limit: 50,
       }),
-    enabled: !!selectedAccount,
+    enabled: !!selectedAccount && canAccessAlerts,
     retry: 1,
   })
 
   // Check if all queries have errors
   const hasErrors = summaryError || trendsError || alertsError
+
+  // Show upgrade message for users without required features
+  const isFeatureRestricted = subscription && !canAccessHistoricalTrends
 
   // No accounts state
   if (!accountsLoading && !hasAccounts) {
@@ -89,10 +106,49 @@ export default function ComplianceHistory() {
   }
 
   // Loading state
-  if (accountsLoading) {
+  if (accountsLoading || subscriptionLoading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
+  // Show upgrade message for users without required features
+  if (isFeatureRestricted) {
+    return (
+      <div>
+        <PageHeader back={{ label: "Compliance", fallback: "/compliance" }} />
+        <div className="text-center py-16 bg-gray-800 rounded-xl border border-gray-700">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-900/30 mb-6">
+            <Lock className="h-8 w-8 text-purple-400" />
+          </div>
+          <h2 className="text-xl font-semibold text-white mb-2">
+            Paid Feature
+          </h2>
+          <p className="text-gray-400 max-w-md mx-auto mb-6">
+            Compliance History and trend analysis is a paid feature that lets you
+            track detection health changes over time and identify recurring issues.
+          </p>
+          <div className="bg-gray-700/30 rounded-lg p-4 max-w-md mx-auto mb-6">
+            <h3 className="font-medium text-white mb-2 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 mr-2 text-purple-400" />
+              What you get
+            </h3>
+            <ul className="text-sm text-gray-400 space-y-1 text-left ml-6">
+              <li>• Historical compliance and health trends</li>
+              <li>• Detection state change tracking</li>
+              <li>• Compliance alerts and notifications</li>
+              <li>• Period-over-period comparisons</li>
+            </ul>
+          </div>
+          <Link
+            to="/settings/billing"
+            className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
+          >
+            Upgrade to Individual
+          </Link>
+        </div>
       </div>
     )
   }

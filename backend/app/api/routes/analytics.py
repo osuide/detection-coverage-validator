@@ -8,7 +8,12 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_scope
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    require_scope,
+    require_feature,
+)
 from app.services.analytics_service import AnalyticsService
 
 
@@ -133,7 +138,10 @@ class TacticBreakdownResponse(BaseModel):
 @router.get(
     "/trends",
     response_model=TrendsResponse,
-    dependencies=[Depends(require_scope("read:analytics"))],
+    dependencies=[
+        Depends(require_feature("historical_trends")),
+        Depends(require_scope("read:analytics")),
+    ],
 )
 async def get_coverage_trends(
     cloud_account_id: Optional[UUID] = None,
@@ -172,7 +180,10 @@ async def get_coverage_trends(
 @router.get(
     "/gaps",
     response_model=GapPrioritizationResponse,
-    dependencies=[Depends(require_scope("read:analytics"))],
+    dependencies=[
+        Depends(require_feature("historical_trends")),
+        Depends(require_scope("read:analytics")),
+    ],
 )
 async def get_gap_prioritization(
     cloud_account_id: Optional[UUID] = None,
@@ -202,7 +213,10 @@ async def get_gap_prioritization(
 @router.get(
     "/effectiveness",
     response_model=EffectivenessResponse,
-    dependencies=[Depends(require_scope("read:analytics"))],
+    dependencies=[
+        Depends(require_feature("historical_trends")),
+        Depends(require_scope("read:analytics")),
+    ],
 )
 async def get_detection_effectiveness(
     cloud_account_id: Optional[UUID] = None,
@@ -231,7 +245,10 @@ async def get_detection_effectiveness(
 @router.get(
     "/recommendations",
     response_model=RecommendationsResponse,
-    dependencies=[Depends(require_scope("read:analytics"))],
+    dependencies=[
+        Depends(require_feature("historical_trends")),
+        Depends(require_scope("read:analytics")),
+    ],
 )
 async def get_recommendations(
     cloud_account_id: Optional[UUID] = None,
@@ -260,7 +277,10 @@ async def get_recommendations(
 @router.get(
     "/tactics",
     response_model=TacticBreakdownResponse,
-    dependencies=[Depends(require_scope("read:analytics"))],
+    dependencies=[
+        Depends(require_feature("historical_trends")),
+        Depends(require_scope("read:analytics")),
+    ],
 )
 async def get_tactic_breakdown(
     cloud_account_id: Optional[UUID] = None,
@@ -287,7 +307,10 @@ async def get_tactic_breakdown(
 
 @router.get(
     "/summary",
-    dependencies=[Depends(require_scope("read:analytics"))],
+    dependencies=[
+        Depends(require_feature("historical_trends")),
+        Depends(require_scope("read:analytics")),
+    ],
 )
 async def get_analytics_summary(
     cloud_account_id: Optional[UUID] = None,

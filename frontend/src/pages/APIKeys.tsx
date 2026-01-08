@@ -12,10 +12,12 @@ import {
   Info,
   ExternalLink,
   BookOpen,
+  Lock,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuth } from '../contexts/AuthContext'
 import { apiKeysApi, APIKey, APIKeyCreated, ScopesResponse } from '../services/apiKeysApi'
+import { billingApi, Subscription, hasApiAccess } from '../services/billingApi'
 
 export default function APIKeys() {
   const { accessToken } = useAuth()
@@ -23,6 +25,10 @@ export default function APIKeys() {
   const [scopesInfo, setScopesInfo] = useState<ScopesResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
+
+  // Check if user has API access feature
+  const canAccessApiKeys = subscription ? hasApiAccess(subscription.tier) : false
 
   // Create modal state
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -48,12 +54,19 @@ export default function APIKeys() {
     setError(null)
 
     try {
-      const [keysData, scopesData] = await Promise.all([
-        apiKeysApi.getAPIKeys(accessToken),
-        apiKeysApi.getScopes(accessToken),
-      ])
-      setKeys(keysData)
-      setScopesInfo(scopesData)
+      // First fetch subscription to check tier
+      const subData = await billingApi.getSubscription(accessToken)
+      setSubscription(subData)
+
+      // Only fetch API keys if user has access
+      if (hasApiAccess(subData.tier)) {
+        const [keysData, scopesData] = await Promise.all([
+          apiKeysApi.getAPIKeys(accessToken),
+          apiKeysApi.getScopes(accessToken),
+        ])
+        setKeys(keysData)
+        setScopesInfo(scopesData)
+      }
     } catch (err) {
       console.error('Failed to load API keys:', err)
       setError('Failed to load API keys')
@@ -140,6 +153,51 @@ export default function APIKeys() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin h-8 w-8 border-2 border-cyan-500 border-t-transparent rounded-full" />
+      </div>
+    )
+  }
+
+  // Show upgrade message for users without API access
+  if (subscription && !canAccessApiKeys) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">API Keys</h1>
+          <p className="mt-1 text-sm text-gray-400">
+            Manage API keys for programmatic access to the platform.
+          </p>
+        </div>
+
+        <div className="text-center py-16 bg-gray-800 rounded-xl border border-gray-700">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-900/30 mb-6">
+            <Lock className="h-8 w-8 text-purple-400" />
+          </div>
+          <h2 className="text-xl font-semibold text-white mb-2">
+            Paid Feature
+          </h2>
+          <p className="text-gray-400 max-w-md mx-auto mb-6">
+            API access is a paid feature that enables programmatic access
+            to your detection coverage data and scan automation.
+          </p>
+          <div className="bg-gray-700/30 rounded-lg p-4 max-w-md mx-auto mb-6">
+            <h3 className="font-medium text-white mb-2 flex items-center justify-center">
+              <Key className="h-5 w-5 mr-2 text-purple-400" />
+              What you get with API access
+            </h3>
+            <ul className="text-sm text-gray-400 space-y-1 text-left ml-6">
+              <li>• Programmatic access to coverage data</li>
+              <li>• Automated scan triggering</li>
+              <li>• Integration with CI/CD pipelines</li>
+              <li>• Custom reporting and dashboards</li>
+            </ul>
+          </div>
+          <Link
+            to="/settings/billing"
+            className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
+          >
+            Upgrade to Individual
+          </Link>
+        </div>
       </div>
     )
   }

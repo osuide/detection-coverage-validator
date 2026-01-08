@@ -91,6 +91,23 @@ export const hasOrgFeatures = (tier: SubscriptionTier): boolean => {
   return tier === 'pro' || tier === 'enterprise'
 }
 
+// Historical trends and alerts are available on all paid tiers (not Free)
+export const hasHistoricalTrends = (tier: SubscriptionTier): boolean => {
+  return !isFreeTier(tier)
+}
+
+export const hasAlerts = (tier: SubscriptionTier): boolean => {
+  return !isFreeTier(tier)
+}
+
+export const hasApiAccess = (tier: SubscriptionTier): boolean => {
+  return !isFreeTier(tier)
+}
+
+export const hasCodeAnalysis = (tier: SubscriptionTier): boolean => {
+  return !isFreeTier(tier)
+}
+
 export const getTierDisplayName = (tier: SubscriptionTier): string => {
   switch (tier) {
     case 'free':
