@@ -1600,8 +1600,8 @@ async def validate_auto_send(
             if subscription:
                 tier = subscription.tier
 
-    # Block free tier (should require paid subscription for auto-responses)
-    if tier == AccountTier.FREE:
+    # Block free tiers (should require paid subscription for auto-responses)
+    if tier in (AccountTier.FREE, AccountTier.FREE_SCAN):
         logger.info(
             "auto_send_validation_rejected_free_tier",
             email=request.email,
