@@ -353,6 +353,13 @@ git commit -m "Description of changes"
 git push origin main
 ```
 
+**Push to main deploys to STAGING only.** Production requires manual trigger:
+
+```bash
+# Deploy to production (after staging verified)
+gh workflow run deploy.yml -f environment=prod
+```
+
 GitHub Actions CI/CD automatically:
 1. Builds Docker images for linux/amd64
 2. Pushes to ECR
