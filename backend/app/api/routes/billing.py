@@ -161,7 +161,7 @@ class CreateCheckoutRequest(BaseModel):
 
     success_url: str
     cancel_url: str
-    additional_accounts: int = Field(default=0, ge=0, le=100)
+    tier: str = Field(default="individual", pattern="^(individual|pro)$")
 
 
 class CheckoutResponse(BaseModel):
@@ -555,7 +555,7 @@ async def create_checkout(
             success_url=body.success_url,
             cancel_url=body.cancel_url,
             customer_email=auth.user.email,
-            additional_accounts=body.additional_accounts,
+            tier=body.tier,
         )
 
         # Audit log
@@ -566,7 +566,7 @@ async def create_checkout(
             resource_type="billing",
             details={
                 "action": "checkout_created",
-                "additional_accounts": body.additional_accounts,
+                "tier": body.tier,
             },
             ip_address=get_client_ip(request),
             success=True,

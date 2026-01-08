@@ -19,10 +19,13 @@ enable_https = true
 # stripe_secret_key   = ""  # Set via TF_VAR_stripe_secret_key
 # stripe_webhook_secret = ""  # Set via TF_VAR_stripe_webhook_secret
 
+# Stripe price IDs (test mode - GBP)
+# Individual = £29/month (up to 6 accounts)
+# Pro = £250/month (up to 500 accounts)
 stripe_price_ids = {
-  subscriber         = "price_1SfohWAB6j5KiVeUArcQIWFT"
-  enterprise         = "price_1SfohZAB6j5KiVeU4LWn8SIB"
-  additional_account = "price_1SfohcAB6j5KiVeUwuNNhEEW"
+  individual         = "price_1SijVDAB6j5KiVeUwd4QD5uX" # A13E Individual £29/mo
+  pro                = "price_1SijVTAB6j5KiVeUZTSUdnBl" # A13E Pro £250/mo
+  additional_account = ""                               # Not used - simple pricing model
 }
 
 # ============================================================================

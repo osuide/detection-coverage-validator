@@ -26,20 +26,17 @@ def get_account_tier() -> Type["AccountTier"]:
     return AccountTier
 
 
-# Stripe Price IDs (to be configured in Stripe Dashboard)
-# These should match the products created in Stripe
-STRIPE_PRICE_IDS = {
-    "individual_monthly": None,  # Set after creating in Stripe
-    "pro_monthly": None,  # Set after creating in Stripe
-    "enterprise_monthly": None,  # Custom pricing
-}
+# Stripe Price IDs are configured via environment variables:
+#   STRIPE_PRICE_ID_INDIVIDUAL - A13E Individual (£29/mo, 6 accounts)
+#   STRIPE_PRICE_ID_PRO - A13E Pro (£250/mo, 500 accounts)
+# See infrastructure/terraform/staging.tfvars and prod.tfvars for actual values.
 
-# Prices in pence (GBP)
+# Prices in pence (GBP) - used for fallback/development checkout
 STRIPE_PRICES = {
     "free_monthly": 0,
-    "individual_monthly": 2900,  # £29/month
-    "pro_monthly": 25000,  # £250/month
-    "enterprise_monthly": None,  # Custom pricing
+    "individual_monthly": 2900,  # £29/month (6 accounts)
+    "pro_monthly": 25000,  # £250/month (500 accounts, org features)
+    "enterprise_monthly": None,  # Custom pricing (contact sales)
 }
 
 # Tier configuration using string keys to avoid circular import at module load
@@ -358,7 +355,6 @@ def calculate_pricing(tier: Any) -> dict:
 __all__ = [
     "get_account_tier",
     "STRIPE_PRICES",
-    "STRIPE_PRICE_IDS",
     "get_tier_config",
     "get_required_tier",
     "get_upgrade_recommendation",

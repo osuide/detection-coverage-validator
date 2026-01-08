@@ -87,9 +87,16 @@ class StripeService:
         success_url: str,
         cancel_url: str,
         customer_email: str,
-        additional_accounts: int = 0,
+        tier: str = "individual",  # "individual" (£29/mo) or "pro" (£250/mo)
     ) -> Dict[str, Any]:
-        """Create a Stripe Checkout session for subscription."""
+        """Create a Stripe Checkout session for subscription.
+
+        Args:
+            tier: "individual" (£29/mo, 6 accounts) or "pro" (£250/mo, 500 accounts)
+        """
+        if tier not in ("individual", "pro"):
+            raise ValueError("Invalid tier. Must be 'individual' or 'pro'")
+
         result = await db.execute(
             select(Organization).where(Organization.id == organization_id)
         )
@@ -107,42 +114,14 @@ class StripeService:
         if subscription and subscription.stripe_customer_id:
             customer_id = subscription.stripe_customer_id
 
-        # Build line items
+        # Build line items based on selected tier
         line_items = []
 
-        # Base subscription
-        if settings.stripe_price_id_subscriber:
-            line_items.append(
-                {
-                    "price": settings.stripe_price_id_subscriber,
-                    "quantity": 1,
-                }
-            )
-        else:
-            # Fallback for development - create price inline
-            line_items.append(
-                {
-                    "price_data": {
-                        "currency": "gbp",
-                        "product_data": {
-                            "name": "Detection Coverage Validator - Subscriber",
-                            "description": "Monthly subscription with unlimited scans, 3 cloud accounts, and full features",
-                        },
-                        "unit_amount": STRIPE_PRICES["subscriber_monthly"],
-                        "recurring": {"interval": "month"},
-                    },
-                    "quantity": 1,
-                }
-            )
-
-        # Additional accounts
-        if additional_accounts > 0:
-            if settings.stripe_price_id_additional_account:
+        if tier == "individual":
+            # Individual tier: £29/mo, up to 6 accounts
+            if settings.stripe_price_id_individual:
                 line_items.append(
-                    {
-                        "price": settings.stripe_price_id_additional_account,
-                        "quantity": additional_accounts,
-                    }
+                    {"price": settings.stripe_price_id_individual, "quantity": 1}
                 )
             else:
                 line_items.append(
@@ -150,15 +129,34 @@ class StripeService:
                         "price_data": {
                             "currency": "gbp",
                             "product_data": {
-                                "name": "Additional Cloud Account",
-                                "description": "Add more cloud accounts to your subscription",
+                                "name": "A13E Individual",
+                                "description": "Up to 6 AWS/GCP accounts with unlimited scans",
                             },
-                            "unit_amount": STRIPE_PRICES[
-                                "additional_account_subscriber"
-                            ],
+                            "unit_amount": STRIPE_PRICES["individual_monthly"],
                             "recurring": {"interval": "month"},
                         },
-                        "quantity": additional_accounts,
+                        "quantity": 1,
+                    }
+                )
+        else:  # pro
+            # Pro tier: £250/mo, up to 500 accounts with org features
+            if settings.stripe_price_id_pro:
+                line_items.append(
+                    {"price": settings.stripe_price_id_pro, "quantity": 1}
+                )
+            else:
+                line_items.append(
+                    {
+                        "price_data": {
+                            "currency": "gbp",
+                            "product_data": {
+                                "name": "A13E Pro",
+                                "description": "Up to 500 AWS/GCP accounts with organisation features",
+                            },
+                            "unit_amount": STRIPE_PRICES["pro_monthly"],
+                            "recurring": {"interval": "month"},
+                        },
+                        "quantity": 1,
                     }
                 )
 
@@ -170,11 +168,12 @@ class StripeService:
                 "cancel_url": cancel_url,
                 "metadata": {
                     "organization_id": str(organization_id),
-                    "additional_accounts": str(additional_accounts),
+                    "tier": tier,
                 },
                 "subscription_data": {
                     "metadata": {
                         "organization_id": str(organization_id),
+                        "tier": tier,
                     }
                 },
                 "allow_promotion_codes": True,
@@ -245,9 +244,18 @@ class StripeService:
         manipulation of subscription state for non-existent orgs.
         """
         organization_id = UUID(session["metadata"]["organization_id"])
-        additional_accounts = int(session["metadata"].get("additional_accounts", 0))
+        tier_name = session["metadata"].get(
+            "tier", "individual"
+        )  # Default to individual
         customer_id = session["customer"]
         subscription_id = session["subscription"]
+
+        # Map tier name to AccountTier enum
+        tier_map = {
+            "individual": AccountTier.INDIVIDUAL,
+            "pro": AccountTier.PRO,
+        }
+        account_tier = tier_map.get(tier_name, AccountTier.INDIVIDUAL)
 
         # Security: Verify organization exists before processing
         org_result = await db.execute(
@@ -272,14 +280,11 @@ class StripeService:
             subscription = Subscription(organization_id=organization_id)
             db.add(subscription)
 
-        # Update subscription
+        # Update subscription to selected tier
         subscription.stripe_customer_id = customer_id
         subscription.stripe_subscription_id = subscription_id
-        subscription.tier = (
-            AccountTier.SUBSCRIBER
-        )  # Legacy tier for existing checkout flow
+        subscription.tier = account_tier
         subscription.status = SubscriptionStatus.ACTIVE
-        subscription.additional_accounts = additional_accounts
         subscription.apply_tier_defaults()  # Apply tier limits including org_features_enabled
 
         # Fetch subscription details from Stripe
@@ -297,7 +302,7 @@ class StripeService:
 
         await db.commit()
         logger.info(
-            "subscription_activated", org_id=str(organization_id), tier="subscriber"
+            "subscription_activated", org_id=str(organization_id), tier=tier_name
         )
 
     @staticmethod

@@ -87,15 +87,15 @@ variable "stripe_webhook_secret" {
 }
 
 variable "stripe_price_ids" {
-  description = "Stripe price IDs for subscription plans"
+  description = "Stripe price IDs for subscription plans (Individual £29/mo, Pro £250/mo)"
   type = object({
-    subscriber         = string
-    enterprise         = string
+    individual         = string
+    pro                = string
     additional_account = string
   })
   default = {
-    subscriber         = ""
-    enterprise         = ""
+    individual         = ""
+    pro                = ""
     additional_account = ""
   }
 }

@@ -85,14 +85,15 @@ variable "stripe_webhook_secret" {
 }
 
 variable "stripe_price_ids" {
+  description = "Stripe price IDs for subscription plans (Individual £29/mo, Pro £250/mo)"
   type = object({
-    subscriber         = string
-    enterprise         = string
+    individual         = string
+    pro                = string
     additional_account = string
   })
   default = {
-    subscriber         = ""
-    enterprise         = ""
+    individual         = ""
+    pro                = ""
     additional_account = ""
   }
 }
@@ -871,8 +872,8 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "DISABLE_SCAN_LIMITS", value = var.environment == "prod" ? "false" : "true" },
       { name = "HIBP_FAIL_CLOSED", value = var.environment == "prod" ? "true" : "false" },
       { name = "A13E_DEV_MODE", value = "false" },
-      { name = "STRIPE_PRICE_ID_SUBSCRIBER", value = var.stripe_price_ids.subscriber },
-      { name = "STRIPE_PRICE_ID_ENTERPRISE", value = var.stripe_price_ids.enterprise },
+      { name = "STRIPE_PRICE_ID_INDIVIDUAL", value = var.stripe_price_ids.individual },
+      { name = "STRIPE_PRICE_ID_PRO", value = var.stripe_price_ids.pro },
       { name = "STRIPE_PRICE_ID_ADDITIONAL_ACCOUNT", value = var.stripe_price_ids.additional_account },
       { name = "CORS_ORIGINS", value = var.frontend_url != "" && var.frontend_url != "http://localhost:3001" ? var.frontend_url : "*" },
       { name = "FRONTEND_URL", value = var.frontend_url },

@@ -46,11 +46,12 @@ enable_multi_az_rds = true
 #   TF_VAR_stripe_secret_key=sk_live_...
 #   TF_VAR_stripe_webhook_secret=whsec_...
 #
-# Production price IDs (live mode)
-# Simple pricing: Individual £29/mo, Pro £250/mo
+# Production price IDs (live mode - GBP)
+# Individual = £29/month (up to 6 accounts)
+# Pro = £250/month (up to 500 accounts)
 stripe_price_ids = {
-  subscriber         = "price_1SfnCFAB6j5KiVeU3vDWa7BR" # Individual £29/mo
-  enterprise         = "price_1SfnXvAB6j5KiVeUTqutTZu9" # Pro £250/mo
+  individual         = "price_1SfnCFAB6j5KiVeU3vDWa7BR" # A13E Individual £29/mo
+  pro                = "price_1SfnXvAB6j5KiVeUTqutTZu9" # A13E Pro £250/mo
   additional_account = ""                               # Not used - simple pricing model
 }
 
