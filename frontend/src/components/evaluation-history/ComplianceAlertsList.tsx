@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { Bell, AlertTriangle, AlertCircle, Info, Check, Filter, Clock } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import { EvaluationAlertItem, evaluationHistoryApi } from '../../services/api'
 
 interface ComplianceAlertsListProps {
@@ -152,12 +153,17 @@ export function ComplianceAlertsList({
     onMutate: (alertId) => {
       setAcknowledgingId(alertId)
     },
-    onSuccess: () => {
+    onSuccess: (_data, alertId) => {
+      toast.success('Alert acknowledged')
       // Invalidate alerts query to refresh the list
       if (accountId) {
         queryClient.invalidateQueries({ queryKey: ['evaluation-alerts', accountId] })
       }
-      onAcknowledge?.(acknowledgingId!)
+      onAcknowledge?.(alertId)
+    },
+    onError: (error) => {
+      console.error('Failed to acknowledge alert:', error)
+      toast.error('Failed to acknowledge alert')
     },
     onSettled: () => {
       setAcknowledgingId(null)
