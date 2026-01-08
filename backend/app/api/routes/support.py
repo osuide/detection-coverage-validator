@@ -1450,3 +1450,207 @@ async def mark_welcome_email_sent(
         user_id=body.user_id,
         sent_at=sent_at,
     )
+
+
+# =========================================================================
+# Auto-Send Validation Endpoint
+# =========================================================================
+
+
+class AutoSendValidationRequest(BaseModel):
+    """Request to validate auto-send eligibility."""
+
+    email: EmailStr = Field(..., description="Customer email address")
+    category: str = Field(..., description="Ticket category from AI classification")
+    confidence_score: float = Field(
+        ..., ge=0.0, le=1.0, description="AI confidence score (0.0-1.0)"
+    )
+    draft_length: int = Field(
+        ..., ge=0, description="Length of draft response in chars"
+    )
+    ticket_id: str = Field(..., description="Ticket ID for tracking")
+
+
+class AutoSendValidationResponse(BaseModel):
+    """Response for auto-send validation."""
+
+    approved: bool = Field(..., description="Whether auto-send is approved")
+    reason: str = Field(..., description="Reason for approval/rejection")
+
+
+# In-memory rate tracking for anomaly detection
+# In production, this should use Redis for persistence across instances
+_autosend_validation_cache: dict[str, list[float]] = {}
+
+
+def _check_anomalous_pattern(email: str) -> tuple[bool, str]:
+    """Check for anomalous auto-send validation patterns.
+
+    Returns (is_anomalous, reason).
+    """
+    import time
+
+    now = time.time()
+    hour_ago = now - 3600
+    cache_key = email.lower()
+
+    # Get recent requests for this email
+    if cache_key not in _autosend_validation_cache:
+        _autosend_validation_cache[cache_key] = []
+
+    # Clean old entries
+    _autosend_validation_cache[cache_key] = [
+        ts for ts in _autosend_validation_cache[cache_key] if ts > hour_ago
+    ]
+
+    recent_count = len(_autosend_validation_cache[cache_key])
+
+    # Check for burst (more than 10 requests in an hour from same email)
+    if recent_count >= 10:
+        return True, f"Anomalous pattern: {recent_count} validation requests in 1 hour"
+
+    # Record this request
+    _autosend_validation_cache[cache_key].append(now)
+
+    return False, ""
+
+
+@router.post(
+    "/validate-auto-send",
+    response_model=AutoSendValidationResponse,
+    summary="Validate auto-send eligibility",
+    description="""
+    Server-side validation for auto-send eligibility.
+
+    Called by Apps Script before scheduling an auto-send to provide
+    an additional layer of validation that cannot be manipulated client-side.
+
+    Validates:
+    - Customer exists and is not on free/unknown tier
+    - Confidence score is reasonable for the category
+    - No anomalous request patterns (rate limiting)
+
+    This is a defence-in-depth measure against potential manipulation
+    of the AI classification or confidence scores.
+    """,
+    responses={
+        200: {"description": "Validation result returned"},
+        401: {"description": "Invalid or missing support API key"},
+    },
+)
+async def validate_auto_send(
+    request: AutoSendValidationRequest,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(verify_support_api_key),
+) -> AutoSendValidationResponse:
+    """Validate auto-send eligibility from server-side."""
+    logger.info(
+        "auto_send_validation_request",
+        email=request.email,
+        category=request.category,
+        confidence=request.confidence_score,
+        ticket_id=request.ticket_id,
+    )
+
+    # Check for anomalous patterns first (rate limiting)
+    is_anomalous, anomaly_reason = _check_anomalous_pattern(request.email)
+    if is_anomalous:
+        logger.warning(
+            "auto_send_validation_blocked_anomaly",
+            email=request.email,
+            reason=anomaly_reason,
+            ticket_id=request.ticket_id,
+        )
+        return AutoSendValidationResponse(approved=False, reason=anomaly_reason)
+
+    # Look up customer
+    user_result = await db.execute(select(User).where(User.email == request.email))
+    user = user_result.scalar_one_or_none()
+
+    if not user:
+        logger.info(
+            "auto_send_validation_rejected_unknown",
+            email=request.email,
+            ticket_id=request.ticket_id,
+        )
+        return AutoSendValidationResponse(
+            approved=False, reason="Unknown customer - requires manual review"
+        )
+
+    # Get organisation and subscription
+    membership_result = await db.execute(
+        select(OrganizationMember).where(OrganizationMember.user_id == user.id).limit(1)
+    )
+    membership = membership_result.scalar_one_or_none()
+
+    tier = AccountTier.FREE
+    if membership:
+        org_result = await db.execute(
+            select(Organization).where(Organization.id == membership.organization_id)
+        )
+        organisation = org_result.scalar_one_or_none()
+
+        if organisation:
+            sub_result = await db.execute(
+                select(Subscription).where(
+                    Subscription.organization_id == organisation.id
+                )
+            )
+            subscription = sub_result.scalar_one_or_none()
+            if subscription:
+                tier = subscription.tier
+
+    # Block free tier (should require paid subscription for auto-responses)
+    if tier == AccountTier.FREE:
+        logger.info(
+            "auto_send_validation_rejected_free_tier",
+            email=request.email,
+            ticket_id=request.ticket_id,
+        )
+        return AutoSendValidationResponse(
+            approved=False, reason="Free tier customers require manual response"
+        )
+
+    # Validate confidence score reasonableness
+    # Very high confidence (>0.98) on typically complex categories is suspicious
+    complex_categories = ["bug_report", "bug-report", "security", "technical"]
+    if (
+        request.category.lower() in complex_categories
+        and request.confidence_score > 0.98
+    ):
+        logger.warning(
+            "auto_send_validation_suspicious_confidence",
+            email=request.email,
+            category=request.category,
+            confidence=request.confidence_score,
+            ticket_id=request.ticket_id,
+        )
+        return AutoSendValidationResponse(
+            approved=False,
+            reason=f"Unusually high confidence ({request.confidence_score:.2f}) for {request.category}",
+        )
+
+    # Validate draft length (too short or too long is suspicious)
+    if request.draft_length < 50:
+        return AutoSendValidationResponse(
+            approved=False, reason="Draft too short for auto-send"
+        )
+    if request.draft_length > 5000:
+        return AutoSendValidationResponse(
+            approved=False, reason="Draft too long for auto-send"
+        )
+
+    # All checks passed
+    logger.info(
+        "auto_send_validation_approved",
+        email=request.email,
+        category=request.category,
+        confidence=request.confidence_score,
+        tier=tier.value,
+        ticket_id=request.ticket_id,
+    )
+
+    return AutoSendValidationResponse(
+        approved=True,
+        reason=f"Approved for {tier.value} tier customer",
+    )
