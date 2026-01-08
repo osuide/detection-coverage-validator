@@ -838,6 +838,13 @@ export const evaluationHistoryApi = {
       {}
     ).then(r => r.data),
 
+  // Unacknowledge (reopen) alert
+  unacknowledgeAlert: (alertId: string) =>
+    api.post<{ message: string; alert_id: string }>(
+      `/evaluation-history/alerts/${alertId}/unacknowledge`,
+      {}
+    ).then(r => r.data),
+
   // Organisation summary
   getOrgSummary: (params?: {
     start_date?: string

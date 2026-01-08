@@ -721,3 +721,30 @@ async def acknowledge_alert(
         alert.acknowledged_by = user_id
 
     return alert
+
+
+async def unacknowledge_alert(
+    session: AsyncSession,
+    alert_id: uuid.UUID,
+) -> Optional[DetectionEvaluationAlert]:
+    """Unacknowledge an alert (reopen it).
+
+    Args:
+        session: Database session
+        alert_id: The alert ID
+
+    Returns:
+        The updated alert, or None if not found
+    """
+    query = select(DetectionEvaluationAlert).where(
+        DetectionEvaluationAlert.id == alert_id
+    )
+    result = await session.execute(query)
+    alert = result.scalar_one_or_none()
+
+    if alert:
+        alert.is_acknowledged = False
+        alert.acknowledged_at = None
+        alert.acknowledged_by = None
+
+    return alert

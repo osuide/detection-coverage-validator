@@ -21,6 +21,7 @@ interface ComplianceAlertsListProps {
   }
   accountId?: string
   onAcknowledge?: (alertId: string) => void
+  onUnacknowledge?: (alertId: string) => void
 }
 
 // Severity configuration
@@ -60,11 +61,15 @@ function SeverityBadge({ severity }: { severity: string }) {
 function AlertCard({
   alert,
   onAcknowledge,
+  onUnacknowledge,
   isAcknowledging,
+  isUnacknowledging,
 }: {
   alert: EvaluationAlertItem
   onAcknowledge: () => void
+  onUnacknowledge: () => void
   isAcknowledging: boolean
+  isUnacknowledging: boolean
 }) {
   const config = severityConfig[alert.severity as keyof typeof severityConfig] || severityConfig.info
 
@@ -121,15 +126,25 @@ function AlertCard({
         </div>
 
         {/* Action */}
-        {!alert.is_acknowledged && (
-          <button
-            onClick={onAcknowledge}
-            disabled={isAcknowledging}
-            className="shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isAcknowledging ? 'Acknowledging...' : 'Acknowledge'}
-          </button>
-        )}
+        <div className="shrink-0">
+          {!alert.is_acknowledged ? (
+            <button
+              onClick={onAcknowledge}
+              disabled={isAcknowledging}
+              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isAcknowledging ? 'Acknowledging...' : 'Acknowledge'}
+            </button>
+          ) : (
+            <button
+              onClick={onUnacknowledge}
+              disabled={isUnacknowledging}
+              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-700/50 text-gray-400 hover:bg-gray-600 hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isUnacknowledging ? 'Reopening...' : 'Reopen'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -141,10 +156,12 @@ export function ComplianceAlertsList({
   summary,
   accountId,
   onAcknowledge,
+  onUnacknowledge,
 }: ComplianceAlertsListProps) {
   const [filterSeverity, setFilterSeverity] = useState<string | null>(null)
   const [showAcknowledged, setShowAcknowledged] = useState(false)
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null)
+  const [unacknowledgingId, setUnacknowledgingId] = useState<string | null>(null)
 
   const queryClient = useQueryClient()
 
@@ -167,6 +184,28 @@ export function ComplianceAlertsList({
     },
     onSettled: () => {
       setAcknowledgingId(null)
+    },
+  })
+
+  const unacknowledgeMutation = useMutation({
+    mutationFn: (alertId: string) => evaluationHistoryApi.unacknowledgeAlert(alertId),
+    onMutate: (alertId) => {
+      setUnacknowledgingId(alertId)
+    },
+    onSuccess: (_data, alertId) => {
+      toast.success('Alert reopened')
+      // Invalidate alerts query to refresh the list
+      if (accountId) {
+        queryClient.invalidateQueries({ queryKey: ['evaluation-alerts', accountId] })
+      }
+      onUnacknowledge?.(alertId)
+    },
+    onError: (error) => {
+      console.error('Failed to unacknowledge alert:', error)
+      toast.error('Failed to reopen alert')
+    },
+    onSettled: () => {
+      setUnacknowledgingId(null)
     },
   })
 
@@ -313,7 +352,9 @@ export function ComplianceAlertsList({
               key={alert.id}
               alert={alert}
               onAcknowledge={() => acknowledgeMutation.mutate(alert.id)}
+              onUnacknowledge={() => unacknowledgeMutation.mutate(alert.id)}
               isAcknowledging={acknowledgingId === alert.id}
+              isUnacknowledging={unacknowledgingId === alert.id}
             />
           ))}
         </div>

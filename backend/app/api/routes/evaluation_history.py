@@ -49,6 +49,7 @@ from app.schemas.evaluation_history import (
 from app.services.evaluation_history_service import (
     get_account_compliance_trend,
     acknowledge_alert,
+    unacknowledge_alert,
 )
 
 
@@ -808,6 +809,44 @@ async def acknowledge_evaluation_alert(
         alert_id=alert.id,
         acknowledged_at=alert.acknowledged_at,
     )
+
+
+@router.post(
+    "/alerts/{alert_id}/unacknowledge",
+    dependencies=[Depends(require_feature("alerts"))],
+)
+async def unacknowledge_evaluation_alert(
+    alert_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(
+        require_role(UserRole.OWNER, UserRole.ADMIN, UserRole.MEMBER)
+    ),
+) -> dict:
+    """Unacknowledge (reopen) an evaluation alert.
+
+    Clears the acknowledgement status so the alert appears as unread again.
+    """
+    alert = await unacknowledge_alert(db, alert_id)
+
+    if not alert:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Alert not found",
+        )
+
+    # Verify organisation access
+    if alert.organization_id != auth.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Alert not found",
+        )
+
+    await db.commit()
+
+    return {
+        "message": "Alert unacknowledged successfully",
+        "alert_id": str(alert.id),
+    }
 
 
 @router.get(
