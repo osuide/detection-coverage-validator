@@ -102,6 +102,8 @@ The fastest way to connect your AWS account.
 5. Upload the downloaded `a13e-iam-role.yaml`
 6. Click **Next**
 
+![CloudFormation Stack Creation](./images/dashboards/aws-cloudformation-launch.png)
+
 ### Step 5: Configure Stack Parameters
 
 > ⚠️ **Important**: You **must** update the ExternalId parameter before deploying. The template will fail validation if you leave it as the placeholder value. Copy the External ID exactly as shown in the A13E wizard.
@@ -138,6 +140,8 @@ The fastest way to connect your AWS account.
 7. Click **Done**
 
 Your account now shows "Connected" status and you can run scans.
+
+![AWS Account Connected Successfully](./images/dashboards/aws-account-connected.png)
 
 ---
 

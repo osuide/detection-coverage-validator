@@ -236,6 +236,8 @@ When a scan completes successfully:
 
 Your scan results appear across multiple pages:
 
+![Scan Results Overview](./images/dashboards/scan-results.png)
+
 | Page | What to Check |
 |------|---------------|
 | **Dashboard** | Quick overview of coverage percentage and top gaps |

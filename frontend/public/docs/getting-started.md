@@ -102,6 +102,8 @@ We strongly recommend enabling MFA for all accounts, especially Admin and Owner 
 
 After signing in, follow these steps to see your first coverage report:
 
+![A13E Dashboard Overview](./images/dashboards/getting-started-dashboard.png)
+
 ### Step 1: Add Your First Cloud Account
 
 1. From the Dashboard, click **Add Cloud Account** (or navigate to **Accounts**)
