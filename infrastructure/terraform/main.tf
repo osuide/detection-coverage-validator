@@ -294,9 +294,10 @@ module "backend" {
   # Support system API key for Google Workspace integration
   support_api_key = var.support_api_key
 
-  # WAF IP restriction - NOT applied to API (only frontend)
-  # API relies on authentication, not IP allowlisting
-  allowed_ips = []
+  # WAF IP restriction for staging API
+  # Staging: IP-restricted to protect /docs endpoint from public access
+  # Production: Empty list allows public access (API requires authentication anyway)
+  allowed_ips = var.waf_allowed_ips
 
   # Force reload compliance data (one-time migration flag)
   force_reload_compliance = var.force_reload_compliance
