@@ -38,6 +38,12 @@ variable "waf_acl_arn" {
   default     = ""
 }
 
+variable "disable_caching" {
+  type        = bool
+  description = "Disable CloudFront caching (required when using IP-based WAF restrictions)"
+  default     = false
+}
+
 resource "random_id" "bucket_suffix" {
   byte_length = 4
 }
@@ -133,10 +139,11 @@ resource "aws_cloudfront_distribution" "marketing" {
       }
     }
 
-    # Longer TTL for static marketing site (1 hour default, 1 day max)
+    # TTLs: disabled for staging (IP-based WAF), enabled for production (public)
+    # When using IP-based WAF restrictions, caching MUST be disabled or WAF is bypassed
     min_ttl     = 0
-    default_ttl = 3600
-    max_ttl     = 86400
+    default_ttl = var.disable_caching ? 0 : 3600
+    max_ttl     = var.disable_caching ? 0 : 86400
 
     # Lambda@Edge for security headers
     dynamic "lambda_function_association" {

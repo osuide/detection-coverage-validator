@@ -334,6 +334,11 @@ module "frontend" {
   api_endpoint    = module.backend.api_endpoint
   lambda_edge_arn = var.enable_https && var.domain_name != "" ? module.security[0].lambda_edge_arn : ""
   waf_acl_arn     = var.enable_https && var.domain_name != "" ? module.security[0].waf_acl_arn : ""
+
+  # CRITICAL: Disable caching when IP-based WAF restrictions are active.
+  # CloudFront caching bypasses WAF for subsequent requests, allowing
+  # cached responses to be served to non-whitelisted IPs.
+  disable_caching = length(var.waf_allowed_ips) > 0
 }
 
 # =============================================================================
@@ -356,6 +361,11 @@ module "docs" {
   certificate_arn = var.enable_https && var.domain_name != "" ? module.dns[0].docs_certificate_arn : ""
   lambda_edge_arn = var.enable_https && var.domain_name != "" ? module.security[0].lambda_edge_arn : ""
   waf_acl_arn     = var.enable_https && var.domain_name != "" ? module.security[0].waf_acl_arn : ""
+
+  # CRITICAL: Disable caching when IP-based WAF restrictions are active.
+  # CloudFront caching bypasses WAF for subsequent requests, allowing
+  # cached responses to be served to non-whitelisted IPs.
+  disable_caching = length(var.waf_allowed_ips) > 0
 }
 
 # =============================================================================
@@ -378,6 +388,11 @@ module "marketing" {
   certificate_arn = var.enable_https && var.domain_name != "" ? module.dns[0].marketing_certificate_arn : ""
   lambda_edge_arn = var.enable_https && var.domain_name != "" ? module.security[0].lambda_edge_arn : ""
   waf_acl_arn     = var.enable_https && var.domain_name != "" ? module.security[0].waf_acl_arn : ""
+
+  # CRITICAL: Disable caching when IP-based WAF restrictions are active.
+  # CloudFront caching bypasses WAF for subsequent requests, allowing
+  # cached responses to be served to non-whitelisted IPs.
+  disable_caching = length(var.waf_allowed_ips) > 0
 }
 
 # =============================================================================
