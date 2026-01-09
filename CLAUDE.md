@@ -242,6 +242,36 @@ VPC (10.0.0.0/16)
 
 **Security**: WAF with OWASP CRS, RDS/Redis private only, IAM least privilege.
 
+## Customer Scanner Roles (CRITICAL)
+
+**The ECS task role must allow BOTH role naming conventions:**
+
+| Convention | Pattern | Used By |
+|------------|---------|---------|
+| AWS CloudFormation/Docs | `A13E-ReadOnly` | Customer documentation, CloudFormation templates |
+| GCP WIF | `a13e-scanner-*` | GCP Workload Identity Federation setup |
+
+**When hardening IAM policies, NEVER restrict to only one pattern:**
+
+```hcl
+# WRONG - breaks existing customer roles!
+Resource = "arn:aws:iam::*:role/a13e-scanner-*"
+
+# CORRECT - allows both naming conventions
+Resource = [
+  "arn:aws:iam::*:role/a13e-scanner-*",
+  "arn:aws:iam::*:role/A13E-ReadOnly"
+]
+```
+
+**Why this matters:**
+- Customer docs (`/docs/connecting-aws-accounts`) tell users to create `A13E-ReadOnly`
+- CloudFormation templates create `A13E-ReadOnly` roles
+- GCP WIF uses `a13e-scanner-{project-id}` naming
+- Restricting to one pattern breaks scans for customers using the other
+
+**Location:** `infrastructure/terraform/modules/backend/main.tf` → `AssumeCustomerScannerRoles` statement
+
 ## Google Workspace Integration
 
 **First point of reference for collaborative work:** emails, customer management, support automation, and notifications.
