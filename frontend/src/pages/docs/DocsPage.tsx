@@ -328,6 +328,7 @@ export function DocsPage() {
                         'connecting-gcp-accounts': 'connecting-gcp',
                         'running-scans': 'running-scans',
                         'understanding-coverage': 'understanding-coverage',
+                        'using-dashboards': 'using-dashboards',
                         'team-management': 'team-management',
                         'billing-subscription': 'billing',
                         'api-keys': 'api-keys',
