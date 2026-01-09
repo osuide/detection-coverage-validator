@@ -55,7 +55,7 @@ if cached:
     return cached  # Skip API entirely!
 ```
 
-TTLs: SecurityHub 5min, Compliance 1hr, Scan status 30sec
+TTLs: SecurityHub 5min, Default 1hr, Scan status 60sec
 
 ## Customer Scanner Roles (CRITICAL)
 
