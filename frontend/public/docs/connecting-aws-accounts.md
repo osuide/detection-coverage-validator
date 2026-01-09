@@ -104,10 +104,12 @@ The fastest way to connect your AWS account.
 
 ### Step 5: Configure Stack Parameters
 
+> ⚠️ **Important**: You **must** update the ExternalId parameter before deploying. The template will fail validation if you leave it as the placeholder value. Copy the External ID exactly as shown in the A13E wizard.
+
 1. **Stack name**: `A13E-ReadOnlyRole`
 2. **Parameters**:
-   - **A13EAccountId**: Paste the A13E AWS Account ID from the wizard
-   - **ExternalId**: Paste the External ID from the wizard
+   - **A13EAccountId**: Leave as default (`123080274263`) unless instructed otherwise
+   - **ExternalId**: Paste the External ID from the A13E wizard (format: `a13e-` followed by 32 hex characters)
 3. Click **Next**
 4. Accept defaults on the Configure stack options page
 5. Click **Next**
