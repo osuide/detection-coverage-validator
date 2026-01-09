@@ -93,11 +93,15 @@ Required vars: `TF_VAR_google_client_id`, `TF_VAR_google_client_secret`, `TF_VAR
 
 ```
 VPC (10.0.0.0/16)
-├── PUBLIC: ALB, ECS Backend (internet via IGW)
-└── PRIVATE: RDS PostgreSQL, ElastiCache Redis
+├── PUBLIC: ALB
+├── PRIVATE: RDS PostgreSQL, ElastiCache Redis
+└── ECS Backend: Public subnets (staging) / Private subnets (prod)
 ```
 
-No NAT Gateway - backend has public IPs for external APIs.
+| Environment | NAT Gateway | ECS Subnets | Why |
+|-------------|-------------|-------------|-----|
+| Staging | None | Public | Cost savings |
+| Production | Multi-AZ (HA) | Private | Security - no public IPs |
 
 ## Security Hub API
 
