@@ -627,7 +627,14 @@ resource "aws_iam_role_policy" "ecs_task" {
         Action = [
           "sts:AssumeRole"
         ]
-        Resource = "arn:aws:iam::*:role/a13e-scanner-*" # Security: Restrict to a13e scanner roles only
+        # Security: Restrict to a13e scanner roles only
+        # Allows both naming conventions:
+        # - a13e-scanner-* (new convention for GCP WIF)
+        # - A13E-ReadOnly (legacy convention used in docs/CloudFormation templates)
+        Resource = [
+          "arn:aws:iam::*:role/a13e-scanner-*",
+          "arn:aws:iam::*:role/A13E-ReadOnly"
+        ]
         Condition = {
           StringLike = {
             "sts:ExternalId" = "a13e-*"
