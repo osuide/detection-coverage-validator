@@ -52,12 +52,20 @@ export const docPages: DocPage[] = [
     order: 5,
   },
   {
+    slug: 'using-dashboards',
+    title: 'Using the Dashboards',
+    description: 'Navigate coverage visualisations and identify security gaps.',
+    readTime: '12 min',
+    icon: 'BarChart3',
+    order: 6,
+  },
+  {
     slug: 'team-management',
     title: 'Team Management',
     description: 'Manage users, roles, and permissions.',
     readTime: '6 min',
     icon: 'Users',
-    order: 6,
+    order: 7,
   },
   {
     slug: 'billing',
@@ -65,7 +73,7 @@ export const docPages: DocPage[] = [
     description: 'Understand plans, pricing, and manage your subscription.',
     readTime: '8 min',
     icon: 'CreditCard',
-    order: 7,
+    order: 8,
   },
   {
     slug: 'api-keys',
@@ -73,7 +81,7 @@ export const docPages: DocPage[] = [
     description: 'Generate and manage API keys for programmatic access.',
     readTime: '5 min',
     icon: 'Key',
-    order: 8,
+    order: 9,
   },
   {
     slug: 'security-policy',
@@ -81,7 +89,7 @@ export const docPages: DocPage[] = [
     description: 'Our vulnerability disclosure policy and security commitments.',
     readTime: '5 min',
     icon: 'Shield',
-    order: 9,
+    order: 10,
   },
   {
     slug: 'security-thanks',
@@ -89,7 +97,7 @@ export const docPages: DocPage[] = [
     description: 'Recognising security researchers who help keep A13E secure.',
     readTime: '2 min',
     icon: 'Award',
-    order: 10,
+    order: 11,
   },
 ];
 

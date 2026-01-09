@@ -16,6 +16,8 @@ Navigate A13E's dashboards to understand your security detection coverage and id
 
 The Dashboard provides a quick overview of your security detection coverage.
 
+![Dashboard Overview](./images/dashboards/dashboard-overview.png)
+
 ### Account Selector
 
 If you have multiple cloud accounts, use the account selector in the top navigation to switch between them. All dashboard data updates to reflect the selected account.
@@ -108,6 +110,8 @@ Click **Upgrade for unlimited scans →** to view paid plans.
 ## Coverage Page
 
 The Coverage page provides a detailed view of your MITRE ATT&CK detection coverage.
+
+![MITRE ATT&CK Coverage Heatmap](./images/dashboards/coverage-heatmap.png)
 
 ### Page Header
 
@@ -230,6 +234,8 @@ All individual detections in a sortable table:
 
 View and manage your coverage gaps with prioritised remediation guidance.
 
+![Coverage Gaps with Remediation](./images/dashboards/gaps-expanded.png)
+
 ### Gap Summary
 
 Four cards showing gap counts by priority:
@@ -299,6 +305,8 @@ To reopen an acknowledged gap, toggle **Show acknowledged** and click **Reopen**
 ## Compliance Page
 
 View your coverage against compliance frameworks.
+
+![Compliance Framework Coverage](./images/dashboards/compliance-overview.png)
 
 ### Framework Overview
 

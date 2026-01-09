@@ -37,7 +37,7 @@ const docSections = [
   },
   {
     title: 'Features',
-    pages: docPages.filter(d => ['running-scans', 'understanding-coverage'].includes(d.slug)),
+    pages: docPages.filter(d => ['running-scans', 'understanding-coverage', 'using-dashboards'].includes(d.slug)),
   },
   {
     title: 'Management',

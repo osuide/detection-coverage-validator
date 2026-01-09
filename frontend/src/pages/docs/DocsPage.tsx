@@ -15,6 +15,7 @@ const markdownFiles: Record<string, string> = {
   'connecting-gcp': '/docs/connecting-gcp-accounts.md',
   'running-scans': '/docs/running-scans.md',
   'understanding-coverage': '/docs/understanding-coverage.md',
+  'using-dashboards': '/docs/using-dashboards.md',
   'team-management': '/docs/team-management.md',
   'billing': '/docs/billing-subscription.md',
   'api-keys': '/docs/api-keys.md',
