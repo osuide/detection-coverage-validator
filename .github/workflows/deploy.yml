@@ -57,24 +57,49 @@ jobs:
           ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          API_URL: ${{ secrets.API_URL }}
         run: |
-          # Block deployment if Stripe secrets are missing for prod
-          # This prevents Terraform from trying to destroy existing secrets
-          # which have lifecycle.prevent_destroy = true
+          # Block deployment if critical secrets are missing or misconfigured
+          # This prevents broken deployments and protects lifecycle.prevent_destroy resources
           if [[ "$ENVIRONMENT" == "prod" ]]; then
+            # Validate Stripe secrets exist
             if [[ -z "$STRIPE_SECRET_KEY" ]]; then
               echo "::error::STRIPE_SECRET_KEY secret is missing! Production deployment requires Stripe credentials."
-              echo "Add the secret: gh secret set STRIPE_SECRET_KEY"
+              echo "Add the secret: gh secret set STRIPE_SECRET_KEY --env prod"
               exit 1
             fi
             if [[ -z "$STRIPE_WEBHOOK_SECRET" ]]; then
               echo "::error::STRIPE_WEBHOOK_SECRET secret is missing! Production deployment requires Stripe credentials."
-              echo "Add the secret: gh secret set STRIPE_WEBHOOK_SECRET"
+              echo "Add the secret: gh secret set STRIPE_WEBHOOK_SECRET --env prod"
               exit 1
             fi
             echo "✅ Stripe secrets validated for production"
+
+            # Validate API_URL matches production (prevents staging URL in prod)
+            if [[ -z "$API_URL" ]]; then
+              echo "::error::API_URL secret is missing! Production deployment requires API URL."
+              echo "Add the secret: echo 'https://api.a13e.com' | gh secret set API_URL --env prod"
+              exit 1
+            fi
+            if [[ "$API_URL" == *"staging"* ]]; then
+              echo "::error::API_URL contains 'staging' but deploying to production!"
+              echo "Current value appears to be staging URL. Fix with:"
+              echo "  echo 'https://api.a13e.com' | gh secret set API_URL --env prod"
+              exit 1
+            fi
+            if [[ "$API_URL" != "https://api.a13e.com" ]]; then
+              echo "::warning::API_URL is set to '$API_URL' - expected 'https://api.a13e.com'"
+            fi
+            echo "✅ API_URL validated for production"
           else
-            echo "ℹ️ Stripe secret validation skipped for non-production environment"
+            # Staging validation
+            if [[ -n "$API_URL" && "$API_URL" != *"staging"* && "$API_URL" == *"api.a13e.com"* ]]; then
+              echo "::error::API_URL appears to be production URL but deploying to staging!"
+              echo "Current value: $API_URL"
+              echo "Fix with: echo 'https://api.staging.a13e.com' | gh secret set API_URL --env staging"
+              exit 1
+            fi
+            echo "ℹ️ Staging environment validation passed"
           fi
 
       - name: Terraform Init
