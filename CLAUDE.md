@@ -78,12 +78,21 @@ Resource = [
 
 ## Terraform (CRITICAL)
 
-**OAuth credentials required or SSO resources get destroyed:**
+**OAuth and billing credentials required or features get destroyed/disabled:**
 ```bash
+# Staging
 source .env.terraform && terraform apply -var-file="staging.tfvars"
+
+# Production
+source .env.terraform.prod && terraform apply -var-file="prod.tfvars"
 ```
 
-Required vars: `TF_VAR_google_client_id`, `TF_VAR_google_client_secret`, `TF_VAR_github_client_id`, `TF_VAR_github_client_secret`, `TF_VAR_support_api_key`
+Required vars:
+- **SSO**: `TF_VAR_google_client_id`, `TF_VAR_google_client_secret`, `TF_VAR_github_client_id`, `TF_VAR_github_client_secret`
+- **Billing**: `TF_VAR_stripe_secret_key`, `TF_VAR_stripe_webhook_secret` (CRITICAL for subscriptions!)
+- **Support**: `TF_VAR_support_api_key`
+
+⚠️ **Missing Stripe keys = "Stripe billing is not configured" error** - users cannot purchase subscriptions!
 
 **Known Issues:**
 - Cognito Google IdP drift: Use `lifecycle { ignore_changes = [provider_details] }`

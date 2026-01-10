@@ -129,6 +129,25 @@ check "support_api_key_configured" {
   }
 }
 
+check "stripe_credentials_configured" {
+  assert {
+    condition     = var.stripe_secret_key != ""
+    error_message = <<-EOT
+      ⚠️  CRITICAL: Stripe credentials not set!
+
+      Billing/subscription features will show "Stripe billing is not configured" error.
+      Users will NOT be able to purchase subscriptions. To fix:
+        export TF_VAR_stripe_secret_key="sk_live_..."
+        export TF_VAR_stripe_webhook_secret="whsec_..."  # Optional but recommended
+
+      Or source the .env.terraform.prod file:
+        source .env.terraform.prod && terraform apply -var-file=prod.tfvars
+
+      The Stripe secret and webhook secret MUST be set for production environments.
+    EOT
+  }
+}
+
 # =============================================================================
 
 # Random JWT secret key if not provided
