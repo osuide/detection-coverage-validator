@@ -6,7 +6,7 @@ Learn how A13E analyses your security detection coverage using the MITRE ATT&CK 
 
 - **Coverage** measures how many MITRE ATT&CK techniques your detections can identify
 - **Confidence scores** (0-100%) indicate detection strength based on specificity, quality, and completeness
-- **≥60% confidence** = Covered, **40-60%** = Partial, **<40%** = Uncovered
+- **≥60% confidence** = Covered, **40-59%** = Partial, **<40%** = Uncovered
 - **Gap priority** (Critical → High → Medium → Low) helps you focus remediation efforts
 
 ---
@@ -132,15 +132,15 @@ Whether the detection covers all variations of the technique.
 - Specificity: 90% (explicitly targets credential theft)
 - Quality: 95% (managed service, high fidelity)
 - Completeness: 70% (covers credential misuse but not all scenarios)
-- **Detection Confidence: 85%**
+- **Detection Confidence: 86%** *(90×0.4 + 95×0.3 + 70×0.3 = 36 + 28.5 + 21)*
 
 **Detection 2**: EventBridge - Monitor ConsoleLogin events
 - Specificity: 75% (detects account usage)
 - Quality: 60% (custom rule, depends on configuration)
 - Completeness: 60% (covers authentication but not all abuse)
-- **Detection Confidence: 65%**
+- **Detection Confidence: 66%** *(75×0.4 + 60×0.3 + 60×0.3 = 30 + 18 + 18)*
 
-**Overall Technique Confidence**: Maximum of all detections = **85%** (from GuardDuty)
+**Overall Technique Confidence**: Maximum of all detections = **86%** (from GuardDuty)
 
 ---
 
@@ -324,7 +324,7 @@ Based on A13E customer data:
 | Coverage | Level | Focus |
 |----------|-------|-------|
 | <40% | Foundational | Enable core services (GuardDuty, Security Hub) |
-| 40-60% | Developing | Expand detection sources |
+| 40-59% | Developing | Expand detection sources |
 | 60-75% | Mature | Fine-tune and optimise |
 | >75% | Advanced | Focus on exotic/advanced techniques |
 
