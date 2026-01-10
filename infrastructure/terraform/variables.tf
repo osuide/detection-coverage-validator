@@ -323,3 +323,9 @@ variable "support_crm_spreadsheet_id" {
   type        = string
   default     = ""
 }
+
+variable "telemetry_sheet_id" {
+  description = "Google Sheets ID for platform telemetry dashboard"
+  type        = string
+  default     = ""
+}

@@ -18,6 +18,7 @@ from app.models.cloud_account import CloudAccount
 from app.services.scan_service import ScanService
 from app.services.scan_limit_service import ScanLimitService
 from app.services.evaluation_history_service import calculate_daily_summary
+from app.scripts.telemetry_bridge import fetch_metrics, parse_metrics, push_to_sheets
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -28,6 +29,11 @@ class SchedulerService:
 
     _instance: Optional["SchedulerService"] = None
     _scheduler: Optional[AsyncIOScheduler] = None
+
+    # Job IDs
+    MITRE_SYNC_JOB_ID = "mitre_sync_scheduled"
+    DAILY_SUMMARY_JOB_ID = "evaluation_daily_summary"
+    TELEMETRY_JOB_ID = "telemetry_push"
 
     def __new__(cls) -> "SchedulerService":
         """Singleton pattern for scheduler service."""
@@ -70,6 +76,9 @@ class SchedulerService:
 
         # Load daily compliance summary calculation job
         await self._load_daily_summary_schedule()
+
+        # Load telemetry push job
+        await self._load_telemetry_schedule()
 
         # Start the scheduler FIRST, then update next_run_times
         self._scheduler.start()
@@ -548,6 +557,40 @@ class SchedulerService:
             }
         return None
 
+    # ============ Telemetry Push (Dashboard) ============
 
-# Global scheduler instance
-scheduler_service = SchedulerService()
+    async def _load_telemetry_schedule(self) -> None:
+        """Load the telemetry push job.
+
+        Runs every 5 minutes to feed the Looker Studio dashboard.
+        """
+        # Safety Check: Only schedule if configured
+        if not settings.telemetry_sheet_id:
+            return
+
+        # Remove existing job if present
+        if self._scheduler.get_job(self.TELEMETRY_JOB_ID):
+            self._scheduler.remove_job(self.TELEMETRY_JOB_ID)
+
+        # Run every 5 minutes
+        trigger = CronTrigger(minute="*/5", timezone="UTC")
+
+        self._scheduler.add_job(
+            self._execute_telemetry_push,
+            trigger=trigger,
+            id=self.TELEMETRY_JOB_ID,
+            name="System Telemetry Push",
+            replace_existing=True,
+        )
+
+        self.logger.info("telemetry_schedule_loaded", interval="5m")
+
+    async def _execute_telemetry_push(self) -> None:
+        """Fetch metrics and push to Google Sheets."""
+        try:
+            raw = await fetch_metrics()
+            if raw:
+                data = parse_metrics(raw)
+                await push_to_sheets(data)
+        except Exception as e:
+            self.logger.error("telemetry_push_failed", error=str(e))

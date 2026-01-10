@@ -238,6 +238,9 @@ class Settings(BaseSettings):
     support_templates_folder_id: Optional[str] = None  # Drive folder ID for templates
     support_email: str = "support@a13e.com"
 
+    # Telemetry (Dashboard)
+    telemetry_sheet_id: Optional[str] = None
+
     # Coverage Thresholds
     confidence_threshold_covered: float = 0.6
     confidence_threshold_partial: float = 0.4

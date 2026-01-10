@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 import structlog
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.core.config import get_settings
 from app.core.security import get_client_ip
@@ -732,6 +733,10 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # Add request ID correlation middleware (enables log correlation)
 app.add_middleware(RequestIDMiddleware)
+
+# Initialize Prometheus instrumentation
+# Exposes /metrics endpoint for scraping
+Instrumentator().instrument(app).expose(app)
 
 # Include routers
 app.include_router(health.router, tags=["Health"])

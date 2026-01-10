@@ -216,6 +216,12 @@ variable "support_crm_spreadsheet_id" {
   default     = ""
 }
 
+variable "telemetry_sheet_id" {
+  type        = string
+  description = "Google Sheets ID for platform telemetry dashboard"
+  default     = ""
+}
+
 variable "allowed_ips" {
   type        = list(string)
   description = "List of IP addresses (CIDR notation) allowed to access the API. Empty list allows all traffic."
@@ -915,7 +921,8 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "WORKSPACE_WIF_PROVIDER_ID", value = var.workspace_wif_provider_id },
         { name = "WORKSPACE_SERVICE_ACCOUNT_EMAIL", value = var.workspace_service_account_email },
         { name = "WORKSPACE_ADMIN_EMAIL", value = var.workspace_admin_email },
-        { name = "SUPPORT_CRM_SPREADSHEET_ID", value = var.support_crm_spreadsheet_id }
+        { name = "SUPPORT_CRM_SPREADSHEET_ID", value = var.support_crm_spreadsheet_id },
+        { name = "TELEMETRY_SHEET_ID", value = var.telemetry_sheet_id }
       ] : []
     )
 
