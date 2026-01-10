@@ -594,3 +594,7 @@ class SchedulerService:
                 await push_to_sheets(data)
         except Exception as e:
             self.logger.error("telemetry_push_failed", error=str(e))
+
+
+# Singleton instance for import
+scheduler_service = SchedulerService()

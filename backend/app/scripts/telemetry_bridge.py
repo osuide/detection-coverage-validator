@@ -121,7 +121,12 @@ def parse_metrics(raw_data: str) -> dict:
 
 
 async def push_to_sheets(metrics: dict) -> None:
-    """Push the parsed metrics to Google Sheets."""
+    """Push the parsed metrics to Google Sheets.
+
+    Note: GoogleWorkspaceService methods are synchronous (blocking).
+    We use asyncio.to_thread() to run them in a thread pool to avoid
+    blocking the event loop (same pattern as boto3 in CLAUDE.md).
+    """
     ws = get_workspace_service()
 
     # Format row: [Timestamp, Requests, Errors, Latency(ms), CPU(s), RAM(MB)]
@@ -147,17 +152,20 @@ async def push_to_sheets(metrics: dict) -> None:
         ]
 
         try:
-            # Try to read A1. If it's empty or doesn't match, we might need to initialize
-            current_headers = ws.get_sheet_values(SHEET_ID, f"{SHEET_NAME}!A1:F1")
+            # Run sync Sheets API calls in thread pool to avoid blocking event loop
+            current_headers = await asyncio.to_thread(
+                ws.get_sheet_values, SHEET_ID, f"{SHEET_NAME}!A1:F1"
+            )
             if not current_headers or not current_headers[0]:
                 logger.info("telemetry_initializing_headers", sheet=SHEET_NAME)
-                ws.append_to_sheet(SHEET_ID, SHEET_NAME, [headers])
+                await asyncio.to_thread(
+                    ws.append_to_sheet, SHEET_ID, SHEET_NAME, [headers]
+                )
         except Exception as header_error:
-            # If sheet doesn't exist or other error, try to just append (might create sheet if lucky, or fail)
-            # But usually we assume the sheet exists.
+            # If sheet doesn't exist or other error, try to just append
             logger.warning("telemetry_header_check_failed", error=str(header_error))
 
-        ws.append_to_sheet(SHEET_ID, SHEET_NAME, [row])
+        await asyncio.to_thread(ws.append_to_sheet, SHEET_ID, SHEET_NAME, [row])
         logger.info("telemetry_pushed", row=row)
     except Exception as e:
         logger.error("telemetry_push_failed", error=str(e))
