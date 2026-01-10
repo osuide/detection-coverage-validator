@@ -162,11 +162,11 @@ def parse_metrics(raw_data: str) -> dict:
             status = match.group(1)
             count = parse_scientific_notation(match.group(2))
             if status == "2xx":
-                metrics["requests_2xx"] = int(count)
+                metrics["requests_2xx"] += int(count)
             elif status == "4xx":
-                metrics["requests_4xx"] = int(count)
+                metrics["requests_4xx"] += int(count)
             elif status == "5xx":
-                metrics["requests_5xx"] = int(count)
+                metrics["requests_5xx"] += int(count)
             continue
 
         # Latency sum
