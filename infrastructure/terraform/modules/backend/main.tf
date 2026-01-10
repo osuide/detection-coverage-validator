@@ -985,7 +985,7 @@ resource "aws_ecs_service" "backend" {
   name            = "a13e-${var.environment}-backend"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.backend.arn
-  desired_count   = var.environment == "prod" ? 2 : 1
+  desired_count   = 1 # Scale up when we have customers
   launch_type     = "FARGATE"
 
   # Enable ECS Exec for debugging and running scripts
