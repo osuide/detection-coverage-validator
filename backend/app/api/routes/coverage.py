@@ -31,6 +31,7 @@ from app.schemas.coverage import (
     OrgTacticCoverage,
     AccountCoverageSummary,
     SecurityFunctionBreakdown,
+    EffortEstimatesResponse,
 )
 from app.services.coverage_service import CoverageService
 from app.services.drift_detection_service import DriftDetectionService
@@ -233,6 +234,16 @@ async def get_coverage(
                 )
             )
 
+        # Build effort estimates if available
+        effort_estimates = None
+        if gap.get("effort_estimates"):
+            effort_estimates = EffortEstimatesResponse(
+                quick_win_hours=gap["effort_estimates"].quick_win_hours,
+                typical_hours=gap["effort_estimates"].typical_hours,
+                comprehensive_hours=gap["effort_estimates"].comprehensive_hours,
+                strategy_count=gap["effort_estimates"].strategy_count,
+            )
+
         gap_list.append(
             GapItem(
                 technique_id=gap.get("technique_id", ""),
@@ -250,6 +261,7 @@ async def get_coverage(
                 business_impact=gap.get("business_impact", []),
                 quick_win_strategy=gap.get("quick_win_strategy"),
                 total_effort_hours=gap.get("total_effort_hours"),
+                effort_estimates=effort_estimates,
                 mitre_url=gap.get("mitre_url"),
                 recommended_strategies=strategies,
             )
@@ -555,6 +567,16 @@ async def calculate_coverage(
                 )
             )
 
+        # Build effort estimates if available
+        effort_estimates = None
+        if gap.get("effort_estimates"):
+            effort_estimates = EffortEstimatesResponse(
+                quick_win_hours=gap["effort_estimates"].quick_win_hours,
+                typical_hours=gap["effort_estimates"].typical_hours,
+                comprehensive_hours=gap["effort_estimates"].comprehensive_hours,
+                strategy_count=gap["effort_estimates"].strategy_count,
+            )
+
         gap_list.append(
             GapItem(
                 technique_id=gap.get("technique_id", ""),
@@ -572,6 +594,7 @@ async def calculate_coverage(
                 business_impact=gap.get("business_impact", []),
                 quick_win_strategy=gap.get("quick_win_strategy"),
                 total_effort_hours=gap.get("total_effort_hours"),
+                effort_estimates=effort_estimates,
                 mitre_url=gap.get("mitre_url"),
                 recommended_strategies=strategies,
             )

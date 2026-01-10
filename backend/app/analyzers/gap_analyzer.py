@@ -7,6 +7,7 @@ import structlog
 from app.analyzers.coverage_calculator import TechniqueCoverageInfo
 from app.mappers.indicator_library import TECHNIQUE_BY_ID, TechniqueIndicator
 from app.data.remediation_templates import get_template
+from app.data.remediation_templates.template_loader import EffortEstimates
 
 logger = structlog.get_logger()
 
@@ -52,7 +53,8 @@ class Gap:
     business_impact: List[str] = field(default_factory=list)
     recommended_strategies: List[RecommendedStrategy] = field(default_factory=list)
     quick_win_strategy: Optional[str] = None
-    total_effort_hours: Optional[float] = None
+    total_effort_hours: Optional[float] = None  # Kept for backwards compatibility
+    effort_estimates: Optional[EffortEstimates] = None  # Tiered effort estimates
     mitre_url: Optional[str] = None
 
 
@@ -129,6 +131,7 @@ class GapAnalyzer:
                     gap.threat_actors = template.threat_context.known_threat_actors
                     gap.business_impact = template.threat_context.business_impact
                     gap.total_effort_hours = template.total_effort_hours
+                    gap.effort_estimates = template.effort_estimates
                     gap.mitre_url = template.mitre_url
 
                     # Add recommended strategies, filtered by cloud provider if specified

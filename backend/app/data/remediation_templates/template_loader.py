@@ -70,6 +70,76 @@ SERVICE_COSTS = {
 
 
 @dataclass
+class EffortEstimates:
+    """Tiered effort estimates for implementing detection strategies.
+
+    Provides incremental implementation scopes based on recommended_order:
+    - quick_win: First 2 strategies - fast value demonstration
+    - typical: First 3 strategies - balanced coverage
+    - comprehensive: All strategies - complete implementation
+    """
+
+    quick_win_hours: float
+    typical_hours: float
+    comprehensive_hours: float
+    strategy_count: int
+
+
+def parse_implementation_time(time_str: str, use_midpoint: bool = True) -> float:
+    """
+    Parse implementation time string to hours.
+
+    Handles formats:
+    - "30 minutes" -> 0.5
+    - "45 minutes" -> 0.75
+    - "1 hour" -> 1.0
+    - "1.5 hours" -> 1.5
+    - "2 hours" -> 2.0
+    - "1-2 hours" -> 1.5 (midpoint) or 2.0 (upper)
+    - "30 minutes - 1 hour" -> 0.75 (midpoint) or 1.0 (upper)
+
+    Args:
+        time_str: Human-readable time string
+        use_midpoint: If True, use midpoint for ranges; if False, use upper bound
+
+    Returns:
+        Hours as float. Returns 0.0 if unparseable.
+    """
+    import re
+
+    if not time_str:
+        return 0.0
+
+    time_str = time_str.lower().strip()
+
+    # Handle "30 minutes - 1 hour" format (space-dash-space)
+    if " - " in time_str:
+        parts = time_str.split(" - ")
+        if len(parts) == 2:
+            lower = parse_implementation_time(parts[0])
+            upper = parse_implementation_time(parts[1])
+            return (lower + upper) / 2 if use_midpoint else upper
+
+    # Handle "1-2 hours" format (no spaces)
+    range_match = re.match(r"(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*hour", time_str)
+    if range_match:
+        lower, upper = float(range_match.group(1)), float(range_match.group(2))
+        return (lower + upper) / 2 if use_midpoint else upper
+
+    # Handle "X minutes"
+    minute_match = re.match(r"(\d+(?:\.\d+)?)\s*minute", time_str)
+    if minute_match:
+        return float(minute_match.group(1)) / 60
+
+    # Handle "X hours" or "X hour"
+    hour_match = re.match(r"(\d+(?:\.\d+)?)\s*hour", time_str)
+    if hour_match:
+        return float(hour_match.group(1))
+
+    return 0.0
+
+
+@dataclass
 class Campaign:
     """Real-world campaign using this technique."""
 
@@ -183,6 +253,46 @@ class RemediationTemplate:
     coverage_improvement: str
     last_updated: str = "2025-12-19"
     version: str = "1.0"
+
+    @property
+    def effort_estimates(self) -> EffortEstimates:
+        """
+        Compute tiered effort estimates based on recommended_order.
+
+        Returns:
+            EffortEstimates with quick_win (first 2), typical (first 3),
+            and comprehensive (all) hours.
+        """
+        # Build strategy lookup by ID
+        strategy_map = {s.strategy_id: s for s in self.detection_strategies}
+
+        # Get ordered strategies (use recommended_order, fall back to definition order)
+        ordered_strategies = []
+        if self.recommended_order:
+            for strategy_id in self.recommended_order:
+                if strategy_id in strategy_map:
+                    ordered_strategies.append(strategy_map[strategy_id])
+
+        # If recommended_order is empty or incomplete, use definition order
+        if not ordered_strategies:
+            ordered_strategies = list(self.detection_strategies)
+
+        # Parse hours for each strategy
+        hours = [
+            parse_implementation_time(s.implementation_time) for s in ordered_strategies
+        ]
+
+        # Calculate tiered totals
+        quick_win = sum(hours[:2]) if hours else 0.0
+        typical = sum(hours[:3]) if hours else 0.0
+        comprehensive = sum(hours) if hours else 0.0
+
+        return EffortEstimates(
+            quick_win_hours=round(quick_win, 2),
+            typical_hours=round(typical, 2),
+            comprehensive_hours=round(comprehensive, 2),
+            strategy_count=len(self.detection_strategies),
+        )
 
 
 # Import all templates

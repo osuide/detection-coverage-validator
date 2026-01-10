@@ -187,6 +187,13 @@ export interface RecommendedStrategy {
   has_gcp_terraform?: boolean
 }
 
+export interface EffortEstimates {
+  quick_win_hours: number
+  typical_hours: number
+  comprehensive_hours: number
+  strategy_count: number
+}
+
 export interface Gap {
   technique_id: string
   technique_name: string
@@ -203,6 +210,7 @@ export interface Gap {
   business_impact: string[]
   quick_win_strategy: string | null
   total_effort_hours: number | null
+  effort_estimates: EffortEstimates | null
   mitre_url: string | null
   recommended_strategies: RecommendedStrategy[]
 }

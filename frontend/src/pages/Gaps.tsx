@@ -442,7 +442,17 @@ function GapCard({
                   <p className="text-lg font-semibold text-white">{gap.severity_score}/10</p>
                 </div>
               )}
-              {gap.total_effort_hours && (
+              {gap.effort_estimates && (
+                <div className="bg-green-900/30 rounded-lg p-3 border border-green-700/30">
+                  <div className="flex items-center text-green-400 text-xs mb-1">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Quick Win
+                  </div>
+                  <p className="text-lg font-semibold text-white">{gap.effort_estimates.quick_win_hours}h</p>
+                  <p className="text-gray-500 text-xs">First 2 strategies</p>
+                </div>
+              )}
+              {!gap.effort_estimates && gap.total_effort_hours && (
                 <div className="bg-gray-700/30 rounded-lg p-3">
                   <div className="flex items-center text-gray-400 text-xs mb-1">
                     <Clock className="h-3 w-3 mr-1" />
@@ -460,6 +470,38 @@ function GapCard({
                   <p className="text-sm font-medium text-white">{gap.threat_actors.slice(0, 3).join(', ')}</p>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Tiered Effort Estimates */}
+          {gap.effort_estimates && (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium text-gray-400 mb-2">Implementation Effort Estimates</h4>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-green-900/30 rounded-lg p-3 border border-green-700/30">
+                  <div className="text-green-400 text-xs font-medium">Quick Win</div>
+                  <div className="text-lg font-bold text-white mt-1">
+                    {gap.effort_estimates.quick_win_hours}h
+                  </div>
+                  <div className="text-gray-500 text-xs mt-1">First 2 strategies</div>
+                </div>
+                <div className="bg-yellow-900/30 rounded-lg p-3 border border-yellow-700/30">
+                  <div className="text-yellow-400 text-xs font-medium">Typical</div>
+                  <div className="text-lg font-bold text-white mt-1">
+                    {gap.effort_estimates.typical_hours}h
+                  </div>
+                  <div className="text-gray-500 text-xs mt-1">First 3 strategies</div>
+                </div>
+                <div className="bg-blue-900/30 rounded-lg p-3 border border-blue-700/30">
+                  <div className="text-blue-400 text-xs font-medium">Comprehensive</div>
+                  <div className="text-lg font-bold text-white mt-1">
+                    {gap.effort_estimates.comprehensive_hours}h
+                  </div>
+                  <div className="text-gray-500 text-xs mt-1">
+                    All {gap.effort_estimates.strategy_count} strategies
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

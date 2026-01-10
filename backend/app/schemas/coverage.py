@@ -76,6 +76,21 @@ class RecommendedStrategyItem(BaseModel):
     has_gcp_terraform: bool = False
 
 
+class EffortEstimatesResponse(BaseModel):
+    """Tiered effort estimates for detection implementation.
+
+    Provides realistic implementation scopes:
+    - quick_win: First 2 strategies for fast value
+    - typical: First 3 strategies for balanced coverage
+    - comprehensive: All strategies for complete implementation
+    """
+
+    quick_win_hours: float
+    typical_hours: float
+    comprehensive_hours: float
+    strategy_count: int
+
+
 class GapItem(BaseModel):
     """A coverage gap item with remediation guidance."""
 
@@ -94,7 +109,10 @@ class GapItem(BaseModel):
     threat_actors: List[str] = []
     business_impact: List[str] = []
     quick_win_strategy: Optional[str] = None
-    total_effort_hours: Optional[float] = None
+    total_effort_hours: Optional[float] = None  # Kept for backwards compatibility
+    effort_estimates: Optional[EffortEstimatesResponse] = (
+        None  # Tiered effort estimates
+    )
     mitre_url: Optional[str] = None
     recommended_strategies: List[RecommendedStrategyItem] = []
 

@@ -56,6 +56,21 @@ class ThreatContextResponse(BaseModel):
     often_follows: list[str]
 
 
+class EffortEstimatesResponse(BaseModel):
+    """Tiered effort estimates for detection implementation.
+
+    Provides realistic implementation scopes:
+    - quick_win: First 2 strategies for fast value
+    - typical: First 3 strategies for balanced coverage
+    - comprehensive: All strategies for complete implementation
+    """
+
+    quick_win_hours: float
+    typical_hours: float
+    comprehensive_hours: float
+    strategy_count: int
+
+
 class DetectionImplementationResponse(BaseModel):
     """Implementation details for a detection strategy."""
 
@@ -108,7 +123,8 @@ class TechniqueDetailResponse(BaseModel):
     threat_context: ThreatContextResponse
     detection_strategies: list[DetectionStrategyResponse]
     recommended_order: list[str]
-    total_effort_hours: float
+    total_effort_hours: float  # Kept for backwards compatibility
+    effort_estimates: EffortEstimatesResponse  # Tiered effort estimates
     coverage_improvement: str
 
 
@@ -285,6 +301,12 @@ async def get_technique_detail(
         ],
         recommended_order=template.recommended_order,
         total_effort_hours=template.total_effort_hours,
+        effort_estimates=EffortEstimatesResponse(
+            quick_win_hours=template.effort_estimates.quick_win_hours,
+            typical_hours=template.effort_estimates.typical_hours,
+            comprehensive_hours=template.effort_estimates.comprehensive_hours,
+            strategy_count=template.effort_estimates.strategy_count,
+        ),
         coverage_improvement=template.coverage_improvement,
     )
 
