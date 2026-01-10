@@ -135,9 +135,27 @@ async def push_to_sheets(metrics: dict) -> None:
     ]
 
     try:
-        # Check if we need to add headers (heuristic: check A1)
-        # For simplicity in this script, we assume headers exist or we just append.
-        # Ideally, we'd check `ws.get_sheet_values(SHEET_ID, "A1")`
+        # Check if header exists in A1
+        # If the sheet is new/empty, A1 will be empty or the read will return empty
+        headers = [
+            "Timestamp",
+            "Requests",
+            "Errors",
+            "Latency (ms)",
+            "CPU (s)",
+            "Memory (MB)",
+        ]
+
+        try:
+            # Try to read A1. If it's empty or doesn't match, we might need to initialize
+            current_headers = ws.get_sheet_values(SHEET_ID, f"{SHEET_NAME}!A1:F1")
+            if not current_headers or not current_headers[0]:
+                logger.info("telemetry_initializing_headers", sheet=SHEET_NAME)
+                ws.append_to_sheet(SHEET_ID, SHEET_NAME, [headers])
+        except Exception as header_error:
+            # If sheet doesn't exist or other error, try to just append (might create sheet if lucky, or fail)
+            # But usually we assume the sheet exists.
+            logger.warning("telemetry_header_check_failed", error=str(header_error))
 
         ws.append_to_sheet(SHEET_ID, SHEET_NAME, [row])
         logger.info("telemetry_pushed", row=row)

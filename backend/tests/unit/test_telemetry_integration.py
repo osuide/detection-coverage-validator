@@ -47,6 +47,19 @@ async def test_push_to_sheets(mock_get_ws):
     mock_ws = MagicMock()
     mock_get_ws.return_value = mock_ws
     mock_ws.append_to_sheet = MagicMock()
+    # Handle header check
+    mock_ws.get_sheet_values = MagicMock(
+        return_value=[
+            [
+                "Timestamp",
+                "Requests",
+                "Errors",
+                "Latency (ms)",
+                "CPU (s)",
+                "Memory (MB)",
+            ]
+        ]
+    )
 
     # Test data
     metrics = {
@@ -101,8 +114,6 @@ async def test_scheduler_telemetry_job_registration(mock_scheduler_cls, mock_eng
             assert (
                 call.kwargs.get("trigger").fields[4].name == "minute"
             )  # 5th field is minute in cron?
-            # CronTrigger fields: year, month, day, week, day_of_week, hour, minute, second
-            # Wait, apscheduler CronTrigger structure is complex, let's just check the repr or args
             break
 
     assert telemetry_called, "Telemetry job was not registered with scheduler"
