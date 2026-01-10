@@ -213,6 +213,10 @@ function OverviewTab({ details }: { details: StrategyDetail }) {
       {/* Alert Configuration */}
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
         <h3 className="text-sm font-medium text-amber-900 mb-2">Alert Configuration</h3>
+        <p className="text-xs text-amber-700 mb-3">
+          These alert settings are pre-configured in the Terraform/CloudFormation templates above.
+          Deploy the template to create this detection with these alert settings already applied.
+        </p>
         <div className="space-y-2 text-sm text-amber-900">
           <p><span className="font-medium">Severity:</span> {details.alert_severity}</p>
           <p><span className="font-medium">Title:</span> {details.alert_title}</p>
