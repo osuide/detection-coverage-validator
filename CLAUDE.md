@@ -91,6 +91,7 @@ Required vars:
 - **SSO**: `TF_VAR_google_client_id`, `TF_VAR_google_client_secret`, `TF_VAR_github_client_id`, `TF_VAR_github_client_secret`
 - **Billing**: `TF_VAR_stripe_secret_key`, `TF_VAR_stripe_webhook_secret` (CRITICAL for subscriptions!)
 - **Support**: `TF_VAR_support_api_key`
+- **Admin**: `TF_VAR_initial_admin_password` (for `admin@a13e.com` auto-seed)
 
 ⚠️ **Missing Stripe keys = "Stripe billing is not configured" error** - users cannot purchase subscriptions!
 
@@ -115,7 +116,8 @@ All secrets must be configured for deployments to work. Missing secrets cause si
 | `STRIPE_SECRET_KEY` | Stripe billing API | `sk_live_...` or `sk_test_...` |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook verification | `whsec_...` |
 | `TELEMETRY_SHEET_ID` | Google Sheet for telemetry | Sheet ID from URL |
-| `SUPPORT_API_KEY` | Support system auth | `uxCVmUkOgnSWCj3v12A0tDL2Rqn72ESUGJ6yOEwEEcc` |
+| `SUPPORT_API_KEY` | Support system auth | Random 32+ char string |
+| `INITIAL_ADMIN_PASSWORD` | Admin portal auto-seed | Min 16 chars, for `admin@a13e.com` |
 | `S3_BUCKET_NAME` | Default frontend bucket | Should be STAGING bucket as safe default |
 
 ### Environment-Specific Secrets
@@ -166,6 +168,7 @@ gh secret list --env prod
 
 ⚠️ **Common Issues:**
 - Missing `SUPPORT_API_KEY` → Support system 401 errors
+- Missing `INITIAL_ADMIN_PASSWORD` → Admin portal not seeded on fresh DB
 - Wrong `API_URL` per environment → SSO/CORS failures
 - Repo-level `S3_BUCKET_NAME` pointing to prod → Staging overwrites production
 

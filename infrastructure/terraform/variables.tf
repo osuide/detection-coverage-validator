@@ -150,6 +150,13 @@ variable "support_api_key" {
   default     = ""
 }
 
+variable "initial_admin_password" {
+  description = "Initial password for the admin portal super admin (admin@a13e.com). Required for auto-seeding on first deployment. Must be at least 16 characters."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # Note: Microsoft SSO has been removed from the product
 
 # ============================================================================

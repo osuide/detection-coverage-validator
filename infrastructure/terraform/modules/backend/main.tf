@@ -171,6 +171,13 @@ variable "support_api_key" {
   sensitive   = true
 }
 
+variable "initial_admin_password" {
+  type        = string
+  description = "Initial password for admin portal super admin (admin@a13e.com)"
+  default     = ""
+  sensitive   = true
+}
+
 # Note: Microsoft SSO has been removed from the product
 
 # Google Workspace WIF Configuration
@@ -826,6 +833,25 @@ resource "aws_secretsmanager_secret_version" "support_api_key" {
   # Note: No ignore_changes - secret updates when TF_VAR_support_api_key changes
 }
 
+# Initial admin password secret - for auto-seeding admin user on first deployment
+resource "aws_secretsmanager_secret" "initial_admin_password" {
+  name = "a13e/${var.environment}/initial-admin-password"
+
+  tags = {
+    Name        = "a13e-${var.environment}-initial-admin-password"
+    Environment = var.environment
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "initial_admin_password" {
+  secret_id     = aws_secretsmanager_secret.initial_admin_password.id
+  secret_string = var.initial_admin_password != "" ? var.initial_admin_password : "NOT_CONFIGURED"
+}
+
 # IAM Policy for ECS Execution Role to read secrets
 resource "aws_iam_role_policy" "ecs_execution_secrets" {
   name = "a13e-${var.environment}-ecs-secrets-policy"
@@ -841,6 +867,7 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
       Resource = concat(
         [aws_secretsmanager_secret.jwt_secret.arn],
         [aws_secretsmanager_secret.support_api_key.arn],           # Always included - support system
+        [aws_secretsmanager_secret.initial_admin_password.arn],    # Always included - admin seeding
         [aws_secretsmanager_secret.credential_encryption_key.arn], # Always created - cloud cred encryption
         var.stripe_secret_key != "" ? [aws_secretsmanager_secret.stripe_secret_key[0].arn] : [],
         var.stripe_webhook_secret != "" ? [aws_secretsmanager_secret.stripe_webhook_secret[0].arn] : [],
@@ -950,6 +977,11 @@ resource "aws_ecs_task_definition" "backend" {
       [{
         name      = "SUPPORT_API_KEY"
         valueFrom = aws_secretsmanager_secret.support_api_key.arn
+      }],
+      # INITIAL_ADMIN_PASSWORD for auto-seeding admin user on first deployment
+      [{
+        name      = "INITIAL_ADMIN_PASSWORD"
+        valueFrom = aws_secretsmanager_secret.initial_admin_password.arn
       }]
     )
 

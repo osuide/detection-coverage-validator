@@ -313,6 +313,9 @@ module "backend" {
   # Support system API key for Google Workspace integration
   support_api_key = var.support_api_key
 
+  # Admin portal initial password for auto-seeding
+  initial_admin_password = var.initial_admin_password
+
   # WAF IP restriction for staging API
   # Staging: IP-restricted to protect /docs endpoint from public access
   # Production: Empty list allows public access (API requires authentication anyway)
