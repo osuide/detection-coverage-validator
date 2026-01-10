@@ -121,6 +121,7 @@ jobs:
           TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
           TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           TF_VAR_telemetry_sheet_id: ${{ secrets.TELEMETRY_SHEET_ID }}
+          TF_VAR_support_api_key: ${{ secrets.SUPPORT_API_KEY }}
         # Use -parallelism=1 to prevent Cognito concurrent modification errors
         run: terraform plan -parallelism=1 -var-file="${{ github.event.inputs.environment || 'staging' }}.tfvars" -out=tfplan
 
@@ -135,6 +136,7 @@ jobs:
           TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
           TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           TF_VAR_telemetry_sheet_id: ${{ secrets.TELEMETRY_SHEET_ID }}
+          TF_VAR_support_api_key: ${{ secrets.SUPPORT_API_KEY }}
         # Use -parallelism=1 to prevent Cognito concurrent modification errors
         run: terraform apply -parallelism=1 -auto-approve tfplan
 
