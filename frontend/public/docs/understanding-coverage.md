@@ -74,8 +74,8 @@ Coverage % = Covered Techniques ÷ Total Cloud Techniques × 100
 
 **Example**:
 - Total cloud techniques: 168
-- Covered (≥60%): 100
-- **Coverage: 59.5%** (100 ÷ 168)
+- Covered (≥60%): 84
+- **Coverage: 50%** *(84 ÷ 168 = 0.50)*
 
 ### Average Confidence
 
