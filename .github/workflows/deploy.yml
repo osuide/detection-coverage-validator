@@ -52,6 +52,31 @@ jobs:
           terraform_version: 1.14.2
           terraform_wrapper: false
 
+      - name: Validate Critical Secrets
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+        run: |
+          # Block deployment if Stripe secrets are missing for prod
+          # This prevents Terraform from trying to destroy existing secrets
+          # which have lifecycle.prevent_destroy = true
+          if [[ "$ENVIRONMENT" == "prod" ]]; then
+            if [[ -z "$STRIPE_SECRET_KEY" ]]; then
+              echo "::error::STRIPE_SECRET_KEY secret is missing! Production deployment requires Stripe credentials."
+              echo "Add the secret: gh secret set STRIPE_SECRET_KEY"
+              exit 1
+            fi
+            if [[ -z "$STRIPE_WEBHOOK_SECRET" ]]; then
+              echo "::error::STRIPE_WEBHOOK_SECRET secret is missing! Production deployment requires Stripe credentials."
+              echo "Add the secret: gh secret set STRIPE_WEBHOOK_SECRET"
+              exit 1
+            fi
+            echo "✅ Stripe secrets validated for production"
+          else
+            echo "ℹ️ Stripe secret validation skipped for non-production environment"
+          fi
+
       - name: Terraform Init
         working-directory: ./infrastructure/terraform
         env:
