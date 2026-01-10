@@ -98,6 +98,77 @@ Required vars:
 - Cognito Google IdP drift: Use `lifecycle { ignore_changes = [provider_details] }`
 - WAFv2 IP Set deletion: Use `lifecycle { create_before_destroy = true }`
 
+## GitHub Secrets (CRITICAL)
+
+All secrets must be configured for deployments to work. Missing secrets cause silent failures.
+
+### Repository-Level Secrets (Shared by All Environments)
+
+| Secret | Purpose | Example/Notes |
+|--------|---------|---------------|
+| `AWS_ACCESS_KEY_ID` | AWS deployment credentials | IAM user with deployment permissions |
+| `AWS_SECRET_ACCESS_KEY` | AWS deployment credentials | Pair with access key ID |
+| `GOOGLE_CLIENT_ID` | Google OAuth SSO | From Google Cloud Console |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth SSO | From Google Cloud Console |
+| `GH_OAUTH_CLIENT_ID` | GitHub OAuth SSO | From GitHub OAuth Apps |
+| `GH_OAUTH_CLIENT_SECRET` | GitHub OAuth SSO | From GitHub OAuth Apps |
+| `STRIPE_SECRET_KEY` | Stripe billing API | `sk_live_...` or `sk_test_...` |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook verification | `whsec_...` |
+| `TELEMETRY_SHEET_ID` | Google Sheet for telemetry | Sheet ID from URL |
+| `SUPPORT_API_KEY` | Support system auth | `uxCVmUkOgnSWCj3v12A0tDL2Rqn72ESUGJ6yOEwEEcc` |
+| `S3_BUCKET_NAME` | Default frontend bucket | Should be STAGING bucket as safe default |
+
+### Environment-Specific Secrets
+
+**Staging** (`gh secret set <NAME> --env staging`):
+
+| Secret | Purpose | Value |
+|--------|---------|-------|
+| `S3_BUCKET_NAME` | Frontend S3 bucket | `a13e-staging-frontend-*` |
+| `API_URL` | Backend API URL | `https://api.staging.a13e.com` |
+| `CLOUDFRONT_DISTRIBUTION_ID` | CDN invalidation | From Terraform output |
+| `COGNITO_USER_POOL_ID` | Auth user pool | From Terraform output |
+| `COGNITO_CLIENT_ID` | Auth client | From Terraform output |
+| `COGNITO_DOMAIN` | Auth domain | From Terraform output |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe public key | `pk_test_...` |
+
+**Production** (`gh secret set <NAME> --env prod`):
+
+| Secret | Purpose | Value |
+|--------|---------|-------|
+| `S3_BUCKET_NAME` | Frontend S3 bucket | `a13e-prod-frontend-*` |
+| `API_URL` | Backend API URL | `https://api.a13e.com` |
+| `CLOUDFRONT_DISTRIBUTION_ID` | CDN invalidation | From Terraform output |
+| `COGNITO_USER_POOL_ID` | Auth user pool | From Terraform output |
+| `COGNITO_CLIENT_ID` | Auth client | From Terraform output |
+| `COGNITO_DOMAIN` | Auth domain | From Terraform output |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe public key | `pk_live_...` |
+
+### Adding Missing Secrets
+
+```bash
+# Repository-level
+gh secret set SUPPORT_API_KEY --body "uxCVmUkOgnSWCj3v12A0tDL2Rqn72ESUGJ6yOEwEEcc"
+
+# Environment-specific
+gh secret set API_URL --env staging --body "https://api.staging.a13e.com"
+gh secret set API_URL --env prod --body "https://api.a13e.com"
+```
+
+### Verification
+
+```bash
+# List all secrets
+gh secret list
+gh secret list --env staging
+gh secret list --env prod
+```
+
+⚠️ **Common Issues:**
+- Missing `SUPPORT_API_KEY` → Support system 401 errors
+- Wrong `API_URL` per environment → SSO/CORS failures
+- Repo-level `S3_BUCKET_NAME` pointing to prod → Staging overwrites production
+
 ## Infrastructure
 
 ```
