@@ -334,6 +334,7 @@ module "backend" {
   workspace_service_account_email = var.workspace_service_account_email
   workspace_admin_email           = var.workspace_admin_email
   support_crm_spreadsheet_id      = var.support_crm_spreadsheet_id
+  telemetry_sheet_id              = var.telemetry_sheet_id
 
   # SES domain for scoped email permissions (CWE-732 fix)
   ses_domain = var.domain_name
