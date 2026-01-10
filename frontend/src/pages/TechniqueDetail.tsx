@@ -5,9 +5,10 @@
  * Shows cloud-specific implementation guidance (AWS/GCP) with IaC templates.
  */
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
+import { useSelectedAccount } from '../hooks/useSelectedAccount'
 import {
   Shield,
   AlertTriangle,
@@ -446,15 +447,111 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
   )
 }
 
+// Helper to parse implementation time strings like "30 minutes", "1-2 hours"
+function parseImplementationTime(timeStr: string | undefined): number {
+  if (!timeStr) return 0
+  const str = timeStr.toLowerCase().trim()
+
+  // Handle "30 minutes - 1 hour" format
+  if (str.includes(' - ')) {
+    const parts = str.split(' - ')
+    if (parts.length === 2) {
+      const lower = parseImplementationTime(parts[0])
+      const upper = parseImplementationTime(parts[1])
+      return (lower + upper) / 2
+    }
+  }
+
+  // Handle "1-2 hours" format
+  const rangeMatch = str.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*hour/)
+  if (rangeMatch) {
+    const lower = parseFloat(rangeMatch[1])
+    const upper = parseFloat(rangeMatch[2])
+    return (lower + upper) / 2
+  }
+
+  // Handle "X minutes"
+  const minuteMatch = str.match(/(\d+(?:\.\d+)?)\s*minute/)
+  if (minuteMatch) {
+    return parseFloat(minuteMatch[1]) / 60
+  }
+
+  // Handle "X hours"
+  const hourMatch = str.match(/(\d+(?:\.\d+)?)\s*hour/)
+  if (hourMatch) {
+    return parseFloat(hourMatch[1])
+  }
+
+  return 0
+}
+
 export default function TechniqueDetail() {
   const { techniqueId } = useParams<{ techniqueId: string }>()
-  const [cloudFilter, setCloudFilter] = useState<'all' | 'aws' | 'gcp'>('all')
+  const { selectedAccount } = useSelectedAccount()
+
+  // Initialize filter based on selected account's cloud provider
+  const [cloudFilter, setCloudFilter] = useState<'all' | 'aws' | 'gcp'>(() => {
+    if (selectedAccount?.provider === 'gcp') return 'gcp'
+    if (selectedAccount?.provider === 'aws') return 'aws'
+    return 'all'
+  })
 
   const { data: technique, isLoading, error } = useQuery({
     queryKey: ['technique', techniqueId],
     queryFn: () => api.get<TechniqueDetail>(`/techniques/${techniqueId}`).then(r => r.data),
     enabled: !!techniqueId,
   })
+
+  // Sync filter when account changes (must be before early returns)
+  useEffect(() => {
+    if (selectedAccount?.provider === 'gcp') {
+      setCloudFilter('gcp')
+    } else if (selectedAccount?.provider === 'aws') {
+      setCloudFilter('aws')
+    }
+  }, [selectedAccount?.id])
+
+  // Calculate effort estimates based on current filter (must be before early returns)
+  const filteredEffortEstimates = useMemo(() => {
+    if (!technique) {
+      return { quick_win_hours: 0, typical_hours: 0, comprehensive_hours: 0, strategy_count: 0 }
+    }
+
+    const strategies = cloudFilter === 'all'
+      ? technique.detection_strategies
+      : technique.detection_strategies.filter(s => s.cloud_provider === cloudFilter)
+
+    if (strategies.length === 0) {
+      return { quick_win_hours: 0, typical_hours: 0, comprehensive_hours: 0, strategy_count: 0 }
+    }
+
+    // Build strategy map for ordering
+    const strategyMap = Object.fromEntries(strategies.map(s => [s.strategy_id, s]))
+
+    // Get ordered strategies based on recommended_order
+    const orderedStrategies: DetectionStrategy[] = []
+    for (const id of technique.recommended_order) {
+      if (strategyMap[id]) {
+        orderedStrategies.push(strategyMap[id])
+      }
+    }
+    // Add any strategies not in recommended_order
+    for (const s of strategies) {
+      if (!orderedStrategies.includes(s)) {
+        orderedStrategies.push(s)
+      }
+    }
+
+    // Parse hours for each strategy
+    const hours = orderedStrategies.map(s => parseImplementationTime(s.implementation_time))
+
+    return {
+      quick_win_hours: parseFloat(hours.slice(0, 2).reduce((a, b) => a + b, 0).toFixed(1)),
+      typical_hours: parseFloat(hours.slice(0, 3).reduce((a, b) => a + b, 0).toFixed(1)),
+      comprehensive_hours: parseFloat(hours.reduce((a, b) => a + b, 0).toFixed(1)),
+      strategy_count: strategies.length,
+    }
+  }, [technique, cloudFilter])
 
   if (isLoading) {
     return (
@@ -567,7 +664,7 @@ export default function TechniqueDetail() {
             </div>
             <div>
               <div className="text-xs text-gray-400">Quick Win</div>
-              <div className="font-bold text-white">{technique.effort_estimates.quick_win_hours}h</div>
+              <div className="font-bold text-white">{filteredEffortEstimates.quick_win_hours}h</div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -595,29 +692,38 @@ export default function TechniqueDetail() {
           <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-400" />
             Implementation Effort Estimates
+            {cloudFilter !== 'all' && (
+              <span className={`text-xs px-2 py-0.5 rounded ${
+                cloudFilter === 'aws' ? 'bg-orange-900/50 text-orange-300' : 'bg-blue-900/50 text-blue-300'
+              }`}>
+                {cloudFilter.toUpperCase()} only
+              </span>
+            )}
           </h3>
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-green-900/30 rounded-lg p-3 border border-green-700/50">
               <div className="text-green-400 text-xs font-medium">Quick Win</div>
               <div className="text-xl font-bold text-white mt-1">
-                {technique.effort_estimates.quick_win_hours}h
+                {filteredEffortEstimates.quick_win_hours}h
               </div>
               <div className="text-gray-500 text-xs mt-1">First 2 strategies</div>
             </div>
             <div className="bg-yellow-900/30 rounded-lg p-3 border border-yellow-700/50">
               <div className="text-yellow-400 text-xs font-medium">Typical</div>
               <div className="text-xl font-bold text-white mt-1">
-                {technique.effort_estimates.typical_hours}h
+                {filteredEffortEstimates.typical_hours}h
               </div>
               <div className="text-gray-500 text-xs mt-1">First 3 strategies</div>
             </div>
             <div className="bg-blue-900/30 rounded-lg p-3 border border-blue-700/50">
               <div className="text-blue-400 text-xs font-medium">Comprehensive</div>
               <div className="text-xl font-bold text-white mt-1">
-                {technique.effort_estimates.comprehensive_hours}h
+                {filteredEffortEstimates.comprehensive_hours}h
               </div>
               <div className="text-gray-500 text-xs mt-1">
-                All {technique.effort_estimates.strategy_count} strategies
+                {cloudFilter === 'all'
+                  ? `All ${filteredEffortEstimates.strategy_count} strategies`
+                  : `All ${filteredEffortEstimates.strategy_count} ${cloudFilter.toUpperCase()} strategies`}
               </div>
             </div>
           </div>
