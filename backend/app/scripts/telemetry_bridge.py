@@ -5,20 +5,34 @@ This script runs as a background agent to collect platform performance metrics
 from the local FastAPI /metrics endpoint and push them to a Google Sheet.
 This enables cost-effective, real-time dashboards using Looker Studio.
 
+PRODUCTION ONLY: This script only runs in production environment to avoid
+polluting telemetry data with staging metrics.
+
 Environment Variables:
     TELEMETRY_SHEET_ID: The ID of the Google Sheet to write to.
     TELEMETRY_SHEET_NAME: The tab name (default: 'Metrics').
     METRICS_URL: URL of the metrics endpoint (default: http://localhost:8000/metrics).
+
+Metrics Collected:
+    - Requests: Total HTTP requests (2xx, 4xx, 5xx breakdown)
+    - Error Rate: Percentage of requests resulting in errors
+    - Latency: Average, P50, P95, P99 response times
+    - CPU: Percentage utilisation (calculated from delta)
+    - Memory: Resident memory in MB
+    - Uptime: Time since process start
 """
 
 import asyncio
 import os
 import re
 from datetime import datetime, timezone
+from typing import Optional
+
 import httpx
 import structlog
-from app.services.google_workspace_service import get_workspace_service
+
 from app.core.config import get_settings
+from app.services.google_workspace_service import get_workspace_service
 
 # Configure logger
 logger = structlog.get_logger()
@@ -28,6 +42,34 @@ settings = get_settings()
 SHEET_ID = settings.telemetry_sheet_id
 SHEET_NAME = os.environ.get("TELEMETRY_SHEET_NAME", "Metrics")
 METRICS_URL = os.environ.get("METRICS_URL", "http://localhost:8000/metrics")
+
+# Cache for CPU delta calculation
+_last_cpu_sample: Optional[dict] = None
+
+
+def sanitise_for_sheets(value: str) -> str:
+    """
+    Protect against Google Sheets formula injection.
+
+    Sheets interprets cells starting with =, +, -, @, or tab as formulas.
+    Prefix with single quote to force text interpretation.
+    """
+    if isinstance(value, str) and value and value[0] in "=+-@\t":
+        return f"'{value}"
+    return value
+
+
+def parse_scientific_notation(value: str) -> float:
+    """
+    Parse numbers that may be in scientific notation.
+
+    Prometheus can output large numbers as scientific notation:
+    e.g., 8.30652416e+08 for ~830MB
+    """
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return 0.0
 
 
 async def fetch_metrics() -> str:
@@ -44,84 +86,197 @@ async def fetch_metrics() -> str:
 
 def parse_metrics(raw_data: str) -> dict:
     """
-    Parse Prometheus text format into key indicators.
+    Parse Prometheus text format into comprehensive metrics.
 
-    We focus on high-level signals suitable for a business/ops dashboard:
-    1. Total Request Count
-    2. Error Count (4xx/5xx)
-    3. Average Latency
-    4. CPU/Memory Usage
+    Extracts:
+    1. Request counts by status category (2xx, 4xx, 5xx)
+    2. Latency statistics (avg, p50, p95, p99)
+    3. CPU utilisation (requires previous sample for delta calculation)
+    4. Memory usage
+    5. Process uptime
+    6. Requests per minute (RPM)
     """
+    global _last_cpu_sample
+
+    now = datetime.now(timezone.utc)
+
     metrics = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": now.isoformat(),
+        "requests_2xx": 0,
+        "requests_4xx": 0,
+        "requests_5xx": 0,
         "total_requests": 0,
-        "total_errors": 0,
+        "error_rate_pct": 0.0,
         "avg_latency_ms": 0.0,
-        "cpu_seconds": 0.0,
-        "memory_bytes": 0,
+        "p50_latency_ms": 0.0,
+        "p95_latency_ms": 0.0,
+        "p99_latency_ms": 0.0,
+        "cpu_pct": 0.0,
+        "memory_mb": 0.0,
+        "uptime_hours": 0.0,
+        "rpm": 0.0,  # Requests per minute
     }
 
-    # Regex patterns (standard Prometheus format)
-    # http_request_duration_seconds_count{...} 10.0
-    req_count_pattern = re.compile(
-        r'http_requests_total\{.*status="([0-9]+)".*\}\s+([0-9\.]+)'
+    # Patterns for Prometheus metrics
+    # Status uses "2xx", "4xx", "5xx" format in our instrumentator
+    requests_pattern = re.compile(
+        r'http_requests_total\{[^}]*status="(\d+xx)"[^}]*\}\s+([\d.eE+\-]+)'
     )
-    # http_request_duration_seconds_sum 0.5
-    latency_sum_pattern = re.compile(r"http_request_duration_seconds_sum\s+([0-9\.]+)")
-    latency_count_pattern = re.compile(
-        r"http_request_duration_seconds_count\s+([0-9\.]+)"
-    )
-    # process_cpu_seconds_total 1.2
-    cpu_pattern = re.compile(r"process_cpu_seconds_total\s+([0-9\.]+)")
-    # process_resident_memory_bytes 1024.0
-    mem_pattern = re.compile(r"process_resident_memory_bytes\s+([0-9\.]+)")
 
+    # Latency histogram (highr = high resolution)
+    latency_sum_pattern = re.compile(
+        r"http_request_duration_highr_seconds_sum\s+([\d.eE+\-]+)"
+    )
+    latency_count_pattern = re.compile(
+        r"http_request_duration_highr_seconds_count\s+([\d.eE+\-]+)"
+    )
+    # Histogram buckets for percentile calculation
+    latency_bucket_pattern = re.compile(
+        r'http_request_duration_highr_seconds_bucket\{le="([\d.]+)"\}\s+([\d.eE+\-]+)'
+    )
+
+    # Process metrics
+    cpu_pattern = re.compile(r"process_cpu_seconds_total\s+([\d.eE+\-]+)")
+    memory_pattern = re.compile(r"process_resident_memory_bytes\s+([\d.eE+\-]+)")
+    start_time_pattern = re.compile(r"process_start_time_seconds\s+([\d.eE+\-]+)")
+
+    # Collect histogram buckets for percentile calculation
+    histogram_buckets: list[tuple[float, float]] = []
     total_latency_sum = 0.0
     total_latency_count = 0.0
+    cpu_seconds = 0.0
+    process_start_time = 0.0
 
     for line in raw_data.split("\n"):
         if line.startswith("#"):
             continue
 
-        # Requests & Errors
-        match = req_count_pattern.search(line)
+        # Request counts by status
+        match = requests_pattern.search(line)
         if match:
-            status = int(match.group(1))
-            count = float(match.group(2))
-            metrics["total_requests"] += int(count)
-            if status >= 400:
-                metrics["total_errors"] += int(count)
+            status = match.group(1)
+            count = parse_scientific_notation(match.group(2))
+            if status == "2xx":
+                metrics["requests_2xx"] = int(count)
+            elif status == "4xx":
+                metrics["requests_4xx"] = int(count)
+            elif status == "5xx":
+                metrics["requests_5xx"] = int(count)
+            continue
 
-        # Latency (Global Sum)
-        # Note: Instrumentator usually gives a summary/histogram. We look for the root sum/count.
-        if "http_request_duration_seconds_sum" in line and "handler" not in line:
-            match = latency_sum_pattern.search(line)
-            if match:
-                total_latency_sum = float(match.group(1))
+        # Latency sum
+        match = latency_sum_pattern.search(line)
+        if match:
+            total_latency_sum = parse_scientific_notation(match.group(1))
+            continue
 
-        if "http_request_duration_seconds_count" in line and "handler" not in line:
-            match = latency_count_pattern.search(line)
-            if match:
-                total_latency_count = float(match.group(1))
+        # Latency count
+        match = latency_count_pattern.search(line)
+        if match:
+            total_latency_count = parse_scientific_notation(match.group(1))
+            continue
 
-        # Resources
+        # Histogram buckets
+        match = latency_bucket_pattern.search(line)
+        if match:
+            le = float(match.group(1))
+            count = parse_scientific_notation(match.group(2))
+            histogram_buckets.append((le, count))
+            continue
+
+        # CPU seconds
         match = cpu_pattern.search(line)
         if match:
-            metrics["cpu_seconds"] = float(match.group(1))
+            cpu_seconds = parse_scientific_notation(match.group(1))
+            continue
 
-        match = mem_pattern.search(line)
+        # Memory bytes (handles scientific notation like 8.30652416e+08)
+        match = memory_pattern.search(line)
         if match:
-            metrics["memory_bytes"] = float(match.group(1))
+            memory_bytes = parse_scientific_notation(match.group(1))
+            metrics["memory_mb"] = round(memory_bytes / 1024 / 1024, 2)
+            continue
 
-    # Calculate derived stats
+        # Process start time
+        match = start_time_pattern.search(line)
+        if match:
+            process_start_time = parse_scientific_notation(match.group(1))
+            continue
+
+    # Calculate total requests
+    metrics["total_requests"] = (
+        metrics["requests_2xx"] + metrics["requests_4xx"] + metrics["requests_5xx"]
+    )
+
+    # Calculate error rate
+    if metrics["total_requests"] > 0:
+        errors = metrics["requests_4xx"] + metrics["requests_5xx"]
+        metrics["error_rate_pct"] = round((errors / metrics["total_requests"]) * 100, 2)
+
+    # Calculate average latency
     if total_latency_count > 0:
-        metrics["avg_latency_ms"] = (total_latency_sum / total_latency_count) * 1000
+        metrics["avg_latency_ms"] = round(
+            (total_latency_sum / total_latency_count) * 1000, 2
+        )
+
+    # Calculate percentiles from histogram
+    if histogram_buckets and total_latency_count > 0:
+        # Sort by bucket boundary
+        histogram_buckets.sort(key=lambda x: x[0])
+
+        def calculate_percentile(percentile: float) -> float:
+            """Calculate percentile from histogram buckets."""
+            target_count = total_latency_count * percentile
+            for le, count in histogram_buckets:
+                if count >= target_count:
+                    return le * 1000  # Convert to ms
+            # If we exceed all buckets, return the last bucket
+            return histogram_buckets[-1][0] * 1000 if histogram_buckets else 0.0
+
+        metrics["p50_latency_ms"] = round(calculate_percentile(0.5), 2)
+        metrics["p95_latency_ms"] = round(calculate_percentile(0.95), 2)
+        metrics["p99_latency_ms"] = round(calculate_percentile(0.99), 2)
+
+    # Calculate CPU percentage using delta from last sample
+    # CPU seconds is cumulative, so we need to calculate the rate of change
+    current_time = now.timestamp()
+    if _last_cpu_sample is not None:
+        time_delta = current_time - _last_cpu_sample["timestamp"]
+        cpu_delta = cpu_seconds - _last_cpu_sample["cpu_seconds"]
+
+        if time_delta > 0:
+            # CPU percentage = (cpu_seconds_used / elapsed_seconds) * 100
+            metrics["cpu_pct"] = round((cpu_delta / time_delta) * 100, 2)
+            # Clamp to reasonable range (can exceed 100% with multiple cores)
+            metrics["cpu_pct"] = max(0, min(metrics["cpu_pct"], 800))  # 8 cores max
+
+            # Calculate requests per minute
+            if _last_cpu_sample.get("total_requests") is not None:
+                requests_delta = (
+                    metrics["total_requests"] - _last_cpu_sample["total_requests"]
+                )
+                minutes_delta = time_delta / 60
+                if minutes_delta > 0:
+                    metrics["rpm"] = round(requests_delta / minutes_delta, 2)
+
+    # Update the last sample for next calculation
+    _last_cpu_sample = {
+        "timestamp": current_time,
+        "cpu_seconds": cpu_seconds,
+        "total_requests": metrics["total_requests"],
+    }
+
+    # Calculate uptime
+    if process_start_time > 0:
+        uptime_seconds = current_time - process_start_time
+        metrics["uptime_hours"] = round(uptime_seconds / 3600, 2)
 
     return metrics
 
 
 async def push_to_sheets(metrics: dict) -> None:
-    """Push the parsed metrics to Google Sheets.
+    """
+    Push the parsed metrics to Google Sheets.
 
     Note: GoogleWorkspaceService methods are synchronous (blocking).
     We use asyncio.to_thread() to run them in a thread pool to avoid
@@ -129,35 +284,50 @@ async def push_to_sheets(metrics: dict) -> None:
     """
     ws = get_workspace_service()
 
-    # Format row: [Timestamp, Requests, Errors, Latency(ms), CPU(s), RAM(MB)]
+    # Headers for the sheet
+    headers = [
+        "Timestamp",
+        "Total Requests",
+        "2xx",
+        "4xx",
+        "5xx",
+        "Error Rate (%)",
+        "Avg Latency (ms)",
+        "P50 (ms)",
+        "P95 (ms)",
+        "P99 (ms)",
+        "CPU (%)",
+        "Memory (MB)",
+        "Uptime (hrs)",
+        "RPM",
+    ]
+
+    # Format row with formula injection protection
     row = [
-        metrics["timestamp"],
+        sanitise_for_sheets(metrics["timestamp"]),
         metrics["total_requests"],
-        metrics["total_errors"],
-        round(metrics["avg_latency_ms"], 2),
-        round(metrics["cpu_seconds"], 2),
-        round(metrics["memory_bytes"] / 1024 / 1024, 2),  # Convert to MB
+        metrics["requests_2xx"],
+        metrics["requests_4xx"],
+        metrics["requests_5xx"],
+        metrics["error_rate_pct"],
+        metrics["avg_latency_ms"],
+        metrics["p50_latency_ms"],
+        metrics["p95_latency_ms"],
+        metrics["p99_latency_ms"],
+        metrics["cpu_pct"],
+        metrics["memory_mb"],
+        metrics["uptime_hours"],
+        metrics["rpm"],
     ]
 
     try:
         # Check if header exists in A1
-        # If the sheet is new/empty, A1 will be empty or the read will return empty
-        headers = [
-            "Timestamp",
-            "Requests",
-            "Errors",
-            "Latency (ms)",
-            "CPU (s)",
-            "Memory (MB)",
-        ]
-
         try:
-            # Run sync Sheets API calls in thread pool to avoid blocking event loop
             current_headers = await asyncio.to_thread(
-                ws.get_sheet_values, SHEET_ID, f"{SHEET_NAME}!A1:F1"
+                ws.get_sheet_values, SHEET_ID, f"{SHEET_NAME}!A1:N1"
             )
             if not current_headers or not current_headers[0]:
-                logger.info("telemetry_initializing_headers", sheet=SHEET_NAME)
+                logger.info("telemetry_initialising_headers", sheet=SHEET_NAME)
                 await asyncio.to_thread(
                     ws.append_to_sheet, SHEET_ID, SHEET_NAME, [headers]
                 )
@@ -166,22 +336,31 @@ async def push_to_sheets(metrics: dict) -> None:
             logger.warning("telemetry_header_check_failed", error=str(header_error))
 
         await asyncio.to_thread(ws.append_to_sheet, SHEET_ID, SHEET_NAME, [row])
-        logger.info("telemetry_pushed", row=row)
+        logger.info(
+            "telemetry_pushed",
+            total_requests=metrics["total_requests"],
+            error_rate=metrics["error_rate_pct"],
+            cpu_pct=metrics["cpu_pct"],
+            memory_mb=metrics["memory_mb"],
+        )
     except Exception as e:
         logger.error("telemetry_push_failed", error=str(e))
 
 
 async def main() -> None:
     """Main execution loop."""
-    # Safety Check: Only run if explicitly configured or in production
-    # Prevents staging data from polluting the prod dashboard
+    # Safety Check: Only run in production
+    # This prevents staging data from polluting the production dashboard
     if not SHEET_ID:
         logger.warning("telemetry_skip", reason="TELEMETRY_SHEET_ID not set")
         return
 
+    # Strict production-only check
     if settings.environment not in ("production", "prod"):
         logger.info(
-            "telemetry_skip", reason="Not in production", env=settings.environment
+            "telemetry_skip",
+            reason="Not production environment",
+            env=settings.environment,
         )
         return
 
