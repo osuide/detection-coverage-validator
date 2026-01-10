@@ -100,8 +100,13 @@ def parse_metrics(raw_data: str) -> dict:
 
     now = datetime.now(timezone.utc)
 
+    # Google Sheets serial date: days since 1899-12-30
+    # This ensures Sheets treats it as a native datetime
+    sheets_epoch = datetime(1899, 12, 30, tzinfo=timezone.utc)
+    serial_date = (now - sheets_epoch).total_seconds() / 86400
+
     metrics = {
-        "timestamp": now.isoformat(),
+        "timestamp": serial_date,
         "requests_2xx": 0,
         "requests_4xx": 0,
         "requests_5xx": 0,
