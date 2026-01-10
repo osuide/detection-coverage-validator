@@ -823,11 +823,7 @@ resource "aws_secretsmanager_secret" "support_api_key" {
 resource "aws_secretsmanager_secret_version" "support_api_key" {
   secret_id     = aws_secretsmanager_secret.support_api_key.id
   secret_string = var.support_api_key != "" ? var.support_api_key : "NOT_CONFIGURED"
-
-  # Don't replace if the value is unchanged
-  lifecycle {
-    ignore_changes = [secret_string]
-  }
+  # Note: No ignore_changes - secret updates when TF_VAR_support_api_key changes
 }
 
 # IAM Policy for ECS Execution Role to read secrets
