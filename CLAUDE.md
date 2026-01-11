@@ -27,6 +27,27 @@ Migrations run automatically on startup via `run_migrations()`.
 - Create ENUM: Use `sa.text("CREATE TYPE...")`
 - Make migrations idempotent with `inspector.get_table_names()` checks
 
+## JSON Column Serialization (CRITICAL)
+
+**Dataclasses stored in JSON columns become dicts when read back:**
+```python
+# WRONG - dot notation fails on dict from database
+if gap.effort_estimates:
+    hours = gap.effort_estimates.quick_win_hours  # AttributeError!
+
+# CORRECT - use dict.get() for JSON column data
+effort_data = gap.get("effort_estimates")
+if effort_data:
+    hours = effort_data.get("quick_win_hours", 0)
+```
+
+**Affected patterns:**
+- `CoverageSnapshot.top_gaps` → gaps are dicts, not `Gap` dataclass
+- `CoverageSnapshot.tactic_coverage` → dict, not `TacticCoverage`
+- Any nested dataclass stored in a JSON column
+
+When adding new fields to dataclasses that get serialized to JSON columns, ensure both the serialization (in `coverage_service.py`) AND deserialization (in `coverage.py` routes) use dict access.
+
 ## RBAC (CRITICAL)
 
 **`require_role()` uses exact match, NOT hierarchical:**
