@@ -283,7 +283,8 @@ class RemediationTemplate:
         ]
 
         # Calculate tiered totals
-        quick_win = sum(hours[:2]) if hours else 0.0
+        # Quick win = first strategy only (single fastest action)
+        quick_win = hours[0] if hours else 0.0
         typical = sum(hours[:3]) if hours else 0.0
         comprehensive = sum(hours) if hours else 0.0
 

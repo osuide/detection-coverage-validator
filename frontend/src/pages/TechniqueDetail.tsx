@@ -546,7 +546,8 @@ export default function TechniqueDetail() {
     const hours = orderedStrategies.map(s => parseImplementationTime(s.implementation_time))
 
     return {
-      quick_win_hours: parseFloat(hours.slice(0, 2).reduce((a, b) => a + b, 0).toFixed(1)),
+      // Quick win = first strategy only (single fastest action)
+      quick_win_hours: parseFloat((hours[0] || 0).toFixed(1)),
       typical_hours: parseFloat(hours.slice(0, 3).reduce((a, b) => a + b, 0).toFixed(1)),
       comprehensive_hours: parseFloat(hours.reduce((a, b) => a + b, 0).toFixed(1)),
       strategy_count: strategies.length,
@@ -706,11 +707,7 @@ export default function TechniqueDetail() {
               <div className="text-xl font-bold text-white mt-1">
                 {filteredEffortEstimates.quick_win_hours}h
               </div>
-              <div className="text-gray-500 text-xs mt-1">
-                {filteredEffortEstimates.strategy_count <= 2
-                  ? `${filteredEffortEstimates.strategy_count === 1 ? '1 strategy' : 'Both strategies'}`
-                  : 'First 2 strategies'}
-              </div>
+              <div className="text-gray-500 text-xs mt-1">Top strategy</div>
             </div>
             <div className="bg-yellow-900/30 rounded-lg p-3 border border-yellow-700/50">
               <div className="text-yellow-400 text-xs font-medium">Typical</div>

@@ -449,7 +449,7 @@ function GapCard({
                     Quick Win
                   </div>
                   <p className="text-lg font-semibold text-white">{gap.effort_estimates.quick_win_hours}h</p>
-                  <p className="text-gray-500 text-xs">First 2 strategies</p>
+                  <p className="text-gray-500 text-xs">Top strategy</p>
                 </div>
               )}
               {!gap.effort_estimates && gap.total_effort_hours && (
@@ -483,7 +483,7 @@ function GapCard({
                   <div className="text-lg font-bold text-white mt-1">
                     {gap.effort_estimates.quick_win_hours}h
                   </div>
-                  <div className="text-gray-500 text-xs mt-1">First 2 strategies</div>
+                  <div className="text-gray-500 text-xs mt-1">Top strategy</div>
                 </div>
                 <div className="bg-yellow-900/30 rounded-lg p-3 border border-yellow-700/30">
                   <div className="text-yellow-400 text-xs font-medium">Typical</div>

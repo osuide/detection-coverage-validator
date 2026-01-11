@@ -226,7 +226,8 @@ class GapAnalyzer:
                             for s in filtered_strategies
                         ]
                         gap.effort_estimates = EffortEstimates(
-                            quick_win_hours=round(sum(hours[:2]), 2) if hours else 0.0,
+                            # Quick win = first strategy only (single fastest action)
+                            quick_win_hours=round(hours[0], 2) if hours else 0.0,
                             typical_hours=round(sum(hours[:3]), 2) if hours else 0.0,
                             comprehensive_hours=round(sum(hours), 2) if hours else 0.0,
                             strategy_count=len(filtered_strategies),
