@@ -165,12 +165,15 @@ TIER_LIMITS = {
         },
     },
     # Legacy tiers (deprecated, kept for backward compatibility)
+    # NOTE: These tiers use weekly_scans_allowed for ScanLimitService compatibility
     AccountTier.FREE_SCAN: {
         "cloud_accounts": 1,
         "included_accounts": 1,
         "max_accounts": 1,
         "max_team_members": 1,
-        "scans_allowed": 1,
+        "scans_allowed": 1,  # Legacy key (kept for backwards compatibility)
+        "weekly_scans_allowed": 1,  # Required by ScanLimitService
+        "scan_reset_interval_days": 7,  # Required by ScanLimitService
         "results_retention_days": 7,
         "org_discovery": False,
         "_deprecated": True,
@@ -192,7 +195,9 @@ TIER_LIMITS = {
         "included_accounts": 3,
         "max_accounts": 3,
         "max_team_members": 3,
-        "scans_allowed": -1,  # Unlimited
+        "scans_allowed": -1,  # Legacy key (kept for backwards compatibility)
+        "weekly_scans_allowed": None,  # Unlimited - Required by ScanLimitService
+        "scan_reset_interval_days": 7,  # Required by ScanLimitService
         "results_retention_days": -1,  # Forever
         "org_discovery": True,
         "_deprecated": True,

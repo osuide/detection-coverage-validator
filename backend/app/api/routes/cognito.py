@@ -455,10 +455,10 @@ async def exchange_cognito_token(
         )
         db.add(membership)
 
-        # Create free subscription
+        # Create free subscription (use new FREE tier, not legacy FREE_SCAN)
         subscription = Subscription(
             organization_id=organization.id,
-            tier=AccountTier.FREE_SCAN,
+            tier=AccountTier.FREE,
         )
         db.add(subscription)
 
