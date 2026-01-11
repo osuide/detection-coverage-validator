@@ -342,6 +342,7 @@ class ComplianceService:
         # Get techniques with detections (these are covered or partial)
         from app.models.mapping import DetectionMapping
         from app.models.detection import Detection, DetectionStatus
+        from app.core.config import settings
 
         # Query active detections with mappings
         mappings_result = await self.db.execute(
@@ -368,10 +369,10 @@ class ComplianceService:
             if not tech_id:
                 continue
 
-            # Determine status based on confidence
-            if max_confidence >= 0.6:
+            # Determine status based on confidence (60% = covered per user docs)
+            if max_confidence >= settings.confidence_threshold_covered:
                 technique_coverage[tech_id] = "covered"
-            elif max_confidence >= 0.4:
+            elif max_confidence >= settings.confidence_threshold_partial:
                 technique_coverage[tech_id] = "partial"
             # else stays uncovered
 
@@ -482,6 +483,9 @@ class ComplianceService:
         from app.models.mapping import DetectionMapping
         from app.models.detection import Detection, DetectionStatus
         from app.data.remediation_templates.template_loader import get_template
+        from app.core.config import settings
+
+        # Import control-level thresholds (used for control coverage %, not technique confidence)
         from app.analyzers.compliance_calculator import (
             COVERED_THRESHOLD,
             PARTIAL_THRESHOLD,
@@ -541,6 +545,21 @@ class ComplianceService:
                 }
             )
 
+        # Deduplicate detections by name within each technique (same rule in multiple
+        # regions creates duplicate entries). Keep highest confidence per unique name.
+        for tech_uuid in detection_by_technique:
+            detections = detection_by_technique[tech_uuid]
+            # Sort by confidence descending so highest confidence comes first
+            detections.sort(key=lambda d: d["confidence"], reverse=True)
+            # Deduplicate by name, keeping first (highest confidence)
+            seen_names: set[str] = set()
+            unique_detections = []
+            for d in detections:
+                if d["name"] not in seen_names:
+                    seen_names.add(d["name"])
+                    unique_detections.append(d)
+            detection_by_technique[tech_uuid] = unique_detections
+
         # Get acknowledged/risk_accepted gaps for this account
         from app.models.gap import CoverageGap, GapStatus
         from app.models.user import User
@@ -589,11 +608,12 @@ class ComplianceService:
             # Calculate max confidence
             max_confidence = max((d["confidence"] for d in detections), default=0)
 
-            # Determine status
-            if max_confidence >= COVERED_THRESHOLD:
+            # Determine status using technique-level thresholds (0.6/0.4 from settings)
+            # NOT control-level thresholds (0.8/0.4 from compliance_calculator)
+            if max_confidence >= settings.confidence_threshold_covered:
                 status = "covered"
                 covered_count += 1
-            elif max_confidence >= PARTIAL_THRESHOLD:
+            elif max_confidence >= settings.confidence_threshold_partial:
                 status = "partial"
             else:
                 status = "uncovered"
@@ -656,20 +676,23 @@ class ComplianceService:
             overall_status = "uncovered"
 
         # Build human-readable rationale
+        # "Covered" means detection confidence >= 60% (settings.confidence_threshold_covered)
         if total_techniques == 0:
             rationale = "No MITRE techniques mapped to this control"
         elif covered_count == total_techniques:
             rationale = (
-                f"All {total_techniques} mapped techniques have active detections"
+                f"All {total_techniques} mapped techniques have adequate "
+                f"detection coverage (60%+)"
             )
         elif covered_count == 0:
             rationale = (
-                f"None of the {total_techniques} mapped techniques have detections"
+                f"None of the {total_techniques} mapped techniques have "
+                f"adequate detection coverage (60%+)"
             )
         else:
             rationale = (
                 f"{covered_count} of {total_techniques} mapped techniques "
-                f"have active detections"
+                f"have adequate detection coverage (60%+)"
             )
 
         # Build cloud context
@@ -767,10 +790,11 @@ class ComplianceService:
             return {}, {}
 
         # Get technique coverage status from active detection mappings
-        # Using same confidence thresholds as _extract_technique_coverage:
-        # >= 0.6 = covered, >= 0.4 = partial
+        # Using settings.confidence_threshold_covered (0.6) and
+        # settings.confidence_threshold_partial (0.4) for technique-level coverage
         from app.models.mapping import DetectionMapping
         from app.models.detection import Detection, DetectionStatus
+        from app.core.config import settings
 
         mappings_result = await self.db.execute(
             select(
@@ -785,14 +809,14 @@ class ComplianceService:
             .group_by(DetectionMapping.technique_id)
         )
 
-        # Build technique status lookup matching _extract_technique_coverage logic
+        # Build technique status lookup using technique-level thresholds (0.6/0.4)
         technique_status: dict[UUID, str] = {}
         for row in mappings_result.fetchall():
             technique_uuid = row[0]
             max_confidence = row[1]
-            if max_confidence >= 0.6:
+            if max_confidence >= settings.confidence_threshold_covered:
                 technique_status[technique_uuid] = "covered"
-            elif max_confidence >= 0.4:
+            elif max_confidence >= settings.confidence_threshold_partial:
                 technique_status[technique_uuid] = "partial"
             # else not in dict = uncovered
 
