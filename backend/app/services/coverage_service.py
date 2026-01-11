@@ -107,6 +107,16 @@ class CoverageService:
                 "business_impact": gap.business_impact,
                 "quick_win_strategy": gap.quick_win_strategy,
                 "total_effort_hours": gap.total_effort_hours,
+                "effort_estimates": (
+                    {
+                        "quick_win_hours": gap.effort_estimates.quick_win_hours,
+                        "typical_hours": gap.effort_estimates.typical_hours,
+                        "comprehensive_hours": gap.effort_estimates.comprehensive_hours,
+                        "strategy_count": gap.effort_estimates.strategy_count,
+                    }
+                    if gap.effort_estimates
+                    else None
+                ),
                 "mitre_url": gap.mitre_url,
             }
 
