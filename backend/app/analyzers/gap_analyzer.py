@@ -7,7 +7,10 @@ import structlog
 from app.analyzers.coverage_calculator import TechniqueCoverageInfo
 from app.mappers.indicator_library import TECHNIQUE_BY_ID, TechniqueIndicator
 from app.data.remediation_templates import get_template
-from app.data.remediation_templates.template_loader import EffortEstimates
+from app.data.remediation_templates.template_loader import (
+    EffortEstimates,
+    parse_implementation_time,
+)
 
 logger = structlog.get_logger()
 
@@ -172,8 +175,27 @@ class GapAnalyzer:
                         )
                         gap.recommended_strategies.append(rec_strategy)
 
-                    # Set quick win (first low-effort strategy for this provider)
-                    for strategy in template.detection_strategies:
+                    # Set quick win using recommended_order, filtered by cloud provider
+                    # First, build ordered list respecting recommended_order
+                    strategy_map = {
+                        s.strategy_id: s for s in template.detection_strategies
+                    }
+                    ordered_strategies = []
+
+                    # Add strategies in recommended_order first
+                    if template.recommended_order:
+                        for sid in template.recommended_order:
+                            if sid in strategy_map:
+                                ordered_strategies.append(strategy_map[sid])
+
+                    # Add any remaining strategies not in recommended_order
+                    for s in template.detection_strategies:
+                        if s not in ordered_strategies:
+                            ordered_strategies.append(s)
+
+                    # Filter by cloud provider and find quick win
+                    filtered_strategies = []
+                    for strategy in ordered_strategies:
                         strategy_provider = (
                             strategy.cloud_provider.value
                             if strategy.cloud_provider
@@ -185,9 +207,30 @@ class GapAnalyzer:
                             and strategy_provider != cloud_provider
                         ):
                             continue
+                        filtered_strategies.append(strategy)
+
+                    # Set quick_win_strategy: first "low" effort, or first overall
+                    for strategy in filtered_strategies:
                         if strategy.implementation_effort.value == "low":
                             gap.quick_win_strategy = strategy.strategy_id
                             break
+                    else:
+                        # No "low" effort found, use first recommended strategy
+                        if filtered_strategies:
+                            gap.quick_win_strategy = filtered_strategies[0].strategy_id
+
+                    # Compute provider-filtered effort estimates if filtering is active
+                    if cloud_provider and filtered_strategies:
+                        hours = [
+                            parse_implementation_time(s.implementation_time)
+                            for s in filtered_strategies
+                        ]
+                        gap.effort_estimates = EffortEstimates(
+                            quick_win_hours=round(sum(hours[:2]), 2) if hours else 0.0,
+                            typical_hours=round(sum(hours[:3]), 2) if hours else 0.0,
+                            comprehensive_hours=round(sum(hours), 2) if hours else 0.0,
+                            strategy_count=len(filtered_strategies),
+                        )
 
                 gaps.append(gap)
 
