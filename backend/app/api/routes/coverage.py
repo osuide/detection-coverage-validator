@@ -236,12 +236,13 @@ async def get_coverage(
 
         # Build effort estimates if available
         effort_estimates = None
-        if gap.get("effort_estimates"):
+        effort_data = gap.get("effort_estimates")
+        if effort_data:
             effort_estimates = EffortEstimatesResponse(
-                quick_win_hours=gap["effort_estimates"].quick_win_hours,
-                typical_hours=gap["effort_estimates"].typical_hours,
-                comprehensive_hours=gap["effort_estimates"].comprehensive_hours,
-                strategy_count=gap["effort_estimates"].strategy_count,
+                quick_win_hours=effort_data.get("quick_win_hours", 0),
+                typical_hours=effort_data.get("typical_hours", 0),
+                comprehensive_hours=effort_data.get("comprehensive_hours", 0),
+                strategy_count=effort_data.get("strategy_count", 0),
             )
 
         gap_list.append(
@@ -569,12 +570,13 @@ async def calculate_coverage(
 
         # Build effort estimates if available
         effort_estimates = None
-        if gap.get("effort_estimates"):
+        effort_data = gap.get("effort_estimates")
+        if effort_data:
             effort_estimates = EffortEstimatesResponse(
-                quick_win_hours=gap["effort_estimates"].quick_win_hours,
-                typical_hours=gap["effort_estimates"].typical_hours,
-                comprehensive_hours=gap["effort_estimates"].comprehensive_hours,
-                strategy_count=gap["effort_estimates"].strategy_count,
+                quick_win_hours=effort_data.get("quick_win_hours", 0),
+                typical_hours=effort_data.get("typical_hours", 0),
+                comprehensive_hours=effort_data.get("comprehensive_hours", 0),
+                strategy_count=effort_data.get("strategy_count", 0),
             )
 
         gap_list.append(
