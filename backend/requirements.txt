@@ -1,6 +1,6 @@
 # Core Framework
 fastapi==0.128.0
-prometheus-fastapi-instrumentator==7.0.0
+prometheus-fastapi-instrumentator==7.1.0
 starlette>=0.50.0  # CVE-2025-54121, CVE-2025-62727 - must be >=0.49.1
 uvicorn[standard]==0.40.0
 pydantic[email]==2.12.5
@@ -9,16 +9,16 @@ email-validator==2.3.0
 
 # Database
 sqlalchemy==2.0.45
-alembic==1.17.2
+alembic==1.18.0
 asyncpg==0.31.0
 psycopg2-binary==2.9.11
 
 # AWS (pinned to compatible versions)
-boto3==1.42.22
-botocore==1.42.22
+boto3==1.42.25
+botocore==1.42.25
 
 # GCP
-google-auth==2.46.0
+google-auth==2.47.0
 google-cloud-logging==3.13.0
 google-cloud-monitoring==2.28.0
 google-api-python-client==2.187.0
@@ -28,11 +28,11 @@ google-cloud-resource-manager==1.15.0
 google-cloud-eventarc==1.18.0
 google-cloud-functions==1.21.0
 google-cloud-run==0.13.0
-google-cloud-asset==4.1.0
-google-cloud-compute==1.40.0
+google-cloud-asset==4.2.0
+google-cloud-compute==1.41.0
 
 # Google SecOps (Chronicle SIEM) - requires Python 3.10+
-secops==0.32.0
+secops==0.34.0
 
 # Encryption
 cryptography==45.0.5
@@ -78,14 +78,14 @@ Pillow==12.1.0
 
 # Testing
 pytest==8.4.2
-pytest-asyncio==1.2.0
+pytest-asyncio==1.3.0
 pytest-cov==6.1.1
 moto[s3,ec2,iam,logs,events,config,secretsmanager,guardduty,securityhub,cloudtrail,lambda,sts,ses,cloudwatch,efs,rds,dynamodb,redshift,elasticache,ecr]==5.1.19
 factory-boy==3.3.3
 
 # Code Quality
 black==25.12.0
-ruff==0.14.10
+ruff==0.14.11
 mypy==1.19.1
 
 # Security pins for transitive dependencies (Snyk)
