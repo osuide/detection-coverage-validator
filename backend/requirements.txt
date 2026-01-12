@@ -78,7 +78,7 @@ Pillow==12.1.0
 
 # Testing
 pytest==8.4.2
-pytest-asyncio==0.26.0
+pytest-asyncio==1.2.0
 pytest-cov==6.1.1
 moto[s3,ec2,iam,logs,events,config,secretsmanager,guardduty,securityhub,cloudtrail,lambda,sts,ses,cloudwatch,efs,rds,dynamodb,redshift,elasticache,ecr]==5.1.19
 factory-boy==3.3.3
