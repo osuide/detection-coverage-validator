@@ -38,7 +38,7 @@ secops==0.32.0
 cryptography==45.0.5
 
 # Caching
-redis==6.2.0
+redis==7.1.0
 aioredis==2.0.1
 
 # Rate Limiting
