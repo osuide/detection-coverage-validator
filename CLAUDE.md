@@ -48,6 +48,20 @@ if effort_data:
 
 When adding new fields to dataclasses that get serialized to JSON columns, ensure both the serialization (in `coverage_service.py`) AND deserialization (in `coverage.py` routes) use dict access.
 
+## Settings Import (CRITICAL)
+
+**Config exports `get_settings()` function, NOT `settings` instance:**
+```python
+# WRONG - ImportError: cannot import name 'settings'
+from app.core.config import settings
+
+# CORRECT
+from app.core.config import get_settings
+settings = get_settings()
+```
+
+⚠️ Wrong import causes 500 errors that appear as CORS errors in browser (no headers on error response).
+
 ## RBAC (CRITICAL)
 
 **`require_role()` uses exact match, NOT hierarchical:**
@@ -255,3 +269,25 @@ Support system uses Gmail, Sheets (CRM), Drive (KB), Chat (alerts), Apps Script 
 | Marketing | staging.a13e.com | a13e.com |
 
 Use `<Link to="/path">` for navigation, relative `/docs` for user docs.
+
+## Frontend Environment Configuration (CRITICAL)
+
+**Environment files must have correct API URLs:**
+
+| File | `VITE_API_BASE_URL` |
+|------|---------------------|
+| `.env.development` | `http://localhost:8000` |
+| `.env.staging` | `https://api.staging.a13e.com` |
+| `.env.production` | `https://api.a13e.com` |
+
+⚠️ **Wrong API URL in `.env.production` breaks SSO completely** - CSP blocks cross-origin requests.
+
+**Verification before production deploy:**
+```bash
+# Check env file
+grep VITE_API_BASE_URL frontend/.env.production
+# Should show: https://api.a13e.com (NOT api.staging.a13e.com)
+
+# After build, verify no staging URLs leaked
+grep -r "api.staging" frontend/dist/ && echo "ERROR: Staging URL in prod build!"
+```
