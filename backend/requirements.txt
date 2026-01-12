@@ -35,7 +35,7 @@ google-cloud-compute==1.40.0
 secops==0.32.0
 
 # Encryption
-cryptography==45.0.5
+cryptography==46.0.3
 
 # Caching
 redis==6.2.0
