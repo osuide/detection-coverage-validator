@@ -342,7 +342,9 @@ class ComplianceService:
         # Get techniques with detections (these are covered or partial)
         from app.models.mapping import DetectionMapping
         from app.models.detection import Detection, DetectionStatus
-        from app.core.config import settings
+        from app.core.config import get_settings
+
+        settings = get_settings()
 
         # Query active detections with mappings
         mappings_result = await self.db.execute(
@@ -483,7 +485,9 @@ class ComplianceService:
         from app.models.mapping import DetectionMapping
         from app.models.detection import Detection, DetectionStatus
         from app.data.remediation_templates.template_loader import get_template
-        from app.core.config import settings
+        from app.core.config import get_settings
+
+        settings = get_settings()
 
         # Import control-level thresholds (used for control coverage %, not technique confidence)
         from app.analyzers.compliance_calculator import (
@@ -794,7 +798,9 @@ class ComplianceService:
         # settings.confidence_threshold_partial (0.4) for technique-level coverage
         from app.models.mapping import DetectionMapping
         from app.models.detection import Detection, DetectionStatus
-        from app.core.config import settings
+        from app.core.config import get_settings
+
+        settings = get_settings()
 
         mappings_result = await self.db.execute(
             select(
