@@ -71,7 +71,8 @@ jobs:
           STRIPE_SECRET_KEY: sk_test_fake_key_for_ci
           STRIPE_WEBHOOK_SECRET: whsec_test_fake_webhook_secret
         run: |
-          pytest tests/ -v --cov=app --cov-report=xml
+          # Exclude telemetry integration tests - they require production Google Workspace credentials
+          pytest tests/ -v --cov=app --cov-report=xml --ignore=tests/unit/test_telemetry_integration.py
 
   frontend-test:
     name: Frontend Tests
