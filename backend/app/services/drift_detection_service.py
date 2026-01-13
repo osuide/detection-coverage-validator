@@ -146,10 +146,12 @@ class DriftDetectionService:
         total_by_tactic = {row[0]: row[1] for row in total_result.all()}
 
         # Calculate percentages
+        # CRITICAL: Convert UUID keys to strings for JSONB serialization
+        # PostgreSQL JSONB columns cannot have UUID keys
         coverage = {}
         for tactic_id, total in total_by_tactic.items():
             covered = covered_by_tactic.get(tactic_id, 0)
-            coverage[tactic_id] = {
+            coverage[str(tactic_id)] = {
                 "total": total,
                 "covered": covered,
                 "percent": round((covered / total * 100) if total > 0 else 0, 2),
