@@ -76,6 +76,22 @@ export default function Gaps() {
   // Sort by priority
   gaps.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
 
+  // Calculate total effort across all displayed gaps
+  const totalEffort = gaps.reduce(
+    (acc, gap) => {
+      if (gap.effort_estimates) {
+        return {
+          quickWin: acc.quickWin + gap.effort_estimates.quick_win_hours,
+          typical: acc.typical + gap.effort_estimates.typical_hours,
+          comprehensive: acc.comprehensive + gap.effort_estimates.comprehensive_hours,
+          gapsWithEffort: acc.gapsWithEffort + 1,
+        }
+      }
+      return acc
+    },
+    { quickWin: 0, typical: 0, comprehensive: 0, gapsWithEffort: 0 }
+  )
+
   // Get unique tactics for filter
   const tactics = [...new Set(allGaps.map(g => ({ id: g.tactic_id, name: g.tactic_name })))]
     .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
@@ -292,13 +308,32 @@ export default function Gaps() {
 
       {/* Gap List - wrapped in card like Compliance */}
       <div className="bg-gray-800 rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <h3 className="text-lg font-medium text-white">
             Actionable Gaps
             <span className="text-sm font-normal text-gray-400 ml-2">
               ({gaps.length} techniques)
             </span>
           </h3>
+
+          {/* Total Effort Breakdown */}
+          {totalEffort.gapsWithEffort > 0 && (
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-gray-400">Total Effort:</span>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 rounded-sm bg-green-900/30 text-green-400 border border-green-700/30">
+                  <Zap className="h-3 w-3 inline mr-1" />
+                  {totalEffort.quickWin.toFixed(1)}h
+                </span>
+                <span className="px-2 py-1 rounded-sm bg-yellow-900/30 text-yellow-400 border border-yellow-700/30">
+                  {totalEffort.typical.toFixed(1)}h
+                </span>
+                <span className="px-2 py-1 rounded-sm bg-blue-900/30 text-blue-400 border border-blue-700/30">
+                  {totalEffort.comprehensive.toFixed(1)}h
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {gaps.length === 0 ? (
