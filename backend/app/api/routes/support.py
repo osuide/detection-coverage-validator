@@ -14,7 +14,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -121,10 +121,8 @@ class CustomerContextResponse(BaseModel):
         "production", description="Backend environment (staging, production)"
     )
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "email": "customer@example.com",
                 "user_id": "123e4567-e89b-12d3-a456-426614174000",
@@ -160,6 +158,7 @@ class CustomerContextResponse(BaseModel):
                 "notes": ["MFA enabled", "At 67% account limit"],
             }
         }
+    )
 
 
 @router.get(

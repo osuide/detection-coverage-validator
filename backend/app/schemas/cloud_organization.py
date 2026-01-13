@@ -170,7 +170,7 @@ class ConnectMembersRequest(BaseModel):
     """Request to connect selected member accounts."""
 
     member_ids: list[UUID] = Field(
-        ..., min_items=1, description="IDs of members to connect"
+        ..., min_length=1, description="IDs of members to connect"
     )
 
 

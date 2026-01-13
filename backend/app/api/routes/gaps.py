@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -112,8 +112,7 @@ class GapResponse(BaseModel):
     remediation_notes: Optional[str] = None
     risk_acceptance_reason: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GapListResponse(BaseModel):
@@ -466,8 +465,7 @@ class OrgAcknowledgedGapResponse(BaseModel):
     acknowledged_at: Optional[str] = None
     acknowledged_by_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrgAcknowledgedGapsResponse(BaseModel):
