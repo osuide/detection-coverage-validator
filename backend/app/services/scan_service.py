@@ -766,7 +766,8 @@ class ScanService:
         )
 
         try:
-            creds = aws_credential_service.assume_role(
+            # Use async version to avoid blocking the event loop
+            creds = await aws_credential_service.assume_role_async(
                 role_arn=credential.aws_role_arn,
                 external_id=credential.aws_external_id,
                 session_name=f"A13E-Scan-{str(account.id)[:8]}",

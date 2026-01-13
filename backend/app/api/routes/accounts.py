@@ -472,8 +472,8 @@ async def discover_regions(
             )
 
         try:
-            # Assume the role to get temporary credentials
-            creds = aws_credential_service.assume_role(
+            # Assume the role to get temporary credentials (async to avoid blocking event loop)
+            creds = await aws_credential_service.assume_role_async(
                 role_arn=credential.aws_role_arn,
                 external_id=credential.aws_external_id,
                 session_name=f"A13E-Discovery-{str(account.id)[:8]}",

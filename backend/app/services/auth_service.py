@@ -387,6 +387,9 @@ class AuthService:
 
         # M2: Check if this token was previously rotated (theft indicator)
         # If someone is using an old token, it means the token was stolen
+        # However, we allow a 30-second grace window for legitimate multi-tab usage
+        GRACE_WINDOW_SECONDS = 30
+
         theft_check = await self.db.execute(
             select(UserSession).where(
                 and_(
@@ -398,19 +401,62 @@ class AuthService:
         compromised_session = theft_check.scalar_one_or_none()
 
         if compromised_session:
-            # Token theft detected - revoke all sessions for this user
-            self.logger.warning(
-                "refresh_token_theft_detected",
-                user_id=str(compromised_session.user_id),
-                session_id=str(compromised_session.id),
-                ip_address=ip_address,
+            # Check if within grace window (multi-tab scenario)
+            now = datetime.now(timezone.utc)
+            within_grace_window = (
+                compromised_session.token_rotated_at is not None
+                and (now - compromised_session.token_rotated_at).total_seconds()
+                < GRACE_WINDOW_SECONDS
             )
-            await self.logout_all_sessions(
-                compromised_session.user_id,
-                reason="token_theft_detected",
-                ip_address=ip_address,
-            )
-            return None, None
+
+            if within_grace_window:
+                # Legitimate multi-tab/concurrent usage - return the current valid tokens
+                # Log for monitoring but don't revoke
+                self.logger.info(
+                    "refresh_token_reuse_within_grace_window",
+                    user_id=str(compromised_session.user_id),
+                    session_id=str(compromised_session.id),
+                    seconds_since_rotation=(
+                        now - compromised_session.token_rotated_at
+                    ).total_seconds(),
+                    ip_address=ip_address,
+                )
+                # Return the session's current valid tokens by re-issuing from this session
+                user = await self.get_user_by_id(compromised_session.user_id)
+                if user and user.is_active:
+                    access_token = self.generate_access_token(
+                        user.id, compromised_session.organization_id
+                    )
+                    # Generate new refresh token for this concurrent request
+                    new_refresh_token = self.generate_refresh_token()
+                    compromised_session.refresh_token_hash = self.hash_token(
+                        new_refresh_token
+                    )
+                    compromised_session.previous_token_hash = token_hash
+                    compromised_session.token_rotated_at = now
+                    compromised_session.last_activity_at = now
+                    compromised_session.ip_address = ip_address
+                    return access_token, new_refresh_token
+                return None, None
+            else:
+                # Token theft detected outside grace window - revoke all sessions
+                self.logger.warning(
+                    "refresh_token_theft_detected",
+                    user_id=str(compromised_session.user_id),
+                    session_id=str(compromised_session.id),
+                    ip_address=ip_address,
+                    seconds_since_rotation=(
+                        (now - compromised_session.token_rotated_at).total_seconds()
+                        if compromised_session.token_rotated_at
+                        else None
+                    ),
+                )
+                await self.logout_all_sessions(
+                    compromised_session.user_id,
+                    reason="token_theft_detected",
+                    ip_address=ip_address,
+                )
+                return None, None
 
         # Normal token lookup
         result = await self.db.execute(
@@ -498,9 +544,11 @@ class AuthService:
         session.previous_token_hash = session.refresh_token_hash
 
         # Rotate refresh token
+        now = datetime.now(timezone.utc)
         new_refresh_token = self.generate_refresh_token()
         session.refresh_token_hash = self.hash_token(new_refresh_token)
-        session.last_activity_at = datetime.now(timezone.utc)
+        session.token_rotated_at = now  # Track rotation time for grace window
+        session.last_activity_at = now
         session.ip_address = ip_address
 
         # Generate new access token

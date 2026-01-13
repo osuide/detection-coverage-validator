@@ -425,7 +425,21 @@ async def _authenticate_jwt(
             message="Token missing 'type' field - legacy format detected",
         )
 
-    user_id = UUID(payload.get("sub"))
+    # SECURITY: Guard UUID parsing to return 401 instead of 500 on malformed tokens
+    try:
+        user_id = UUID(payload.get("sub"))
+    except (ValueError, TypeError):
+        logger.warning(
+            "jwt_malformed_user_id",
+            sub=payload.get("sub"),
+            message="Token contains malformed user identifier",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: malformed user identifier",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
@@ -442,7 +456,22 @@ async def _authenticate_jwt(
     org_id_str = payload.get("org")
 
     if org_id_str:
-        org_id = UUID(org_id_str)
+        # SECURITY: Guard UUID parsing to return 401 instead of 500 on malformed tokens
+        try:
+            org_id = UUID(org_id_str)
+        except (ValueError, TypeError):
+            logger.warning(
+                "jwt_malformed_org_id",
+                org=org_id_str,
+                user_id=str(user_id),
+                message="Token contains malformed organisation identifier",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: malformed organisation identifier",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
         result = await db.execute(select(Organization).where(Organization.id == org_id))
         organization = result.scalar_one_or_none()
 

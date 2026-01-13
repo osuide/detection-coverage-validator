@@ -469,6 +469,10 @@ class UserSession(Base):
     previous_token_hash: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True, index=True
     )
+    # Timestamp when the token was rotated (for grace window in theft detection)
+    token_rotated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Session metadata
     user_agent: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
