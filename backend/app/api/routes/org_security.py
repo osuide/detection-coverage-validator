@@ -66,7 +66,14 @@ async def verify_domain_dns(
         # Check each TXT record for our verification token
         for rdata in answers:
             # TXT records may have multiple strings, join them
-            txt_value = "".join(str(s) for s in rdata.strings)
+            # dnspython returns bytes, so decode if needed
+            parts = []
+            for s in rdata.strings:
+                if isinstance(s, bytes):
+                    parts.append(s.decode("utf-8"))
+                else:
+                    parts.append(str(s))
+            txt_value = "".join(parts)
             # Remove quotes if present
             txt_value = txt_value.strip("\"'")
 
