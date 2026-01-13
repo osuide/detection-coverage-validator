@@ -636,7 +636,8 @@ def require_auth(
 
 def require_role(*roles: UserRole) -> Callable:
     """
-    Dependency that requires specific role(s).
+    Dependency that requires specific role(s) for JWT users.
+    API keys are exempt from role checks (they use scopes instead).
 
     Example: require_role(UserRole.OWNER, UserRole.ADMIN)
     """
@@ -649,6 +650,10 @@ def require_role(*roles: UserRole) -> Callable:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Organization context required",
             )
+
+        # API keys use scopes, not roles - skip role check for API keys
+        if auth.api_key:
+            return auth
 
         if not auth.has_role(*roles):
             raise HTTPException(
