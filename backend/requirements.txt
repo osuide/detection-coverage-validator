@@ -83,7 +83,8 @@ Pillow==12.1.0
 pytest==8.4.2
 pytest-asyncio==1.3.0
 pytest-cov==6.1.1
-moto[s3,ec2,iam,logs,events,config,secretsmanager,guardduty,securityhub,cloudtrail,lambda,sts,ses,cloudwatch,efs,rds,dynamodb,redshift,elasticache,ecr]==5.1.19
+# Note: lambda and securityhub extras removed - now built-in to moto 5.x
+moto[s3,ec2,iam,logs,events,config,secretsmanager,guardduty,cloudtrail,sts,ses,cloudwatch,efs,rds,dynamodb,redshift,elasticache,ecr]==5.1.19
 factory-boy==3.3.3
 
 # Code Quality
