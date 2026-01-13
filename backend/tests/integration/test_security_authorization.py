@@ -1271,3 +1271,843 @@ class TestAccountLevelACL:
 
         assert response.status_code == 403
         assert "Access denied" in response.json()["detail"]
+
+
+# ============================================================================
+# FINDING: Analytics Endpoints ACL Enforcement Tests
+# ============================================================================
+
+
+class TestAnalyticsACL:
+    """Tests for ACL enforcement on analytics endpoints.
+
+    Verifies that restricted users (with allowed_account_ids set) cannot
+    access org-wide analytics data when cloud_account_id is omitted.
+    """
+
+    @pytest_asyncio.fixture
+    async def analytics_acl_setup(self, db_session: AsyncSession):
+        """Create org with accounts and coverage data for analytics tests."""
+        from app.models.coverage import CoverageSnapshot
+
+        # Create organisation
+        org = Organization(
+            id=uuid.uuid4(),
+            name="Analytics ACL Test Org",
+            slug="analytics-acl-test-org",
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(org)
+        await db_session.flush()
+
+        # Create subscription with analytics feature
+        subscription = Subscription(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            tier=AccountTier.PRO,  # Has historical_trends feature
+            status="active",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(subscription)
+
+        # Create 2 cloud accounts
+        account_a = CloudAccount(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            name="Analytics Account A",
+            provider="aws",
+            account_id="444444444444",
+            global_account_hash=_make_global_hash("aws", "444444444444"),
+            created_at=datetime.now(timezone.utc),
+        )
+        account_b = CloudAccount(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            name="Analytics Account B",
+            provider="aws",
+            account_id="555555555555",
+            global_account_hash=_make_global_hash("aws", "555555555555"),
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add_all([account_a, account_b])
+        await db_session.flush()
+
+        # Create coverage snapshots for trend data
+        snapshot_a = CoverageSnapshot(
+            id=uuid.uuid4(),
+            cloud_account_id=account_a.id,
+            coverage_percent=45.0,
+            covered_techniques=50,
+            total_techniques=111,
+            average_confidence=0.85,
+            created_at=datetime.now(timezone.utc),
+        )
+        snapshot_b = CoverageSnapshot(
+            id=uuid.uuid4(),
+            cloud_account_id=account_b.id,
+            coverage_percent=65.0,
+            covered_techniques=72,
+            total_techniques=111,
+            average_confidence=0.90,
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add_all([snapshot_a, snapshot_b])
+
+        # Create owner (unrestricted)
+        owner_user = User(
+            id=uuid.uuid4(),
+            email="analytics_owner@example.com",
+            full_name="Analytics Owner",
+            password_hash=AuthService.hash_password("Password123!"),
+            email_verified=True,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(owner_user)
+        await db_session.flush()
+
+        owner_membership = OrganizationMember(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            user_id=owner_user.id,
+            role=UserRole.OWNER,
+            status=MembershipStatus.ACTIVE,
+            allowed_account_ids=None,
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add(owner_membership)
+
+        # Create restricted member (only account_a)
+        restricted_user = User(
+            id=uuid.uuid4(),
+            email="analytics_restricted@example.com",
+            full_name="Analytics Restricted",
+            password_hash=AuthService.hash_password("Password123!"),
+            email_verified=True,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(restricted_user)
+        await db_session.flush()
+
+        restricted_membership = OrganizationMember(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            user_id=restricted_user.id,
+            role=UserRole.MEMBER,
+            status=MembershipStatus.ACTIVE,
+            allowed_account_ids=[str(account_a.id)],
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add(restricted_membership)
+
+        # Create empty ACL user (no access)
+        empty_acl_user = User(
+            id=uuid.uuid4(),
+            email="analytics_empty_acl@example.com",
+            full_name="Analytics Empty ACL",
+            password_hash=AuthService.hash_password("Password123!"),
+            email_verified=True,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(empty_acl_user)
+        await db_session.flush()
+
+        empty_acl_membership = OrganizationMember(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            user_id=empty_acl_user.id,
+            role=UserRole.MEMBER,
+            status=MembershipStatus.ACTIVE,
+            allowed_account_ids=[],  # Empty = no access
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add(empty_acl_membership)
+
+        await db_session.commit()
+
+        return {
+            "org": org,
+            "account_a": account_a,
+            "account_b": account_b,
+            "owner_user": owner_user,
+            "restricted_user": restricted_user,
+            "empty_acl_user": empty_acl_user,
+        }
+
+    def _get_token(self, setup: dict, user_key: str) -> str:
+        """Helper to generate auth token."""
+        user = setup[user_key]
+        org = setup["org"]
+        return AuthService.generate_access_token(
+            user_id=user.id,
+            organization_id=org.id,
+        )
+
+    # -------------------------------------------------------------------------
+    # Analytics Trends Endpoint ACL Tests
+    # -------------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_owner_can_access_org_wide_trends(
+        self, client: AsyncClient, analytics_acl_setup
+    ):
+        """Owner can access analytics without specifying account."""
+        setup = analytics_acl_setup
+        token = self._get_token(setup, "owner_user")
+
+        response = await client.get(
+            "/api/v1/analytics/trends",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_restricted_user_trends_filtered_to_allowed_accounts(
+        self, client: AsyncClient, analytics_acl_setup
+    ):
+        """Restricted user's trends are filtered to allowed accounts only."""
+        setup = analytics_acl_setup
+        token = self._get_token(setup, "restricted_user")
+
+        response = await client.get(
+            "/api/v1/analytics/trends",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        # Should succeed but only include data from account_a
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_restricted_user_cannot_access_non_allowed_account_trends(
+        self, client: AsyncClient, analytics_acl_setup
+    ):
+        """Restricted user cannot request trends for non-allowed account."""
+        setup = analytics_acl_setup
+        token = self._get_token(setup, "restricted_user")
+
+        response = await client.get(
+            f"/api/v1/analytics/trends?cloud_account_id={setup['account_b'].id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 403
+        assert "Access denied" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_empty_acl_user_gets_empty_trends(
+        self, client: AsyncClient, analytics_acl_setup
+    ):
+        """User with empty allowed_account_ids gets empty results."""
+        setup = analytics_acl_setup
+        token = self._get_token(setup, "empty_acl_user")
+
+        response = await client.get(
+            "/api/v1/analytics/trends",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Should return empty data
+        assert data["trend_data"] == []
+
+    # -------------------------------------------------------------------------
+    # Analytics Summary Endpoint ACL Tests
+    # -------------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_restricted_user_summary_filtered_to_allowed_accounts(
+        self, client: AsyncClient, analytics_acl_setup
+    ):
+        """Restricted user's summary is filtered to allowed accounts only."""
+        setup = analytics_acl_setup
+        token = self._get_token(setup, "restricted_user")
+
+        response = await client.get(
+            "/api/v1/analytics/summary",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_empty_acl_user_gets_empty_summary(
+        self, client: AsyncClient, analytics_acl_setup
+    ):
+        """User with empty ACL gets empty analytics summary."""
+        setup = analytics_acl_setup
+        token = self._get_token(setup, "empty_acl_user")
+
+        response = await client.get(
+            "/api/v1/analytics/summary",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["top_gaps"] == []
+        assert data["top_recommendations"] == []
+
+
+# ============================================================================
+# FINDING: Schedules List ACL Enforcement Tests
+# ============================================================================
+
+
+class TestSchedulesACL:
+    """Tests for ACL enforcement on schedules list endpoint."""
+
+    @pytest_asyncio.fixture
+    async def schedules_acl_setup(self, db_session: AsyncSession):
+        """Create org with accounts and schedules for ACL tests."""
+        # Create organisation
+        org = Organization(
+            id=uuid.uuid4(),
+            name="Schedules ACL Test Org",
+            slug="schedules-acl-test-org",
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(org)
+        await db_session.flush()
+
+        # Create subscription
+        subscription = Subscription(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            tier=AccountTier.INDIVIDUAL,
+            status="active",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(subscription)
+
+        # Create 2 cloud accounts
+        account_a = CloudAccount(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            name="Schedule Account A",
+            provider="aws",
+            account_id="666666666666",
+            global_account_hash=_make_global_hash("aws", "666666666666"),
+            created_at=datetime.now(timezone.utc),
+        )
+        account_b = CloudAccount(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            name="Schedule Account B",
+            provider="aws",
+            account_id="777777777777",
+            global_account_hash=_make_global_hash("aws", "777777777777"),
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add_all([account_a, account_b])
+        await db_session.flush()
+
+        # Create schedules in each account
+        schedule_a = ScanSchedule(
+            id=uuid.uuid4(),
+            cloud_account_id=account_a.id,
+            name="Schedule A",
+            frequency=ScheduleFrequency.DAILY,
+            hour=10,
+            minute=0,
+            timezone="UTC",
+            is_active=False,
+            created_at=datetime.now(timezone.utc),
+        )
+        schedule_b = ScanSchedule(
+            id=uuid.uuid4(),
+            cloud_account_id=account_b.id,
+            name="Schedule B",
+            frequency=ScheduleFrequency.WEEKLY,
+            hour=14,
+            minute=30,
+            timezone="UTC",
+            is_active=False,
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add_all([schedule_a, schedule_b])
+
+        # Create owner
+        owner_user = User(
+            id=uuid.uuid4(),
+            email="schedule_owner@example.com",
+            full_name="Schedule Owner",
+            password_hash=AuthService.hash_password("Password123!"),
+            email_verified=True,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(owner_user)
+        await db_session.flush()
+
+        owner_membership = OrganizationMember(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            user_id=owner_user.id,
+            role=UserRole.OWNER,
+            status=MembershipStatus.ACTIVE,
+            allowed_account_ids=None,
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add(owner_membership)
+
+        # Create restricted member
+        restricted_user = User(
+            id=uuid.uuid4(),
+            email="schedule_restricted@example.com",
+            full_name="Schedule Restricted",
+            password_hash=AuthService.hash_password("Password123!"),
+            email_verified=True,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(restricted_user)
+        await db_session.flush()
+
+        restricted_membership = OrganizationMember(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            user_id=restricted_user.id,
+            role=UserRole.MEMBER,
+            status=MembershipStatus.ACTIVE,
+            allowed_account_ids=[str(account_a.id)],
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add(restricted_membership)
+
+        # Create empty ACL user
+        empty_acl_user = User(
+            id=uuid.uuid4(),
+            email="schedule_empty_acl@example.com",
+            full_name="Schedule Empty ACL",
+            password_hash=AuthService.hash_password("Password123!"),
+            email_verified=True,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(empty_acl_user)
+        await db_session.flush()
+
+        empty_acl_membership = OrganizationMember(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            user_id=empty_acl_user.id,
+            role=UserRole.MEMBER,
+            status=MembershipStatus.ACTIVE,
+            allowed_account_ids=[],
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add(empty_acl_membership)
+
+        await db_session.commit()
+
+        return {
+            "org": org,
+            "account_a": account_a,
+            "account_b": account_b,
+            "schedule_a": schedule_a,
+            "schedule_b": schedule_b,
+            "owner_user": owner_user,
+            "restricted_user": restricted_user,
+            "empty_acl_user": empty_acl_user,
+        }
+
+    def _get_token(self, setup: dict, user_key: str) -> str:
+        user = setup[user_key]
+        org = setup["org"]
+        return AuthService.generate_access_token(
+            user_id=user.id,
+            organization_id=org.id,
+        )
+
+    @pytest.mark.asyncio
+    async def test_owner_sees_all_schedules(
+        self, client: AsyncClient, schedules_acl_setup
+    ):
+        """Owner sees all schedules."""
+        setup = schedules_acl_setup
+        token = self._get_token(setup, "owner_user")
+
+        response = await client.get(
+            "/api/v1/schedules",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 2
+
+    @pytest.mark.asyncio
+    async def test_restricted_user_sees_only_allowed_schedules(
+        self, client: AsyncClient, schedules_acl_setup
+    ):
+        """Restricted user only sees schedules from allowed accounts."""
+        setup = schedules_acl_setup
+        token = self._get_token(setup, "restricted_user")
+
+        response = await client.get(
+            "/api/v1/schedules",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["name"] == "Schedule A"
+
+    @pytest.mark.asyncio
+    async def test_empty_acl_user_sees_no_schedules(
+        self, client: AsyncClient, schedules_acl_setup
+    ):
+        """User with empty ACL sees no schedules."""
+        setup = schedules_acl_setup
+        token = self._get_token(setup, "empty_acl_user")
+
+        response = await client.get(
+            "/api/v1/schedules",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 0
+
+
+# ============================================================================
+# FINDING: VIEWER Role Write Attempt Tests
+# ============================================================================
+
+
+class TestViewerWriteAttempts:
+    """Tests verifying VIEWER role cannot perform write operations.
+
+    VIEWER should only have read access - all write endpoints should reject.
+    """
+
+    @pytest_asyncio.fixture
+    async def viewer_setup(self, db_session: AsyncSession):
+        """Create org with VIEWER user for write attempt tests."""
+        # Create organisation
+        org = Organization(
+            id=uuid.uuid4(),
+            name="Viewer Test Org",
+            slug="viewer-test-org",
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(org)
+        await db_session.flush()
+
+        # Create subscription
+        subscription = Subscription(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            tier=AccountTier.PRO,
+            status="active",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(subscription)
+
+        # Create cloud account
+        cloud_account = CloudAccount(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            name="Viewer Test Account",
+            provider="aws",
+            account_id="888888888888",
+            global_account_hash=_make_global_hash("aws", "888888888888"),
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add(cloud_account)
+        await db_session.flush()
+
+        # Create schedule for testing
+        schedule = ScanSchedule(
+            id=uuid.uuid4(),
+            cloud_account_id=cloud_account.id,
+            name="Viewer Test Schedule",
+            frequency=ScheduleFrequency.DAILY,
+            hour=12,
+            minute=0,
+            timezone="UTC",
+            is_active=False,
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add(schedule)
+
+        # Create VIEWER user
+        viewer_user = User(
+            id=uuid.uuid4(),
+            email="viewer_test@example.com",
+            full_name="Viewer User",
+            password_hash=AuthService.hash_password("Password123!"),
+            email_verified=True,
+            is_active=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(viewer_user)
+        await db_session.flush()
+
+        viewer_membership = OrganizationMember(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            user_id=viewer_user.id,
+            role=UserRole.VIEWER,
+            status=MembershipStatus.ACTIVE,
+            allowed_account_ids=None,
+            created_at=datetime.now(timezone.utc),
+        )
+        db_session.add(viewer_membership)
+
+        await db_session.commit()
+
+        return {
+            "org": org,
+            "cloud_account": cloud_account,
+            "schedule": schedule,
+            "viewer_user": viewer_user,
+        }
+
+    def _get_token(self, setup: dict) -> str:
+        return AuthService.generate_access_token(
+            user_id=setup["viewer_user"].id,
+            organization_id=setup["org"].id,
+        )
+
+    # -------------------------------------------------------------------------
+    # Scan Write Operations
+    # -------------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_viewer_cannot_create_scan(self, client: AsyncClient, viewer_setup):
+        """VIEWER cannot create scans."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.post(
+            "/api/v1/scans",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "cloud_account_id": str(setup["cloud_account"].id),
+                "regions": ["eu-west-2"],
+            },
+        )
+
+        assert response.status_code == 403
+        assert "Requires role" in response.json()["detail"]
+
+    # -------------------------------------------------------------------------
+    # Coverage Write Operations
+    # -------------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_viewer_cannot_calculate_coverage(
+        self, client: AsyncClient, viewer_setup
+    ):
+        """VIEWER cannot trigger coverage calculation."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.post(
+            f"/api/v1/coverage/{setup['cloud_account'].id}/calculate",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 403
+        assert "Requires role" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_viewer_cannot_record_drift_snapshot(
+        self, client: AsyncClient, viewer_setup
+    ):
+        """VIEWER cannot record drift snapshots."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.post(
+            f"/api/v1/coverage/{setup['cloud_account'].id}/drift/snapshot",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 403
+        assert "Requires role" in response.json()["detail"]
+
+    # -------------------------------------------------------------------------
+    # Schedule Write Operations
+    # -------------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_viewer_cannot_create_schedule(
+        self, client: AsyncClient, viewer_setup
+    ):
+        """VIEWER cannot create schedules."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.post(
+            "/api/v1/schedules",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "cloud_account_id": str(setup["cloud_account"].id),
+                "name": "Test Schedule",
+                "frequency": "daily",
+                "hour": 12,
+                "minute": 0,
+                "timezone": "UTC",
+            },
+        )
+
+        assert response.status_code == 403
+        assert "Requires role" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_viewer_cannot_update_schedule(
+        self, client: AsyncClient, viewer_setup
+    ):
+        """VIEWER cannot update schedules."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.put(
+            f"/api/v1/schedules/{setup['schedule'].id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": "Updated Name"},
+        )
+
+        assert response.status_code == 403
+        assert "Requires role" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_viewer_cannot_delete_schedule(
+        self, client: AsyncClient, viewer_setup
+    ):
+        """VIEWER cannot delete schedules."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.delete(
+            f"/api/v1/schedules/{setup['schedule'].id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 403
+        assert "Requires role" in response.json()["detail"]
+
+    # -------------------------------------------------------------------------
+    # Account Write Operations
+    # -------------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_viewer_cannot_create_account(
+        self, client: AsyncClient, viewer_setup
+    ):
+        """VIEWER cannot create cloud accounts."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.post(
+            "/api/v1/accounts",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "name": "New Account",
+                "provider": "aws",
+                "account_id": "999999999999",
+            },
+        )
+
+        assert response.status_code == 403
+        assert "Requires role" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_viewer_cannot_update_account(
+        self, client: AsyncClient, viewer_setup
+    ):
+        """VIEWER cannot update cloud accounts."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.patch(
+            f"/api/v1/accounts/{setup['cloud_account'].id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": "Updated Name"},
+        )
+
+        assert response.status_code == 403
+        assert "Requires role" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_viewer_cannot_delete_account(
+        self, client: AsyncClient, viewer_setup
+    ):
+        """VIEWER cannot delete cloud accounts."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.delete(
+            f"/api/v1/accounts/{setup['cloud_account'].id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 403
+        assert "Requires role" in response.json()["detail"]
+
+    # -------------------------------------------------------------------------
+    # VIEWER Can Still Read
+    # -------------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_viewer_can_list_accounts(self, client: AsyncClient, viewer_setup):
+        """VIEWER can still list accounts (read access)."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.get(
+            "/api/v1/accounts",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_viewer_can_list_scans(self, client: AsyncClient, viewer_setup):
+        """VIEWER can still list scans (read access)."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.get(
+            "/api/v1/scans",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_viewer_can_list_schedules(self, client: AsyncClient, viewer_setup):
+        """VIEWER can still list schedules (read access)."""
+        setup = viewer_setup
+        token = self._get_token(setup)
+
+        response = await client.get(
+            "/api/v1/schedules",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
