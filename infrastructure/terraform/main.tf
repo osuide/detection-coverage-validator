@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.10.0"
 
   required_providers {
     aws = {
@@ -17,12 +17,15 @@ terraform {
   }
 
   # Backend configuration for remote state
+  # Note: Both dynamodb_table and use_lockfile are set during migration to S3 native locking.
+  # Once confirmed stable, dynamodb_table can be removed in a future PR.
   backend "s3" {
     bucket         = "a13e-terraform-state"
     key            = "staging/terraform.tfstate"
     region         = "eu-west-2"
     encrypt        = true
     dynamodb_table = "a13e-terraform-lock"
+    use_lockfile   = true
   }
 }
 

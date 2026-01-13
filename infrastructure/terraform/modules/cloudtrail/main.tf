@@ -73,7 +73,7 @@ resource "aws_kms_key" "cloudtrail" {
         Resource = "*"
         Condition = {
           StringEquals = {
-            "aws:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/a13e-${var.environment}-trail"
+            "aws:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:trail/a13e-${var.environment}-trail"
           }
           StringLike = {
             "kms:EncryptionContext:aws:cloudtrail:arn" = "arn:aws:cloudtrail:*:${data.aws_caller_identity.current.account_id}:trail/*"
@@ -84,7 +84,7 @@ resource "aws_kms_key" "cloudtrail" {
         Sid    = "Allow CloudWatch Logs to use the key"
         Effect = "Allow"
         Principal = {
-          Service = "logs.${data.aws_region.current.name}.amazonaws.com"
+          Service = "logs.${data.aws_region.current.region}.amazonaws.com"
         }
         Action = [
           "kms:Encrypt*",
@@ -96,7 +96,7 @@ resource "aws_kms_key" "cloudtrail" {
         Resource = "*"
         Condition = {
           ArnEquals = {
-            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:a13e-${var.environment}-cloudtrail"
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:a13e-${var.environment}-cloudtrail"
           }
         }
       }
@@ -217,7 +217,7 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
         Resource = aws_s3_bucket.cloudtrail.arn
         Condition = {
           StringEquals = {
-            "aws:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/a13e-${var.environment}-trail"
+            "aws:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:trail/a13e-${var.environment}-trail"
           }
         }
       },
@@ -232,7 +232,7 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
         Condition = {
           StringEquals = {
             "s3:x-amz-acl"  = "bucket-owner-full-control"
-            "aws:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/a13e-${var.environment}-trail"
+            "aws:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:trail/a13e-${var.environment}-trail"
           }
         }
       },

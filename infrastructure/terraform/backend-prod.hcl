@@ -6,3 +6,4 @@ key            = "prod/terraform.tfstate"
 region         = "eu-west-2"
 encrypt        = true
 dynamodb_table = "a13e-terraform-lock"
+use_lockfile   = true

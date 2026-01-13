@@ -630,8 +630,8 @@ resource "aws_iam_role_policy" "ecs_task" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = [
-          "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:dcv/${var.environment}/*",
-          "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:a13e/${var.environment}/*"
+          "arn:aws:secretsmanager:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:secret:dcv/${var.environment}/*",
+          "arn:aws:secretsmanager:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:secret:a13e/${var.environment}/*"
         ]
       },
       {
@@ -683,11 +683,11 @@ resource "aws_iam_role_policy" "ecs_task" {
         # Scope to verified domain identity (email sender) and any email address
         # SES requires permission on both the identity (domain) and recipient
         Resource = var.ses_domain != "" ? [
-          "arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/${var.ses_domain}",
-          "arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/*@${var.ses_domain}",
+          "arn:aws:ses:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:identity/${var.ses_domain}",
+          "arn:aws:ses:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:identity/*@${var.ses_domain}",
           # Also allow sending to any recipient (required for SES)
-          "arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/*"
-        ] : ["arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/*"]
+          "arn:aws:ses:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:identity/*"
+        ] : ["arn:aws:ses:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:identity/*"]
       },
       {
         Sid    = "ECSExec"
@@ -989,7 +989,7 @@ resource "aws_ecs_task_definition" "backend" {
       logDriver = "awslogs"
       options = {
         "awslogs-group"         = aws_cloudwatch_log_group.backend.name
-        "awslogs-region"        = data.aws_region.current.name
+        "awslogs-region"        = data.aws_region.current.region
         "awslogs-stream-prefix" = "backend"
       }
     }

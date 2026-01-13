@@ -36,7 +36,7 @@ output "api_client_secret" {
 
 output "cognito_domain_url" {
   description = "Full Cognito hosted UI domain URL"
-  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com"
+  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.region}.amazoncognito.com"
 }
 
 output "enabled_providers" {
@@ -50,17 +50,17 @@ output "enabled_providers" {
 
 output "issuer" {
   description = "Cognito issuer URL for JWT verification"
-  value       = "https://cognito-idp.${data.aws_region.current.name}.amazonaws.com/${aws_cognito_user_pool.main.id}"
+  value       = "https://cognito-idp.${data.aws_region.current.region}.amazonaws.com/${aws_cognito_user_pool.main.id}"
 }
 
 output "authorization_endpoint" {
   description = "OAuth authorization endpoint"
-  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com/oauth2/authorize"
+  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.region}.amazoncognito.com/oauth2/authorize"
 }
 
 output "token_endpoint" {
   description = "OAuth token endpoint"
-  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com/oauth2/token"
+  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.region}.amazoncognito.com/oauth2/token"
 }
 
 data "aws_region" "current" {}

@@ -117,8 +117,8 @@ resource "aws_iam_role_policy" "codebuild" {
           "logs:PutLogEvents"
         ]
         Resource = [
-          "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/a13e-${var.environment}-integration-tests",
-          "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/a13e-${var.environment}-integration-tests:*"
+          "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/a13e-${var.environment}-integration-tests",
+          "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/a13e-${var.environment}-integration-tests:*"
         ]
       },
       {
@@ -139,10 +139,10 @@ resource "aws_iam_role_policy" "codebuild" {
         Action = [
           "ec2:CreateNetworkInterfacePermission"
         ]
-        Resource = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:network-interface/*"
+        Resource = "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:network-interface/*"
         Condition = {
           StringEquals = {
-            "ec2:Subnet" = [for subnet_id in var.public_subnet_ids : "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:subnet/${subnet_id}"]
+            "ec2:Subnet" = [for subnet_id in var.public_subnet_ids : "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:subnet/${subnet_id}"]
           }
         }
       }
@@ -276,7 +276,7 @@ resource "aws_iam_policy" "github_actions_codebuild" {
         Action = [
           "logs:GetLogEvents"
         ]
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/a13e-${var.environment}-integration-tests:*"
+        Resource = "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/a13e-${var.environment}-integration-tests:*"
       }
     ]
   })
