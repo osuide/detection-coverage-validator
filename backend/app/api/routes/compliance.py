@@ -247,6 +247,13 @@ async def get_control_coverage_detail(
             detail="Account not found",
         )
 
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this cloud account",
+        )
+
     service = ComplianceService(db)
     result = await service.get_control_coverage_detail(
         control_id=control_id,
@@ -282,6 +289,13 @@ async def get_compliance_summary(
             detail="Account not found",
         )
 
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this cloud account",
+        )
+
     service = ComplianceService(db)
     summaries = await service.get_compliance_summary(cloud_account_id)
 
@@ -307,6 +321,13 @@ async def get_framework_coverage(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Account not found",
+        )
+
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this cloud account",
         )
 
     service = ComplianceService(db)

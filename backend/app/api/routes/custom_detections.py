@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_scope
+from app.core.security import AuthContext, get_auth_context, require_scope, require_role
+from app.models.user import UserRole
 from app.models.custom_detection import (
     CustomDetectionFormat,
     CustomDetectionStatus,
@@ -104,7 +105,10 @@ class MappingSummaryResponse(BaseModel):
 @router.post(
     "",
     response_model=CustomDetectionResponse,
-    dependencies=[Depends(require_scope("write:detections"))],
+    dependencies=[
+        Depends(require_scope("write:detections")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def create_custom_detection(
     request: CustomDetectionCreate,
@@ -159,7 +163,10 @@ async def create_custom_detection(
 @router.post(
     "/batch",
     response_model=BatchUploadResponse,
-    dependencies=[Depends(require_scope("write:detections"))],
+    dependencies=[
+        Depends(require_scope("write:detections")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def upload_batch(
     file: UploadFile = File(...),
@@ -237,6 +244,12 @@ async def list_custom_detections(
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
 
+    # SECURITY: Check allowed_account_ids ACL when filtering by account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = CustomDetectionService(db)
     detections, total = await service.list_detections(
         organization_id=auth.organization_id,
@@ -283,6 +296,12 @@ async def get_mapping_summary(
     """Get summary statistics for custom detection mappings."""
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
+
+    # SECURITY: Check allowed_account_ids ACL when filtering by account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     service = CustomDetectionService(db)
     summary = await service.get_mapping_summary(auth.organization_id, cloud_account_id)
@@ -385,7 +404,10 @@ async def update_mapping(
 
 @router.delete(
     "/{detection_id}",
-    dependencies=[Depends(require_scope("write:detections"))],
+    dependencies=[
+        Depends(require_scope("write:detections")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def delete_custom_detection(
     detection_id: UUID,

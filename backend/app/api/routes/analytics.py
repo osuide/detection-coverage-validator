@@ -158,9 +158,12 @@ async def get_coverage_trends(
         raise HTTPException(status_code=401, detail="Organisation context required")
 
     service = AnalyticsService(db)
-    result = await service.get_coverage_trends(
-        auth.organization_id, cloud_account_id, days
-    )
+    try:
+        result = await service.get_coverage_trends(
+            auth.organization_id, cloud_account_id, days
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     # Transform statistics if present
     stats = None
@@ -200,9 +203,12 @@ async def get_gap_prioritization(
         raise HTTPException(status_code=401, detail="Organisation context required")
 
     service = AnalyticsService(db)
-    gaps = await service.get_gap_prioritization(
-        auth.organization_id, cloud_account_id, limit
-    )
+    try:
+        gaps = await service.get_gap_prioritization(
+            auth.organization_id, cloud_account_id, limit
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     return GapPrioritizationResponse(
         gaps=[GapPriorityItem(**g) for g in gaps],
@@ -232,9 +238,12 @@ async def get_detection_effectiveness(
         raise HTTPException(status_code=401, detail="Organisation context required")
 
     service = AnalyticsService(db)
-    result = await service.get_detection_effectiveness(
-        auth.organization_id, cloud_account_id
-    )
+    try:
+        result = await service.get_detection_effectiveness(
+            auth.organization_id, cloud_account_id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     by_type = [DetectionTypeEffectiveness(**d) for d in result.get("by_type", [])]
     summary = EffectivenessSummary(**result.get("summary", {}))
@@ -265,9 +274,12 @@ async def get_recommendations(
         raise HTTPException(status_code=401, detail="Organisation context required")
 
     service = AnalyticsService(db)
-    recommendations = await service.get_recommendations(
-        auth.organization_id, cloud_account_id, limit
-    )
+    try:
+        recommendations = await service.get_recommendations(
+            auth.organization_id, cloud_account_id, limit
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     return RecommendationsResponse(
         recommendations=[RecommendationItem(**r) for r in recommendations]
@@ -296,9 +308,12 @@ async def get_tactic_breakdown(
         raise HTTPException(status_code=401, detail="Organisation context required")
 
     service = AnalyticsService(db)
-    breakdown = await service.get_tactic_breakdown(
-        auth.organization_id, cloud_account_id
-    )
+    try:
+        breakdown = await service.get_tactic_breakdown(
+            auth.organization_id, cloud_account_id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     return TacticBreakdownResponse(
         tactics=[TacticBreakdownItem(**t) for t in breakdown]
@@ -327,19 +342,22 @@ async def get_analytics_summary(
 
     service = AnalyticsService(db)
 
-    # Get multiple analytics in parallel
-    trends = await service.get_coverage_trends(
-        auth.organization_id, cloud_account_id, days=7
-    )
-    effectiveness = await service.get_detection_effectiveness(
-        auth.organization_id, cloud_account_id
-    )
-    gaps = await service.get_gap_prioritization(
-        auth.organization_id, cloud_account_id, limit=5
-    )
-    recommendations = await service.get_recommendations(
-        auth.organization_id, cloud_account_id, limit=3
-    )
+    try:
+        # Get multiple analytics in parallel
+        trends = await service.get_coverage_trends(
+            auth.organization_id, cloud_account_id, days=7
+        )
+        effectiveness = await service.get_detection_effectiveness(
+            auth.organization_id, cloud_account_id
+        )
+        gaps = await service.get_gap_prioritization(
+            auth.organization_id, cloud_account_id, limit=5
+        )
+        recommendations = await service.get_recommendations(
+            auth.organization_id, cloud_account_id, limit=3
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     return {
         "trends_7d": {

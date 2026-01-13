@@ -134,6 +134,12 @@ async def get_feature_status(
     """
     org = auth_ctx.organization
 
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth_ctx.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Check subscription tier
     result = await db.execute(
         select(Subscription).where(Subscription.organization_id == org.id)
@@ -230,6 +236,12 @@ async def give_consent(
             status_code=status.HTTP_404_NOT_FOUND, detail="Cloud account not found"
         )
 
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth_ctx.can_access_account(request.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Require explicit acknowledgments
     if not request.acknowledged_risks:
         raise HTTPException(
@@ -317,6 +329,12 @@ async def revoke_consent(
     org = auth_ctx.organization
     current_user = auth_ctx.user
 
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth_ctx.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     result = await db.execute(
         select(CodeAnalysisConsent).where(
             CodeAnalysisConsent.cloud_account_id == cloud_account_id,
@@ -360,6 +378,12 @@ async def get_consent(
 ) -> dict:
     """Get current consent status for a cloud account."""
     org = auth_ctx.organization
+
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth_ctx.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     result = await db.execute(
         select(CodeAnalysisConsent).where(

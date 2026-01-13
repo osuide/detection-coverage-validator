@@ -586,6 +586,19 @@ async def _authenticate_api_key(
     )
     organization = result.scalar_one_or_none()
 
+    # SECURITY: Check if organisation is suspended (matches JWT path behaviour)
+    if organization and not organization.is_active:
+        logger.warning(
+            "api_key_org_suspended",
+            org_id=str(api_key.organization_id),
+            api_key_id=str(api_key.id),
+            reason="organisation_suspended",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organisation account is suspended",
+        )
+
     # Store context in request state
     request.state.auth_context = AuthContext(
         organization=organization,

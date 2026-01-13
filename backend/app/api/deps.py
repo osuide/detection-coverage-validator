@@ -47,6 +47,14 @@ async def get_current_admin(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # SECURITY: Handle None payload from expired/invalid tokens (decode_token returns None, not raises)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     # Verify this is an admin token
     if payload.get("type") != "admin":
         raise HTTPException(
@@ -55,8 +63,16 @@ async def get_current_admin(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    admin_id = UUID(payload["sub"])
-    session_id = UUID(payload.get("session_id", ""))
+    # SECURITY: Guard UUID parsing to return 401 instead of 500 on malformed tokens
+    try:
+        admin_id = UUID(payload["sub"])
+        session_id = UUID(payload.get("session_id", ""))
+    except (ValueError, TypeError, KeyError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     # Get admin user
     result = await db.execute(select(AdminUser).where(AdminUser.id == admin_id))

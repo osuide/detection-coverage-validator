@@ -10,7 +10,8 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.sql_utils import escape_like_pattern
-from app.core.security import AuthContext, get_auth_context, require_scope
+from app.core.security import AuthContext, get_auth_context, require_scope, require_role
+from app.models.user import UserRole
 from app.models.cloud_account import CloudAccount
 from app.models.mapping import DetectionMapping, MappingSource
 from app.models.mitre import Technique, Tactic
@@ -193,13 +194,22 @@ async def list_tactics(
     ]
 
 
-@router.delete("/{mapping_id}", status_code=204)
+@router.delete(
+    "/{mapping_id}",
+    status_code=204,
+    dependencies=[
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
+)
 async def delete_mapping(
     mapping_id: UUID,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Delete a detection mapping."""
+    """Delete a detection mapping.
+
+    SECURITY: Requires MEMBER role or higher. VIEWERs are read-only.
+    """
     from app.models.detection import Detection
 
     # Verify mapping exists and belongs to user's organization
@@ -221,7 +231,10 @@ async def delete_mapping(
 
 @router.post(
     "/remap-all",
-    dependencies=[Depends(require_scope("write:mappings"))],
+    dependencies=[
+        Depends(require_scope("write:mappings")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def remap_all_detections(
     cloud_account_id: Optional[UUID] = None,

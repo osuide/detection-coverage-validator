@@ -60,6 +60,11 @@ async def list_schedules(
     )
 
     if cloud_account_id:
+        # SECURITY: Check allowed_account_ids ACL
+        if not auth.can_access_account(cloud_account_id):
+            raise HTTPException(
+                status_code=403, detail="Access denied to this cloud account"
+            )
         query = query.where(ScanSchedule.cloud_account_id == cloud_account_id)
         count_query = count_query.where(
             ScanSchedule.cloud_account_id == cloud_account_id
@@ -93,6 +98,7 @@ async def list_schedules(
     dependencies=[
         Depends(require_scope("write:schedules")),
         Depends(require_feature("scheduled_scans")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
     ],
 )
 async def create_schedule(
@@ -208,7 +214,10 @@ async def get_schedule_status(
 @router.put(
     "/{schedule_id}",
     response_model=ScheduleResponse,
-    dependencies=[Depends(require_scope("write:schedules"))],
+    dependencies=[
+        Depends(require_scope("write:schedules")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def update_schedule(
     schedule_id: UUID,
@@ -250,7 +259,10 @@ async def update_schedule(
 @router.delete(
     "/{schedule_id}",
     status_code=204,
-    dependencies=[Depends(require_scope("write:schedules"))],
+    dependencies=[
+        Depends(require_scope("write:schedules")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def delete_schedule(
     schedule_id: UUID,

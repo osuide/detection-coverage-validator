@@ -373,6 +373,12 @@ async def get_quick_wins(
     if not account_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Cloud account not found")
 
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Get latest coverage snapshot for gap techniques
     result = await db.execute(
         select(CoverageSnapshot)
@@ -424,6 +430,12 @@ async def get_implementation_plan(
     )
     if not account_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Cloud account not found")
+
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     # Get latest coverage snapshot for gap techniques
     result = await db.execute(

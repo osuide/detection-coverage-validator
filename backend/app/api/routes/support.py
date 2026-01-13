@@ -170,7 +170,8 @@ class CustomerContextResponse(BaseModel):
     Fetch comprehensive customer context for support ticket handling.
 
     This endpoint is authenticated via a dedicated support API key
-    (X-Support-API-Key header), separate from regular user authentication.
+    using standard Bearer authentication (Authorization: Bearer <key>),
+    separate from regular user authentication.
 
     Returns:
     - Subscription and billing information

@@ -55,6 +55,32 @@ class AnalyticsService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def _validate_account_ownership(
+        self,
+        organization_id: UUID,
+        cloud_account_id: UUID,
+    ) -> None:
+        """Validate cloud account belongs to organisation.
+
+        SECURITY: Prevents cross-tenant IDOR by ensuring the requested
+        cloud_account_id actually belongs to the authenticated organisation.
+
+        Args:
+            organization_id: The authenticated user's organisation
+            cloud_account_id: The requested cloud account ID
+
+        Raises:
+            ValueError: If account doesn't exist or doesn't belong to org
+        """
+        result = await self.db.execute(
+            select(CloudAccount.id).where(
+                CloudAccount.id == cloud_account_id,
+                CloudAccount.organization_id == organization_id,
+            )
+        )
+        if not result.scalar_one_or_none():
+            raise ValueError("Account not found or access denied")
+
     async def get_coverage_trends(
         self,
         organization_id: UUID,
@@ -73,8 +99,9 @@ class AnalyticsService:
         """
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-        # Get cloud accounts for this org
+        # SECURITY: Validate account ownership to prevent cross-tenant IDOR
         if cloud_account_id:
+            await self._validate_account_ownership(organization_id, cloud_account_id)
             account_ids = [cloud_account_id]
         else:
             accounts_result = await self.db.execute(
@@ -170,8 +197,9 @@ class AnalyticsService:
         Returns:
             List of prioritised gaps with impact analysis
         """
-        # Get latest coverage snapshot
+        # SECURITY: Validate account ownership to prevent cross-tenant IDOR
         if cloud_account_id:
+            await self._validate_account_ownership(organization_id, cloud_account_id)
             account_ids = [cloud_account_id]
         else:
             accounts_result = await self.db.execute(
@@ -288,8 +316,9 @@ class AnalyticsService:
         Returns:
             Detection effectiveness analysis
         """
-        # Get cloud accounts
+        # SECURITY: Validate account ownership to prevent cross-tenant IDOR
         if cloud_account_id:
+            await self._validate_account_ownership(organization_id, cloud_account_id)
             account_ids = [cloud_account_id]
         else:
             accounts_result = await self.db.execute(
@@ -476,8 +505,9 @@ class AnalyticsService:
         Returns:
             List of tactics with coverage percentages
         """
-        # Get cloud accounts
+        # SECURITY: Validate account ownership to prevent cross-tenant IDOR
         if cloud_account_id:
+            await self._validate_account_ownership(organization_id, cloud_account_id)
             account_ids = [cloud_account_id]
         else:
             accounts_result = await self.db.execute(

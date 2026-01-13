@@ -406,6 +406,13 @@ async def get_account_evaluation_summary(
             detail="Account not found",
         )
 
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this cloud account",
+        )
+
     # Default date range
     if not start_date or not end_date:
         default_start, default_end = _get_default_date_range(30)
@@ -553,6 +560,13 @@ async def get_account_evaluation_trends(
             detail="Account not found",
         )
 
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this cloud account",
+        )
+
     # Default date range
     if not start_date or not end_date:
         default_start, default_end = _get_default_date_range(30)
@@ -658,6 +672,13 @@ async def get_account_evaluation_alerts(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Account not found",
+        )
+
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this cloud account",
         )
 
     # Build query
