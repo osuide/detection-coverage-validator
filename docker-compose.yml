@@ -50,8 +50,8 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      STRIPE_PRICE_ID_SUBSCRIBER: ${STRIPE_PRICE_ID_SUBSCRIBER:-}
-      STRIPE_PRICE_ID_ENTERPRISE: ${STRIPE_PRICE_ID_ENTERPRISE:-}
+      STRIPE_PRICE_ID_INDIVIDUAL: ${STRIPE_PRICE_ID_INDIVIDUAL:-}
+      STRIPE_PRICE_ID_PRO: ${STRIPE_PRICE_ID_PRO:-}
       STRIPE_PRICE_ID_ADDITIONAL_ACCOUNT: ${STRIPE_PRICE_ID_ADDITIONAL_ACCOUNT:-}
       # OAuth Configuration - Set these in .env file
       COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-}
@@ -90,7 +90,7 @@ services:
       - /app/node_modules
     environment:
       # For browser requests (client-side)
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_BASE_URL=http://localhost:8000
       # For Vite proxy (server-side inside container) - use host.docker.internal on Mac/Windows
       - VITE_PROXY_TARGET=http://host.docker.internal:8000
     extra_hosts:
