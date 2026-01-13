@@ -10,7 +10,13 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.sql_utils import escape_like_pattern
-from app.core.security import AuthContext, get_auth_context, require_scope, require_role
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    require_scope,
+    require_role,
+    get_allowed_account_filter,
+)
 from app.models.user import UserRole
 from app.models.cloud_account import CloudAccount
 from app.models.mapping import DetectionMapping, MappingSource
@@ -251,6 +257,17 @@ async def remap_all_detections(
 
     mapper = PatternMapper()
 
+    # SECURITY: Apply allowed_account_ids ACL filter
+    allowed_accounts = get_allowed_account_filter(auth)
+    if allowed_accounts is not None and not allowed_accounts:
+        # Empty list = no access
+        return {
+            "message": "Re-mapping complete",
+            "detections_processed": 0,
+            "detections_with_mappings": 0,
+            "total_mappings_created": 0,
+        }
+
     # Get detections (filtered by organization)
     query = (
         select(Detection)
@@ -260,8 +277,17 @@ async def remap_all_detections(
             CloudAccount.organization_id == auth.organization_id,
         )
     )
+
+    # SECURITY: Apply ACL filter to query
+    if allowed_accounts is not None:
+        query = query.where(Detection.cloud_account_id.in_(allowed_accounts))
+
     if cloud_account_id:
-        # Also verify the specific account belongs to user's organization
+        # SECURITY: Check allowed_account_ids ACL for specific account
+        if not auth.can_access_account(cloud_account_id):
+            raise HTTPException(
+                status_code=403, detail="Access denied to this cloud account"
+            )
         query = query.where(Detection.cloud_account_id == cloud_account_id)
 
     result = await db.execute(query)

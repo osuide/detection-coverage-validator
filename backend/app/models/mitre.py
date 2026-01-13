@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, DateTime, Text, ForeignKey, Integer
+from sqlalchemy import String, DateTime, Text, ForeignKey, Integer, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -77,6 +77,7 @@ class Technique(Base):
 
     mitre_version: Mapped[str] = mapped_column(String(16), default="14.1")
     is_subtechnique: Mapped[bool] = mapped_column(default=False)
+    is_deprecated: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )

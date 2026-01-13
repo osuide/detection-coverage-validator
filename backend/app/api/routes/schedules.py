@@ -134,6 +134,12 @@ async def create_schedule(
     if not account:
         raise HTTPException(status_code=404, detail="Cloud account not found")
 
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(schedule_in.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Create schedule
     schedule = ScanSchedule(
         cloud_account_id=schedule_in.cloud_account_id,
@@ -186,6 +192,13 @@ async def get_schedule(
     schedule = result.scalar_one_or_none()
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
+
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(schedule.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     return schedule
 
 
@@ -214,6 +227,12 @@ async def get_schedule_status(
     schedule = result.scalar_one_or_none()
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
+
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(schedule.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     job_status = scheduler_service.get_job_status(schedule_id)
 
@@ -252,6 +271,12 @@ async def update_schedule(
     schedule = result.scalar_one_or_none()
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
+
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(schedule.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     # Update fields
     update_data = schedule_in.model_dump(exclude_unset=True)
@@ -297,6 +322,12 @@ async def delete_schedule(
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(schedule.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     # Remove from scheduler
     await scheduler_service.remove_schedule(schedule_id)
 
@@ -334,6 +365,12 @@ async def activate_schedule(
     schedule = result.scalar_one_or_none()
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
+
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(schedule.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     schedule.is_active = True
     await db.flush()
@@ -376,6 +413,12 @@ async def deactivate_schedule(
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(schedule.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     schedule.is_active = False
     schedule.next_run_at = None
     await db.flush()
@@ -417,6 +460,12 @@ async def run_schedule_now(
     schedule = result.scalar_one_or_none()
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
+
+    # SECURITY: Check allowed_account_ids ACL
+    if not auth.can_access_account(schedule.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     # Execute immediately
     await scheduler_service._execute_scheduled_scan(schedule_id)

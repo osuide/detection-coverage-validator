@@ -132,6 +132,14 @@ async def create_custom_detection(
     if not auth.organization_id or not auth.user_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
+    # SECURITY: Check allowed_account_ids ACL for cloud_account_id
+    if request.cloud_account_id and not auth.can_access_account(
+        request.cloud_account_id
+    ):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = CustomDetectionService(db)
     detection = await service.upload_detection(
         organization_id=auth.organization_id,
@@ -369,7 +377,10 @@ async def get_custom_detection(
 @router.patch(
     "/{detection_id}/mapping",
     response_model=CustomDetectionResponse,
-    dependencies=[Depends(require_scope("write:detections"))],
+    dependencies=[
+        Depends(require_scope("write:detections")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def update_mapping(
     detection_id: UUID,

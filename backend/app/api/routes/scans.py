@@ -309,7 +309,10 @@ async def get_scan(
 @router.post(
     "/{scan_id}/cancel",
     response_model=ScanResponse,
-    dependencies=[Depends(require_scope("write:scans"))],
+    dependencies=[
+        Depends(require_scope("write:scans")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def cancel_scan(
     scan_id: UUID,

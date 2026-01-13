@@ -10,7 +10,13 @@ from sqlalchemy import select
 import structlog
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_scope, require_role
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    require_scope,
+    require_role,
+    get_allowed_account_filter,
+)
 from app.models.alert import AlertConfig, AlertHistory, AlertSeverity
 from app.models.user import UserRole
 from app.models.cloud_account import CloudAccount
@@ -51,6 +57,21 @@ async def list_alerts(
     count_query = select(AlertConfig).where(
         AlertConfig.organization_id == auth.organization_id
     )
+
+    # SECURITY: Apply allowed_account_ids ACL filter
+    allowed_accounts = get_allowed_account_filter(auth)
+    if allowed_accounts is not None:  # None = unrestricted access
+        if not allowed_accounts:  # Empty list = no access
+            return AlertConfigListResponse(items=[], total=0, page=1, page_size=limit)
+        # Filter to alerts with allowed cloud_account_id OR org-wide alerts (null)
+        query = query.where(
+            (AlertConfig.cloud_account_id.in_(allowed_accounts))
+            | (AlertConfig.cloud_account_id.is_(None))
+        )
+        count_query = count_query.where(
+            (AlertConfig.cloud_account_id.in_(allowed_accounts))
+            | (AlertConfig.cloud_account_id.is_(None))
+        )
 
     if cloud_account_id:
         # SECURITY: Check allowed_account_ids ACL
@@ -167,6 +188,13 @@ async def get_alert(
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
+
+    # SECURITY: Check allowed_account_ids ACL for account-specific alerts
+    if alert.cloud_account_id and not auth.can_access_account(alert.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     return alert
 
 
@@ -195,6 +223,12 @@ async def update_alert(
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
+
+    # SECURITY: Check allowed_account_ids ACL for account-specific alerts
+    if alert.cloud_account_id and not auth.can_access_account(alert.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     # Update fields
     update_data = alert_in.model_dump(exclude_unset=True)
@@ -237,6 +271,12 @@ async def delete_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
+    # SECURITY: Check allowed_account_ids ACL for account-specific alerts
+    if alert.cloud_account_id and not auth.can_access_account(alert.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     await db.delete(alert)
     await db.commit()
 
@@ -261,6 +301,12 @@ async def activate_alert(
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
+
+    # SECURITY: Check allowed_account_ids ACL for account-specific alerts
+    if alert.cloud_account_id and not auth.can_access_account(alert.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     alert.is_active = True
     await db.commit()
@@ -290,6 +336,12 @@ async def deactivate_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
+    # SECURITY: Check allowed_account_ids ACL for account-specific alerts
+    if alert.cloud_account_id and not auth.can_access_account(alert.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     alert.is_active = False
     await db.commit()
     await db.refresh(alert)
@@ -317,6 +369,12 @@ async def test_alert(
     alert = result.scalar_one_or_none()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
+
+    # SECURITY: Check allowed_account_ids ACL for account-specific alerts
+    if alert.cloud_account_id and not auth.can_access_account(alert.cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     if not alert.channels:
         raise HTTPException(status_code=400, detail="No channels configured")
@@ -388,6 +446,17 @@ async def list_alert_history(
         AlertHistory.organization_id == auth.organization_id
     )
 
+    # SECURITY: Apply allowed_account_ids ACL filter
+    allowed_accounts = get_allowed_account_filter(auth)
+    if allowed_accounts is not None:  # None = unrestricted access
+        if not allowed_accounts:  # Empty list = no access
+            return AlertHistoryListResponse(items=[], total=0, page=1, page_size=limit)
+        # Filter to history for allowed cloud_account_ids
+        query = query.where(AlertHistory.cloud_account_id.in_(allowed_accounts))
+        count_query = count_query.where(
+            AlertHistory.cloud_account_id.in_(allowed_accounts)
+        )
+
     if cloud_account_id:
         # SECURITY: Check allowed_account_ids ACL
         if not auth.can_access_account(cloud_account_id):
@@ -450,6 +519,14 @@ async def resolve_alert(
     history = result.scalar_one_or_none()
     if not history:
         raise HTTPException(status_code=404, detail="Alert history not found")
+
+    # SECURITY: Check allowed_account_ids ACL
+    if history.cloud_account_id and not auth.can_access_account(
+        history.cloud_account_id
+    ):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
 
     history.is_resolved = True
     history.resolved_at = datetime.now(timezone.utc)

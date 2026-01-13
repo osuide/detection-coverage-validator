@@ -757,7 +757,10 @@ async def get_org_coverage(
 @router.post(
     "/organization/{cloud_organization_id}/calculate",
     response_model=OrgCoverageResponse,
-    dependencies=[Depends(require_scope("write:coverage"))],
+    dependencies=[
+        Depends(require_scope("write:coverage")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def calculate_org_coverage(
     cloud_organization_id: UUID,

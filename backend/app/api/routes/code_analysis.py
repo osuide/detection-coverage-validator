@@ -314,6 +314,7 @@ async def give_consent(
     dependencies=[
         Depends(require_feature("code_analysis")),
         Depends(require_scope("write:code_analysis")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
     ],
 )
 async def revoke_consent(
