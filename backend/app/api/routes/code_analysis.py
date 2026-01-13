@@ -22,8 +22,10 @@ from app.core.security import (
     AuthContext,
     get_auth_context,
     require_scope,
+    require_role,
     require_feature,
 )
+from app.models.user import UserRole
 from app.models.cloud_account import CloudAccount
 from app.models.code_analysis import (
     CodeAnalysisConsent,
@@ -200,6 +202,7 @@ async def get_feature_status(
     dependencies=[
         Depends(require_feature("code_analysis")),
         Depends(require_scope("write:code_analysis")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
     ],
 )
 async def give_consent(

@@ -14,8 +14,10 @@ from app.core.security import (
     AuthContext,
     get_auth_context,
     require_scope,
+    require_role,
     get_allowed_account_filter,
 )
+from app.models.user import UserRole
 from app.models.coverage import CoverageSnapshot, OrgCoverageSnapshot
 from app.models.cloud_account import CloudAccount
 from app.models.cloud_organization import CloudOrganization
@@ -500,7 +502,10 @@ async def get_technique_coverage(
 @router.post(
     "/{cloud_account_id}/calculate",
     response_model=CoverageResponse,
-    dependencies=[Depends(require_scope("write:coverage"))],
+    dependencies=[
+        Depends(require_scope("write:coverage")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def calculate_coverage(
     cloud_account_id: UUID,
@@ -872,7 +877,10 @@ async def get_drift_history(
 
 @router.post(
     "/{cloud_account_id}/drift/snapshot",
-    dependencies=[Depends(require_scope("write:coverage"))],
+    dependencies=[
+        Depends(require_scope("write:coverage")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def record_drift_snapshot(
     cloud_account_id: UUID,
@@ -959,7 +967,10 @@ async def get_drift_alerts(
 
 @router.post(
     "/drift/alerts/{alert_id}/acknowledge",
-    dependencies=[Depends(require_scope("write:coverage"))],
+    dependencies=[
+        Depends(require_scope("write:coverage")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def acknowledge_drift_alert(
     alert_id: UUID,

@@ -8,7 +8,13 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import AuthContext, get_auth_context, require_scope, require_role
+from app.core.security import (
+    AuthContext,
+    get_auth_context,
+    require_scope,
+    require_role,
+    get_allowed_account_filter,
+)
 from app.models.user import UserRole
 from app.models.custom_detection import (
     CustomDetectionFormat,
@@ -244,7 +250,16 @@ async def list_custom_detections(
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
 
-    # SECURITY: Check allowed_account_ids ACL when filtering by account
+    # SECURITY: Apply allowed_account_ids ACL filter
+    # This ensures restricted users only see detections for accounts they can access
+    allowed_accounts = get_allowed_account_filter(auth)
+    if allowed_accounts is not None:  # None = unrestricted access
+        if not allowed_accounts:  # Empty list = no access
+            return CustomDetectionListResponse(
+                items=[], total=0, limit=limit, offset=offset
+            )
+
+    # SECURITY: Check allowed_account_ids ACL when filtering by specific account
     if cloud_account_id and not auth.can_access_account(cloud_account_id):
         raise HTTPException(
             status_code=403, detail="Access denied to this cloud account"
@@ -254,6 +269,7 @@ async def list_custom_detections(
     detections, total = await service.list_detections(
         organization_id=auth.organization_id,
         cloud_account_id=cloud_account_id,
+        allowed_account_ids=allowed_accounts,  # Pass ACL filter to service
         status=status,
         format=format,
         limit=limit,

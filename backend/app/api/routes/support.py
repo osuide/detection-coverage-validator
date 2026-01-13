@@ -7,6 +7,7 @@ This module provides:
 Uses Google Workspace integration for ticket routing and CRM logging.
 """
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -603,7 +604,9 @@ async def submit_support_ticket(
         # Log to CRM spreadsheet if configured (non-critical - continue on failure)
         if settings.support_crm_spreadsheet_id:
             try:
-                ws.append_to_sheet(
+                # ASYNC: Use to_thread to avoid blocking the event loop
+                await asyncio.to_thread(
+                    ws.append_to_sheet,
                     spreadsheet_id=settings.support_crm_spreadsheet_id,
                     sheet_name="Tickets",
                     values=[
@@ -660,7 +663,9 @@ Description:
 Submitted via A13E Support Form at {submitted_at.strftime('%Y-%m-%d %H:%M UTC')}
 """
 
-        ws.send_email(
+        # ASYNC: Use to_thread to avoid blocking the event loop
+        await asyncio.to_thread(
+            ws.send_email,
             to=settings.support_email,
             subject=f"[{ticket_id}] {request.subject}",
             body=email_body,
@@ -694,7 +699,9 @@ https://app.a13e.com
 """
 
         try:
-            ws.send_email(
+            # ASYNC: Use to_thread to avoid blocking the event loop
+            await asyncio.to_thread(
+                ws.send_email,
                 to=current_user.email,
                 subject=f"[{ticket_id}] We've received your support request",
                 body=user_confirmation,

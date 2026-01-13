@@ -77,7 +77,14 @@ async def list_accounts(
     )
 
     # For members/viewers, filter by allowed accounts if set
-    if auth.membership and auth.membership.allowed_account_ids:
+    # Security: Check explicitly for None vs empty list
+    # - None = unrestricted access (all accounts)
+    # - [] = no access (return empty result immediately)
+    # - [...] = restricted access (filter to specified accounts)
+    if auth.membership and auth.membership.allowed_account_ids is not None:
+        if not auth.membership.allowed_account_ids:
+            # Empty list means no access to any accounts
+            return []
         query = query.where(
             CloudAccount.id.in_(
                 [UUID(aid) for aid in auth.membership.allowed_account_ids]

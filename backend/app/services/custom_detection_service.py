@@ -429,6 +429,7 @@ class CustomDetectionService:
         self,
         organization_id: UUID,
         cloud_account_id: Optional[UUID] = None,
+        allowed_account_ids: Optional[list[UUID]] = None,
         status: Optional[CustomDetectionStatus] = None,
         format: Optional[CustomDetectionFormat] = None,
         limit: int = 50,
@@ -439,6 +440,7 @@ class CustomDetectionService:
         Args:
             organization_id: Organisation to list for
             cloud_account_id: Optional filter by account
+            allowed_account_ids: Optional ACL filter (list of allowed account IDs)
             status: Optional filter by status
             format: Optional filter by format
             limit: Maximum results
@@ -453,6 +455,15 @@ class CustomDetectionService:
         count_query = select(func.count(CustomDetection.id)).where(
             CustomDetection.organization_id == organization_id
         )
+
+        # SECURITY: Apply allowed_account_ids ACL filter
+        if allowed_account_ids is not None:
+            query = query.where(
+                CustomDetection.cloud_account_id.in_(allowed_account_ids)
+            )
+            count_query = count_query.where(
+                CustomDetection.cloud_account_id.in_(allowed_account_ids)
+            )
 
         if cloud_account_id:
             query = query.where(CustomDetection.cloud_account_id == cloud_account_id)

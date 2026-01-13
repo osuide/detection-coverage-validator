@@ -13,6 +13,7 @@ from app.core.security import (
     get_auth_context,
     require_scope,
     require_feature,
+    get_allowed_account_filter,
 )
 from app.services.analytics_service import AnalyticsService
 
@@ -157,10 +158,22 @@ async def get_coverage_trends(
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
 
+    # SECURITY: Apply allowed_account_ids ACL filter
+    allowed_accounts = get_allowed_account_filter(auth)
+    if allowed_accounts is not None and not allowed_accounts:
+        # Empty list = no access
+        return TrendsResponse(trend_data=[], statistics=None, period_days=days)
+
+    # SECURITY: Check ACL for specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = AnalyticsService(db)
     try:
         result = await service.get_coverage_trends(
-            auth.organization_id, cloud_account_id, days
+            auth.organization_id, cloud_account_id, allowed_accounts, days
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -202,10 +215,22 @@ async def get_gap_prioritization(
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
 
+    # SECURITY: Apply allowed_account_ids ACL filter
+    allowed_accounts = get_allowed_account_filter(auth)
+    if allowed_accounts is not None and not allowed_accounts:
+        # Empty list = no access
+        return GapPrioritizationResponse(gaps=[], total=0)
+
+    # SECURITY: Check ACL for specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = AnalyticsService(db)
     try:
         gaps = await service.get_gap_prioritization(
-            auth.organization_id, cloud_account_id, limit
+            auth.organization_id, cloud_account_id, allowed_accounts, limit
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -237,10 +262,30 @@ async def get_detection_effectiveness(
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
 
+    # SECURITY: Apply allowed_account_ids ACL filter
+    allowed_accounts = get_allowed_account_filter(auth)
+    if allowed_accounts is not None and not allowed_accounts:
+        # Empty list = no access
+        return EffectivenessResponse(
+            by_type=[],
+            summary=EffectivenessSummary(
+                total_detections=0,
+                active_detections=0,
+                total_techniques_covered=0,
+                overall_effectiveness=0,
+            ),
+        )
+
+    # SECURITY: Check ACL for specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = AnalyticsService(db)
     try:
         result = await service.get_detection_effectiveness(
-            auth.organization_id, cloud_account_id
+            auth.organization_id, cloud_account_id, allowed_accounts
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -273,10 +318,22 @@ async def get_recommendations(
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
 
+    # SECURITY: Apply allowed_account_ids ACL filter
+    allowed_accounts = get_allowed_account_filter(auth)
+    if allowed_accounts is not None and not allowed_accounts:
+        # Empty list = no access
+        return RecommendationsResponse(recommendations=[])
+
+    # SECURITY: Check ACL for specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = AnalyticsService(db)
     try:
         recommendations = await service.get_recommendations(
-            auth.organization_id, cloud_account_id, limit
+            auth.organization_id, cloud_account_id, allowed_accounts, limit
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -307,10 +364,22 @@ async def get_tactic_breakdown(
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
 
+    # SECURITY: Apply allowed_account_ids ACL filter
+    allowed_accounts = get_allowed_account_filter(auth)
+    if allowed_accounts is not None and not allowed_accounts:
+        # Empty list = no access
+        return TacticBreakdownResponse(tactics=[])
+
+    # SECURITY: Check ACL for specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = AnalyticsService(db)
     try:
         breakdown = await service.get_tactic_breakdown(
-            auth.organization_id, cloud_account_id
+            auth.organization_id, cloud_account_id, allowed_accounts
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -340,21 +409,42 @@ async def get_analytics_summary(
     if not auth.organization_id:
         raise HTTPException(status_code=401, detail="Organisation context required")
 
+    # SECURITY: Apply allowed_account_ids ACL filter
+    allowed_accounts = get_allowed_account_filter(auth)
+    if allowed_accounts is not None and not allowed_accounts:
+        # Empty list = no access
+        return {
+            "trends_7d": {
+                "direction": "stable",
+                "change_percent": 0,
+                "current_coverage": 0,
+            },
+            "effectiveness": {},
+            "top_gaps": [],
+            "top_recommendations": [],
+        }
+
+    # SECURITY: Check ACL for specific account
+    if cloud_account_id and not auth.can_access_account(cloud_account_id):
+        raise HTTPException(
+            status_code=403, detail="Access denied to this cloud account"
+        )
+
     service = AnalyticsService(db)
 
     try:
         # Get multiple analytics in parallel
         trends = await service.get_coverage_trends(
-            auth.organization_id, cloud_account_id, days=7
+            auth.organization_id, cloud_account_id, allowed_accounts, days=7
         )
         effectiveness = await service.get_detection_effectiveness(
-            auth.organization_id, cloud_account_id
+            auth.organization_id, cloud_account_id, allowed_accounts
         )
         gaps = await service.get_gap_prioritization(
-            auth.organization_id, cloud_account_id, limit=5
+            auth.organization_id, cloud_account_id, allowed_accounts, limit=5
         )
         recommendations = await service.get_recommendations(
-            auth.organization_id, cloud_account_id, limit=3
+            auth.organization_id, cloud_account_id, allowed_accounts, limit=3
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

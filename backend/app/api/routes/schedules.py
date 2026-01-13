@@ -14,6 +14,7 @@ from app.core.security import (
     require_scope,
     require_feature,
     require_role,
+    get_allowed_account_filter,
 )
 from app.models.user import UserRole
 from app.models.schedule import ScanSchedule
@@ -59,8 +60,19 @@ async def list_schedules(
         .where(CloudAccount.organization_id == auth.organization_id)
     )
 
+    # SECURITY: Apply allowed_account_ids ACL filter
+    # This ensures restricted users only see schedules for accounts they can access
+    allowed_accounts = get_allowed_account_filter(auth)
+    if allowed_accounts is not None:  # None = unrestricted access
+        if not allowed_accounts:  # Empty list = no access
+            return ScheduleListResponse(items=[], total=0, page=1, page_size=limit)
+        query = query.where(ScanSchedule.cloud_account_id.in_(allowed_accounts))
+        count_query = count_query.where(
+            ScanSchedule.cloud_account_id.in_(allowed_accounts)
+        )
+
     if cloud_account_id:
-        # SECURITY: Check allowed_account_ids ACL
+        # SECURITY: Check allowed_account_ids ACL for specific account
         if not auth.can_access_account(cloud_account_id):
             raise HTTPException(
                 status_code=403, detail="Access denied to this cloud account"

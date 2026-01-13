@@ -85,6 +85,7 @@ class AnalyticsService:
         self,
         organization_id: UUID,
         cloud_account_id: Optional[UUID] = None,
+        allowed_account_ids: Optional[list[UUID]] = None,
         days: int = 30,
     ) -> dict:
         """Get coverage trend analysis over time.
@@ -92,6 +93,7 @@ class AnalyticsService:
         Args:
             organization_id: Organization to analyze
             cloud_account_id: Optional filter by account
+            allowed_account_ids: Optional ACL filter (list of allowed account IDs)
             days: Number of days to analyze
 
         Returns:
@@ -104,11 +106,14 @@ class AnalyticsService:
             await self._validate_account_ownership(organization_id, cloud_account_id)
             account_ids = [cloud_account_id]
         else:
-            accounts_result = await self.db.execute(
-                select(CloudAccount.id).where(
-                    CloudAccount.organization_id == organization_id
-                )
+            # Build query for all org accounts
+            query = select(CloudAccount.id).where(
+                CloudAccount.organization_id == organization_id
             )
+            # SECURITY: Apply allowed_account_ids ACL filter
+            if allowed_account_ids is not None:
+                query = query.where(CloudAccount.id.in_(allowed_account_ids))
+            accounts_result = await self.db.execute(query)
             account_ids = [row[0] for row in accounts_result.all()]
 
         if not account_ids:
@@ -185,6 +190,7 @@ class AnalyticsService:
         self,
         organization_id: UUID,
         cloud_account_id: Optional[UUID] = None,
+        allowed_account_ids: Optional[list[UUID]] = None,
         limit: int = 20,
     ) -> list[dict]:
         """Get prioritised gap analysis with impact scores.
@@ -192,6 +198,7 @@ class AnalyticsService:
         Args:
             organization_id: Organization to analyze
             cloud_account_id: Optional filter by account
+            allowed_account_ids: Optional ACL filter (list of allowed account IDs)
             limit: Maximum gaps to return
 
         Returns:
@@ -202,11 +209,13 @@ class AnalyticsService:
             await self._validate_account_ownership(organization_id, cloud_account_id)
             account_ids = [cloud_account_id]
         else:
-            accounts_result = await self.db.execute(
-                select(CloudAccount.id).where(
-                    CloudAccount.organization_id == organization_id
-                )
+            query = select(CloudAccount.id).where(
+                CloudAccount.organization_id == organization_id
             )
+            # SECURITY: Apply allowed_account_ids ACL filter
+            if allowed_account_ids is not None:
+                query = query.where(CloudAccount.id.in_(allowed_account_ids))
+            accounts_result = await self.db.execute(query)
             account_ids = [row[0] for row in accounts_result.all()]
 
         if not account_ids:
@@ -306,12 +315,14 @@ class AnalyticsService:
         self,
         organization_id: UUID,
         cloud_account_id: Optional[UUID] = None,
+        allowed_account_ids: Optional[list[UUID]] = None,
     ) -> dict:
         """Analyze detection effectiveness by type and coverage.
 
         Args:
             organization_id: Organization to analyze
             cloud_account_id: Optional filter by account
+            allowed_account_ids: Optional ACL filter (list of allowed account IDs)
 
         Returns:
             Detection effectiveness analysis
@@ -321,11 +332,13 @@ class AnalyticsService:
             await self._validate_account_ownership(organization_id, cloud_account_id)
             account_ids = [cloud_account_id]
         else:
-            accounts_result = await self.db.execute(
-                select(CloudAccount.id).where(
-                    CloudAccount.organization_id == organization_id
-                )
+            query = select(CloudAccount.id).where(
+                CloudAccount.organization_id == organization_id
             )
+            # SECURITY: Apply allowed_account_ids ACL filter
+            if allowed_account_ids is not None:
+                query = query.where(CloudAccount.id.in_(allowed_account_ids))
+            accounts_result = await self.db.execute(query)
             account_ids = [row[0] for row in accounts_result.all()]
 
         if not account_ids:
@@ -403,6 +416,7 @@ class AnalyticsService:
         self,
         organization_id: UUID,
         cloud_account_id: Optional[UUID] = None,
+        allowed_account_ids: Optional[list[UUID]] = None,
         limit: int = 10,
     ) -> list[dict]:
         """Generate actionable recommendations.
@@ -410,6 +424,7 @@ class AnalyticsService:
         Args:
             organization_id: Organization to analyze
             cloud_account_id: Optional filter by account
+            allowed_account_ids: Optional ACL filter (list of allowed account IDs)
             limit: Maximum recommendations
 
         Returns:
@@ -419,17 +434,17 @@ class AnalyticsService:
 
         # Get coverage trends
         trends = await self.get_coverage_trends(
-            organization_id, cloud_account_id, days=7
+            organization_id, cloud_account_id, allowed_account_ids, days=7
         )
 
         # Get effectiveness
         effectiveness = await self.get_detection_effectiveness(
-            organization_id, cloud_account_id
+            organization_id, cloud_account_id, allowed_account_ids
         )
 
         # Get gaps
         gaps = await self.get_gap_prioritization(
-            organization_id, cloud_account_id, limit=5
+            organization_id, cloud_account_id, allowed_account_ids, limit=5
         )
 
         # Generate recommendations based on analysis
@@ -495,12 +510,14 @@ class AnalyticsService:
         self,
         organization_id: UUID,
         cloud_account_id: Optional[UUID] = None,
+        allowed_account_ids: Optional[list[UUID]] = None,
     ) -> list[dict]:
         """Get coverage breakdown by MITRE ATT&CK tactic.
 
         Args:
             organization_id: Organization to analyze
             cloud_account_id: Optional filter by account
+            allowed_account_ids: Optional ACL filter (list of allowed account IDs)
 
         Returns:
             List of tactics with coverage percentages
@@ -510,11 +527,13 @@ class AnalyticsService:
             await self._validate_account_ownership(organization_id, cloud_account_id)
             account_ids = [cloud_account_id]
         else:
-            accounts_result = await self.db.execute(
-                select(CloudAccount.id).where(
-                    CloudAccount.organization_id == organization_id
-                )
+            query = select(CloudAccount.id).where(
+                CloudAccount.organization_id == organization_id
             )
+            # SECURITY: Apply allowed_account_ids ACL filter
+            if allowed_account_ids is not None:
+                query = query.where(CloudAccount.id.in_(allowed_account_ids))
+            accounts_result = await self.db.execute(query)
             account_ids = [row[0] for row in accounts_result.all()]
 
         # Get all tactics

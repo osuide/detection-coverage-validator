@@ -13,8 +13,10 @@ from app.core.security import (
     AuthContext,
     get_auth_context,
     require_scope,
+    require_role,
     get_allowed_account_filter,
 )
+from app.models.user import UserRole
 from app.core.cache import get_cached_scan_status
 from app.models.scan import Scan, ScanStatus
 from app.models.cloud_account import CloudAccount
@@ -107,7 +109,10 @@ async def list_scans(
     "",
     response_model=ScanResponse,
     status_code=201,
-    dependencies=[Depends(require_scope("write:scans"))],
+    dependencies=[
+        Depends(require_scope("write:scans")),
+        Depends(require_role(UserRole.MEMBER, UserRole.ADMIN, UserRole.OWNER)),
+    ],
 )
 async def create_scan(
     scan_in: ScanCreate,
