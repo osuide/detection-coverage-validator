@@ -48,6 +48,17 @@ if effort_data:
 
 When adding new fields to dataclasses that get serialized to JSON columns, ensure both the serialization (in `coverage_service.py`) AND deserialization (in `coverage.py` routes) use dict access.
 
+**JSONB column keys must be strings:**
+```python
+# WRONG - UUID keys cause TypeError on INSERT
+coverage[tactic_id] = {"total": 10}  # tactic_id is UUID
+
+# CORRECT - convert UUID keys to strings
+coverage[str(tactic_id)] = {"total": 10}
+```
+
+PostgreSQL JSONB columns only accept `str`, `int`, `float`, `bool`, or `None` as keys. UUID keys cause: `TypeError: keys must be str, int, float, bool or None, not asyncpg.pgproto.pgproto.UUID`
+
 ## Settings Import (CRITICAL)
 
 **Config exports `get_settings()` function, NOT `settings` instance:**
