@@ -142,9 +142,11 @@ async def get_feature_status(
 
     feature_available = False
     if subscription:
+        # Current tiers: INDIVIDUAL, PRO (plus legacy SUBSCRIBER for migration)
         feature_available = subscription.tier in [
-            AccountTier.SUBSCRIBER,
-            AccountTier.ENTERPRISE,
+            AccountTier.INDIVIDUAL,
+            AccountTier.PRO,
+            AccountTier.SUBSCRIBER,  # Legacy tier - maps to INDIVIDUAL
         ]
 
     # Check consent - filter by organization_id for proper tenant isolation
@@ -163,7 +165,7 @@ async def get_feature_status(
     blocking_reasons = []
     if not feature_available:
         blocking_reasons.append(
-            "Upgrade to Subscriber or Enterprise tier to access code analysis"
+            "Upgrade to Individual or Pro tier to access code analysis"
         )
     if not consent_given:
         blocking_reasons.append(

@@ -88,6 +88,13 @@ async def get_api_key_context(
         )
         org = org_result.scalar_one_or_none()
 
+        # SECURITY: Check if organisation is suspended
+        if org and not org.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Organisation is suspended. Please contact support.",
+            )
+
         tier = "free"
         if org:
             # Get subscription tier

@@ -1,5 +1,6 @@
 """Stripe billing service."""
 
+import asyncio
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from uuid import UUID
@@ -58,7 +59,9 @@ class StripeService:
         # Create a new Stripe customer
         try:
             StripeService._ensure_stripe_configured()
-            customer = stripe.Customer.create(
+            # SECURITY: Run synchronous Stripe call in thread pool to avoid blocking event loop
+            customer = await asyncio.to_thread(
+                stripe.Customer.create,
                 email=email,
                 name=name or organization.name,
                 metadata={
@@ -185,7 +188,10 @@ class StripeService:
                 checkout_params["customer_email"] = customer_email
 
             StripeService._ensure_stripe_configured()
-            session = stripe.checkout.Session.create(**checkout_params)
+            # SECURITY: Run synchronous Stripe call in thread pool to avoid blocking event loop
+            session = await asyncio.to_thread(
+                stripe.checkout.Session.create, **checkout_params
+            )
 
             logger.info(
                 "stripe_checkout_created",
@@ -219,7 +225,9 @@ class StripeService:
 
         try:
             StripeService._ensure_stripe_configured()
-            session = stripe.billing_portal.Session.create(
+            # SECURITY: Run synchronous Stripe call in thread pool to avoid blocking event loop
+            session = await asyncio.to_thread(
+                stripe.billing_portal.Session.create,
                 customer=subscription.stripe_customer_id,
                 return_url=return_url,
             )
@@ -290,7 +298,10 @@ class StripeService:
         # Fetch subscription details from Stripe
         try:
             StripeService._ensure_stripe_configured()
-            stripe_sub = stripe.Subscription.retrieve(subscription_id)
+            # SECURITY: Run synchronous Stripe call in thread pool to avoid blocking event loop
+            stripe_sub = await asyncio.to_thread(
+                stripe.Subscription.retrieve, subscription_id
+            )
             subscription.current_period_start = datetime.fromtimestamp(
                 stripe_sub.current_period_start, tz=timezone.utc
             )

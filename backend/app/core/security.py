@@ -475,6 +475,16 @@ async def _authenticate_jwt(
         result = await db.execute(select(Organization).where(Organization.id == org_id))
         organization = result.scalar_one_or_none()
 
+        # SECURITY: Check if organisation is suspended
+        if organization and not organization.is_active:
+            logger.warning(
+                "jwt_org_suspended",
+                user_id=str(user_id),
+                org_id=str(org_id),
+                reason="organisation_suspended",
+            )
+            organization = None  # Clear org context for suspended organisations
+
         if organization:
             result = await db.execute(
                 select(OrganizationMember).where(

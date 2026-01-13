@@ -1,8 +1,9 @@
 """Organization security settings API routes."""
 
+import asyncio
 import secrets
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -20,6 +21,109 @@ from app.models.security import OrganizationSecuritySettings, VerifiedDomain
 logger = structlog.get_logger()
 router = APIRouter()
 settings = get_settings()
+
+
+async def verify_domain_dns(
+    domain: str, expected_token: str, timeout: float = 10.0
+) -> Tuple[bool, str]:
+    """Verify domain ownership via DNS TXT record.
+
+    Looks for TXT record at: _a13e-verification.{domain}
+    Expected value: a13e-verify={token}
+
+    Args:
+        domain: The domain to verify
+        expected_token: The verification token to look for
+        timeout: DNS lookup timeout in seconds
+
+    Returns:
+        Tuple of (success: bool, message: str)
+    """
+    try:
+        # Import here to make dnspython an optional dependency
+        from dns import resolver
+
+        verification_subdomain = f"_a13e-verification.{domain}"
+        expected_value = f"a13e-verify={expected_token}"
+
+        loop = asyncio.get_event_loop()
+
+        # Run DNS lookup in executor with timeout to avoid blocking
+        try:
+            answers = await asyncio.wait_for(
+                loop.run_in_executor(
+                    None,
+                    lambda: resolver.resolve(
+                        verification_subdomain, "TXT", lifetime=timeout
+                    ),
+                ),
+                timeout=timeout + 1,  # Extra second for executor overhead
+            )
+        except asyncio.TimeoutError:
+            logger.warning("dns_verification_timeout", domain=domain)
+            return False, "DNS lookup timed out. Please try again later."
+
+        # Check each TXT record for our verification token
+        for rdata in answers:
+            # TXT records may have multiple strings, join them
+            txt_value = "".join(str(s) for s in rdata.strings)
+            # Remove quotes if present
+            txt_value = txt_value.strip("\"'")
+
+            if txt_value == expected_value:
+                logger.info(
+                    "dns_verification_success",
+                    domain=domain,
+                    subdomain=verification_subdomain,
+                )
+                return True, "Domain verified successfully"
+
+        logger.warning(
+            "dns_verification_token_not_found",
+            domain=domain,
+            subdomain=verification_subdomain,
+        )
+        return (
+            False,
+            f"Verification token not found in TXT record. "
+            f"Expected: {expected_value}",
+        )
+
+    except ImportError:
+        logger.error("dnspython_not_installed")
+        return False, "DNS verification unavailable. Please contact support."
+
+    except Exception as e:
+        # Handle DNS exceptions by checking exception class name
+        error_name = type(e).__name__
+
+        if error_name == "NXDOMAIN":
+            logger.warning("dns_verification_nxdomain", domain=domain)
+            return (
+                False,
+                f"TXT record not found. Please add a TXT record for "
+                f"_a13e-verification.{domain}",
+            )
+
+        if error_name == "NoAnswer":
+            logger.warning("dns_verification_no_answer", domain=domain)
+            return (
+                False,
+                f"No TXT records found at _a13e-verification.{domain}. "
+                f"Please ensure the record has propagated.",
+            )
+
+        if error_name == "Timeout":
+            logger.warning("dns_verification_resolver_timeout", domain=domain)
+            return False, "DNS lookup timed out. Please try again later."
+
+        logger.error(
+            "dns_verification_error",
+            domain=domain,
+            error=str(e),
+            error_type=error_name,
+        )
+        return False, f"DNS verification failed: {error_name}"
 
 
 # Request/Response Models
@@ -395,24 +499,44 @@ async def confirm_domain_verification(
     if domain.verified_at:
         return {"verified": True, "message": "Domain is already verified"}
 
-    # In production, this would actually check DNS records
-    # For development, we'll auto-verify if the domain ends with .test or .local
-    # or if a special header is present (ONLY in development environment)
-    is_dev_domain = domain.domain.endswith((".test", ".local", ".example"))
+    # Check if verification token exists
+    if not domain.verification_token:
+        return {
+            "verified": False,
+            "message": "No verification token found. Please regenerate the domain verification.",
+        }
 
-    # Security: X-Force-Verify header only works in development environment
-    # This prevents attackers from bypassing domain verification in production
+    # Development bypass: auto-verify .test/.local/.example domains
+    # or allow X-Force-Verify header in development environment only
+    is_dev_domain = domain.domain.endswith((".test", ".local", ".example"))
     is_dev_environment = settings.environment == "development"
     force_verify = (
         is_dev_environment and request.headers.get("X-Force-Verify") == "true"
     )
 
-    if not is_dev_domain and not force_verify:
-        # TODO: Implement actual DNS verification
-        # For now, return instructions
+    verified = False
+    message = ""
+
+    if is_dev_domain or force_verify:
+        # Auto-verify dev domains without DNS check
+        verified = True
+        message = "Domain verified (development bypass)"
+    else:
+        # Production: Perform actual DNS TXT record verification
+        verified, message = await verify_domain_dns(
+            domain=domain.domain,
+            expected_token=domain.verification_token,
+        )
+
+    if not verified:
         return {
             "verified": False,
-            "message": "DNS verification not yet implemented. Add a TXT record to verify domain ownership.",
+            "message": message,
+            "instructions": {
+                "record_type": "TXT",
+                "record_name": f"_a13e-verification.{domain.domain}",
+                "record_value": f"a13e-verify={domain.verification_token}",
+            },
         }
 
     # Mark as verified

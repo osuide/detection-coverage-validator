@@ -276,7 +276,27 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user_id = UUID(payload.get("sub"))
+    # SECURITY: Validate token type - only accept access tokens
+    # Reject mfa_pending tokens (only valid at /login/mfa endpoint)
+    # Reject admin tokens (only valid at admin endpoints)
+    token_type = payload.get("type")
+    if token_type not in ("access", None):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type for this endpoint",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # SECURITY: Guard UUID parsing to return 401 instead of 500 on malformed tokens
+    try:
+        user_id = UUID(payload.get("sub"))
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: malformed user identifier",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     user = await auth_service.get_user_by_id(user_id)
 
     if not user or not user.is_active:
@@ -288,7 +308,15 @@ async def get_current_user(
 
     # H2: Store org context only if user has active membership
     if "org" in payload:
-        org_id = UUID(payload["org"])
+        # SECURITY: Guard UUID parsing for org claim
+        try:
+            org_id = UUID(payload["org"])
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: malformed organisation identifier",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         # Verify active membership before trusting the org claim
         membership = await db.execute(
             select(OrganizationMember).where(
