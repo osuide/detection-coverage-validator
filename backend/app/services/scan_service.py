@@ -1118,6 +1118,8 @@ class ScanService:
 
         Also marks detections as REMOVED if they're no longer found in the
         cloud account (e.g., deleted alarms, rules, etc.).
+
+        PERFORMANCE: Uses batch query to avoid N+1 (was 500+ queries, now 1 per batch).
         """
         stats = {"found": len(raw_detections), "new": 0, "updated": 0, "removed": 0}
 
@@ -1127,22 +1129,25 @@ class ScanService:
         # Track which ARNs are found in this scan (used later for removal detection)
         found_arns = set(raw.source_arn for raw in raw_detections)
 
+        # PERFORMANCE FIX: Batch query to get all existing detections at once
+        # This replaces N individual queries with 1 batch query
+        source_arns = [raw.source_arn for raw in raw_detections]
+        existing_result = await self.db.execute(
+            select(Detection).where(
+                Detection.cloud_account_id == cloud_account_id,
+                Detection.source_arn.in_(source_arns),
+            )
+        )
+        existing_by_arn = {d.source_arn: d for d in existing_result.scalars().all()}
+
         for idx, raw in enumerate(raw_detections):
             # Yield control every 20 detections to prevent event loop blocking
             # This allows HTTP requests to be processed during long scans
             if idx > 0 and idx % 20 == 0:
                 await asyncio.sleep(0)
 
-            # Check if detection already exists
-            existing = await self.db.execute(
-                select(Detection)
-                .where(
-                    Detection.cloud_account_id == cloud_account_id,
-                    Detection.source_arn == raw.source_arn,
-                )
-                .limit(1)
-            )
-            detection = existing.scalar_one_or_none()
+            # Lookup from pre-fetched dict instead of individual query
+            detection = existing_by_arn.get(raw.source_arn)
 
             if detection:
                 # Update existing

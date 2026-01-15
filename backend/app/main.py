@@ -403,11 +403,45 @@ async def seed_compliance_data() -> None:
         logger.warning("compliance_seed_failed", error=str(e))
 
 
+def _verify_production_security() -> None:
+    """
+    Verify security-critical configuration at startup.
+    Fails fast if dangerous configuration detected.
+
+    SECURITY: DEV_MODE bypasses AWS credential validation entirely.
+    This must NEVER be enabled in production or staging environments.
+    """
+    env = os.getenv("ENVIRONMENT", "development").lower()
+    dev_mode = os.getenv("A13E_DEV_MODE", "").lower() == "true"
+
+    if dev_mode and env in ("production", "prod", "staging"):
+        logger.critical(
+            "security_violation_blocked",
+            reason="DEV_MODE cannot be enabled in production/staging",
+            environment=env,
+            alert="CRITICAL_SECURITY",
+        )
+        raise RuntimeError(
+            f"FATAL: A13E_DEV_MODE=true is not allowed in {env} environment. "
+            "This bypasses credential validation and is a security risk."
+        )
+
+    if dev_mode:
+        logger.warning(
+            "dev_mode_active",
+            environment=env,
+            warning="AWS credential validation is bypassed - for development only",
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan events."""
     # Startup
     logger.info("starting_application")
+
+    # SECURITY: Verify production security configuration first
+    _verify_production_security()
 
     # Run migrations on startup
     run_migrations()

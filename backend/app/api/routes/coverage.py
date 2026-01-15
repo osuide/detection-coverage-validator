@@ -1,5 +1,6 @@
 """Coverage endpoints."""
 
+from collections import defaultdict
 from typing import Optional
 from uuid import UUID
 from datetime import datetime, timedelta
@@ -447,32 +448,42 @@ async def get_technique_coverage(
     template_technique_ids = set(available_templates.keys())
 
     # Get mappings for these detections grouped by technique
+    # PERFORMANCE FIX: Batch query to avoid N+1 (was 200+ queries, now 1)
     technique_coverage = []
 
-    for technique, tactic in techniques_with_tactics:
-        # Get mappings with detection names for this technique
-        detection_names = []
-        detection_count = 0
-        max_confidence = 0.0
+    # Pre-fetch ALL mappings in single query, build lookup dictionary
+    mappings_by_technique: dict[UUID, list[tuple[float, str]]] = defaultdict(list)
 
-        if detection_ids:
-            # Get mappings with detection info
-            mappings_result = await db.execute(
-                select(DetectionMapping, Detection.name)
-                .join(Detection, DetectionMapping.detection_id == Detection.id)
-                .where(DetectionMapping.technique_id == technique.id)
-                .where(DetectionMapping.detection_id.in_(detection_ids))
-                .order_by(DetectionMapping.confidence.desc())
+    if detection_ids:
+        all_mappings_result = await db.execute(
+            select(
+                DetectionMapping.technique_id,
+                DetectionMapping.confidence,
+                Detection.name,
             )
-            mappings = mappings_result.all()
+            .join(Detection, DetectionMapping.detection_id == Detection.id)
+            .where(DetectionMapping.detection_id.in_(detection_ids))
+            .order_by(
+                DetectionMapping.technique_id,
+                DetectionMapping.confidence.desc(),
+            )
+        )
+        for tech_id, confidence, det_name in all_mappings_result.all():
+            mappings_by_technique[tech_id].append((confidence, det_name))
 
-            if mappings:
-                max_confidence = mappings[0][
-                    0
-                ].confidence  # First one has highest confidence
-                # Deduplicate names, preserve order (highest confidence first)
-                detection_names = list(dict.fromkeys(m[1] for m in mappings))
-                detection_count = len(detection_names)  # Count unique detections
+    # Now iterate without N+1 queries
+    for technique, tactic in techniques_with_tactics:
+        technique_mappings = mappings_by_technique.get(technique.id, [])
+
+        if technique_mappings:
+            max_confidence = technique_mappings[0][0]  # First has highest confidence
+            # Deduplicate names, preserve order (highest confidence first)
+            detection_names = list(dict.fromkeys(m[1] for m in technique_mappings))
+            detection_count = len(detection_names)
+        else:
+            max_confidence = 0.0
+            detection_names = []
+            detection_count = 0
 
         # Determine status based on confidence threshold
         if max_confidence >= 0.6:
