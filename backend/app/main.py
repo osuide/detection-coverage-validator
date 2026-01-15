@@ -235,6 +235,15 @@ def seed_mitre_data() -> None:
                         parent_id = str(parent_row[0])
 
                 tech_uuid = str(uuid4())
+
+                # Assign platforms based on tactic
+                # Reconnaissance (TA0043) and Resource Development (TA0042) are PRE-compromise
+                # and not part of the MITRE ATT&CK Cloud Matrix
+                if tactic_id in ("TA0043", "TA0042"):
+                    platforms = ["PRE"]
+                else:
+                    platforms = ["AWS", "Azure", "GCP", "IaaS"]
+
                 conn.execute(
                     text(
                         """
@@ -256,7 +265,7 @@ def seed_mitre_data() -> None:
                         "description": description,
                         "tactic_id": tactic_uuid,
                         "parent_id": parent_id,
-                        "platforms": json.dumps(["AWS", "Azure", "GCP", "IaaS"]),
+                        "platforms": json.dumps(platforms),
                         "mitre_version": "14.1",
                         "is_subtechnique": is_subtechnique,
                         "created_at": now,
