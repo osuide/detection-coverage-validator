@@ -1,7 +1,7 @@
 """API Key management endpoints."""
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 import structlog
@@ -377,7 +377,7 @@ async def update_api_key(
             )
 
     # Track changes for audit log
-    changes = {}
+    changes: dict[str, Any] = {}
     if body.name is not None and body.name != key.name:
         changes["name"] = {"from": key.name, "to": body.name}
         key.name = body.name
