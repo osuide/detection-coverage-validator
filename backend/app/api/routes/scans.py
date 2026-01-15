@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.core.database import get_db
 from app.core.security import (
@@ -74,9 +74,9 @@ async def list_scans(
     if status:
         query = query.where(Scan.status == status)
 
-    # Get total count
+    # Get total count using SQL COUNT (not in-memory)
     count_query = (
-        select(Scan)
+        select(func.count(Scan.id))
         .join(CloudAccount, Scan.cloud_account_id == CloudAccount.id)
         .where(CloudAccount.organization_id == auth.organization_id)
     )
@@ -91,7 +91,7 @@ async def list_scans(
         count_query = count_query.where(Scan.status == status)
 
     total_result = await db.execute(count_query)
-    total = len(total_result.scalars().all())
+    total = total_result.scalar() or 0
 
     query = query.offset(skip).limit(limit).order_by(Scan.created_at.desc())
     result = await db.execute(query)

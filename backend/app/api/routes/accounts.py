@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, delete
+from sqlalchemy import select, and_, delete, func
 import structlog
 
 from app.core.database import get_db
@@ -141,13 +141,13 @@ async def create_account(
         max_accounts = subscription.total_accounts_allowed
         # -1 means unlimited (Enterprise tier)
         if max_accounts != -1:
-            # Count current accounts
+            # Count current accounts using SQL COUNT (not in-memory)
             count_result = await db.execute(
-                select(CloudAccount).where(
+                select(func.count(CloudAccount.id)).where(
                     CloudAccount.organization_id == auth.organization_id
                 )
             )
-            current_count = len(count_result.scalars().all())
+            current_count = count_result.scalar() or 0
 
             if current_count >= max_accounts:
                 raise HTTPException(

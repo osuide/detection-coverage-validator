@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 import structlog
 
 from app.core.database import get_db
@@ -54,7 +54,7 @@ async def list_alerts(
     query = select(AlertConfig).where(
         AlertConfig.organization_id == auth.organization_id
     )
-    count_query = select(AlertConfig).where(
+    count_query = select(func.count(AlertConfig.id)).where(
         AlertConfig.organization_id == auth.organization_id
     )
 
@@ -96,9 +96,9 @@ async def list_alerts(
         query = query.where(AlertConfig.is_active == is_active)
         count_query = count_query.where(AlertConfig.is_active == is_active)
 
-    # Get total count
+    # Get total count using SQL COUNT (not in-memory)
     total_result = await db.execute(count_query)
-    total = len(total_result.scalars().all())
+    total = total_result.scalar() or 0
 
     # Get paginated results
     query = query.offset(skip).limit(limit).order_by(AlertConfig.created_at.desc())
@@ -442,7 +442,7 @@ async def list_alert_history(
     query = select(AlertHistory).where(
         AlertHistory.organization_id == auth.organization_id
     )
-    count_query = select(AlertHistory).where(
+    count_query = select(func.count(AlertHistory.id)).where(
         AlertHistory.organization_id == auth.organization_id
     )
 
@@ -480,9 +480,9 @@ async def list_alert_history(
         query = query.where(AlertHistory.is_resolved == is_resolved)
         count_query = count_query.where(AlertHistory.is_resolved == is_resolved)
 
-    # Get total count
+    # Get total count using SQL COUNT (not in-memory)
     total_result = await db.execute(count_query)
-    total = len(total_result.scalars().all())
+    total = total_result.scalar() or 0
 
     # Get paginated results
     query = query.offset(skip).limit(limit).order_by(AlertHistory.triggered_at.desc())

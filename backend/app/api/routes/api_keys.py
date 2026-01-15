@@ -376,15 +376,35 @@ async def update_api_key(
                 detail=f"Invalid scopes: {', '.join(invalid_scopes)}",
             )
 
-    # Update fields
-    if body.name is not None:
+    # Track changes for audit log
+    changes = {}
+    if body.name is not None and body.name != key.name:
+        changes["name"] = {"from": key.name, "to": body.name}
         key.name = body.name
-    if body.scopes is not None:
+    if body.scopes is not None and body.scopes != key.scopes:
+        changes["scopes"] = {"from": key.scopes, "to": body.scopes}
         key.scopes = body.scopes
-    if body.ip_allowlist is not None:
+    if body.ip_allowlist is not None and body.ip_allowlist != key.ip_allowlist:
+        changes["ip_allowlist"] = {"from": key.ip_allowlist, "to": body.ip_allowlist}
         key.ip_allowlist = body.ip_allowlist
-    if body.is_active is not None:
+    if body.is_active is not None and body.is_active != key.is_active:
+        changes["is_active"] = {"from": key.is_active, "to": body.is_active}
         key.is_active = body.is_active
+
+    # Log the update action if any changes were made
+    if changes:
+        await log_api_key_action(
+            db=db,
+            user_id=auth.user.id,
+            org_id=auth.organization_id,
+            action=AuditLogAction.API_KEY_UPDATED,
+            details={
+                "key_name": key.name,
+                "key_prefix": key.key_prefix,
+                "changes": changes,
+            },
+            ip_address=get_client_ip(request),
+        )
 
     await db.commit()
 

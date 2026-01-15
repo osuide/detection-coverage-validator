@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.core.database import get_db
 from app.core.security import (
@@ -55,7 +55,7 @@ async def list_schedules(
         .where(CloudAccount.organization_id == auth.organization_id)
     )
     count_query = (
-        select(ScanSchedule)
+        select(func.count(ScanSchedule.id))
         .join(CloudAccount, ScanSchedule.cloud_account_id == CloudAccount.id)
         .where(CloudAccount.organization_id == auth.organization_id)
     )
@@ -86,9 +86,9 @@ async def list_schedules(
         query = query.where(ScanSchedule.is_active == is_active)
         count_query = count_query.where(ScanSchedule.is_active == is_active)
 
-    # Get total count
+    # Get total count using SQL COUNT (not in-memory)
     total_result = await db.execute(count_query)
-    total = len(total_result.scalars().all())
+    total = total_result.scalar() or 0
 
     # Get paginated results
     query = query.offset(skip).limit(limit).order_by(ScanSchedule.created_at.desc())

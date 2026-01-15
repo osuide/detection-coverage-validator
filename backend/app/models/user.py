@@ -661,6 +661,7 @@ class AuditLogAction(str, enum.Enum):
 
     # API Keys
     API_KEY_CREATED = "api_key.created"
+    API_KEY_UPDATED = "api_key.updated"
     API_KEY_REVOKED = "api_key.revoked"
 
     # Cloud Accounts

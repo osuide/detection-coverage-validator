@@ -1,17 +1,18 @@
 """API dependencies for authentication and authorization."""
 
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Annotated, Any, Callable, Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import decode_token, get_client_ip
+from app.core.security import decode_token, get_client_ip, AuthContext, get_auth_context
 from app.models.admin import AdminUser, AdminSession, has_permission
+from app.models.cloud_account import CloudAccount
 from app.services.admin_auth_service import get_admin_auth_service
 
 # Bearer token security scheme
@@ -193,3 +194,56 @@ def require_reauth(func: Callable) -> Callable:
         return await func(*args, **kwargs)
 
     return wrapper
+
+
+# === Cloud Account Authorization ===
+
+
+async def get_authorized_cloud_account(
+    cloud_account_id: UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db),
+) -> CloudAccount:
+    """
+    Dependency that verifies user has access to the specified cloud account.
+
+    Checks:
+    1. Account exists
+    2. Account belongs to user's organization
+    3. User has ACL access (if restricted)
+
+    Returns CloudAccount or raises 404.
+
+    SECURITY: Returns 404 for both "not found" and "access denied"
+    to avoid revealing account existence to unauthorized users.
+    """
+    result = await db.execute(
+        select(CloudAccount).where(
+            and_(
+                CloudAccount.id == cloud_account_id,
+                CloudAccount.organization_id == auth.organization_id,
+            )
+        )
+    )
+    account = result.scalar_one_or_none()
+
+    # Unified 404 response for security (doesn't reveal account existence)
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cloud account not found",
+        )
+
+    # Check ACL restrictions
+    if auth.allowed_account_ids and account.id not in auth.allowed_account_ids:
+        # Return 404 to avoid revealing account existence
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cloud account not found",
+        )
+
+    return account
+
+
+# Type alias for cleaner route signatures
+AuthorizedAccount = Annotated[CloudAccount, Depends(get_authorized_cloud_account)]
