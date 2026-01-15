@@ -9,7 +9,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "056_api_key_updated"
-down_revision = "055_add_performance_idx"
+down_revision = "055_perf_indexes"
 branch_labels = None
 depends_on = None
 
