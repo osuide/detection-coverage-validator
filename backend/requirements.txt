@@ -88,7 +88,7 @@ moto[s3,ec2,iam,logs,events,config,secretsmanager,guardduty,cloudtrail,sts,ses,c
 factory-boy==3.3.3
 
 # Code Quality
-black==25.12.0
+black==26.1.0
 ruff==0.14.11
 mypy==1.19.1
 
