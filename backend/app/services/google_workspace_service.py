@@ -16,7 +16,7 @@ Solution: Custom AwsSecurityCredentialsSupplier + JWT signing for domain delegat
 No service account keys required in production - uses short-lived credentials.
 """
 
-from typing import Any, Optional, Union
+from typing import Any, NoReturn, Optional, Union
 import time
 
 import structlog
@@ -178,7 +178,7 @@ class GoogleWorkspaceService:
         """
         return error.resp.status in (401, 403)
 
-    def _handle_api_error(self, error: HttpError, operation: str) -> None:
+    def _handle_api_error(self, error: HttpError, operation: str) -> NoReturn:
         """Handle API errors with credential invalidation for auth failures.
 
         Args:
