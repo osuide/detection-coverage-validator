@@ -12,7 +12,6 @@ from app.models.cloud_organization import (
     CloudOrganizationMemberStatus,
 )
 
-
 # ============================================================================
 # CloudOrganization Schemas
 # ============================================================================

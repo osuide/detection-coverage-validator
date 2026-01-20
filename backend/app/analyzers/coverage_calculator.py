@@ -26,6 +26,7 @@ from app.models.mitre import Technique
 from app.models.cloud_account import CloudAccount
 from app.models.cloud_organization import CloudOrganization
 from app.core.config import get_settings
+from app.core.cache import get_cached_techniques
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -377,7 +378,7 @@ class CoverageCalculator:
 
     def _build_technique_coverage_with_org(
         self,
-        techniques: list[Technique],
+        techniques: list[dict],
         account_mappings: list[DetectionMapping],
         org_mappings: list[DetectionMapping],
     ) -> tuple[list[TechniqueCoverageInfo], dict]:
@@ -403,7 +404,7 @@ class CoverageCalculator:
         breakdown = {"account_only": 0, "org_only": 0, "both": 0, "uncovered": 0}
 
         for technique in techniques:
-            tid = technique.technique_id
+            tid = technique["technique_id"]
             account_maps = account_technique_mappings.get(tid, [])
             org_maps = org_technique_mappings.get(tid, [])
 
@@ -443,9 +444,9 @@ class CoverageCalculator:
             coverage_info.append(
                 TechniqueCoverageInfo(
                     technique_id=tid,
-                    technique_name=technique.name,
-                    tactic_id=technique.tactic.tactic_id if technique.tactic else "",
-                    tactic_name=technique.tactic.name if technique.tactic else "",
+                    technique_name=technique["name"],
+                    tactic_id=technique.get("tactic_id") or "",
+                    tactic_name=technique.get("tactic_name") or "",
                     status=status,
                     detection_count=len(all_mappings),
                     max_confidence=max_conf,
@@ -455,24 +456,17 @@ class CoverageCalculator:
 
         return coverage_info, breakdown
 
-    async def _get_all_techniques(self, cloud_only: bool = True) -> list[Technique]:
-        """Get MITRE techniques from database.
+    async def _get_all_techniques(self, cloud_only: bool = True) -> list[dict]:
+        """Get MITRE techniques from cache.
 
         Args:
             cloud_only: If True, only return cloud-relevant techniques (AWS, GCP, etc.)
                        If False, return all Enterprise techniques.
+
+        Returns:
+            List of technique dicts. Use dict access: t["technique_id"], t["tactic_id"]
         """
-        query = select(Technique).options(selectinload(Technique.tactic))
-
-        if cloud_only:
-            # Filter to only include cloud-relevant techniques
-            platform_conditions = [
-                Technique.platforms.contains([platform]) for platform in CLOUD_PLATFORMS
-            ]
-            query = query.where(or_(*platform_conditions))
-
-        result = await self.db.execute(query)
-        return list(result.scalars().unique().all())
+        return await get_cached_techniques(self.db, cloud_only=cloud_only)
 
     async def _get_account_mappings(
         self,
@@ -538,7 +532,7 @@ class CoverageCalculator:
 
     def _build_technique_coverage(
         self,
-        techniques: list[Technique],
+        techniques: list[dict],
         mappings: list[DetectionMapping],
     ) -> list[TechniqueCoverageInfo]:
         """Build coverage info for each technique."""
@@ -553,7 +547,7 @@ class CoverageCalculator:
 
         coverage_info = []
         for technique in techniques:
-            tid = technique.technique_id
+            tid = technique["technique_id"]
             tech_mappings = technique_mappings.get(tid, [])
 
             if tech_mappings:
@@ -574,9 +568,9 @@ class CoverageCalculator:
             coverage_info.append(
                 TechniqueCoverageInfo(
                     technique_id=tid,
-                    technique_name=technique.name,
-                    tactic_id=technique.tactic.tactic_id if technique.tactic else "",
-                    tactic_name=technique.tactic.name if technique.tactic else "",
+                    technique_name=technique["name"],
+                    tactic_id=technique.get("tactic_id") or "",
+                    tactic_name=technique.get("tactic_name") or "",
                     status=status,
                     detection_count=len(tech_mappings),
                     max_confidence=max_conf,
@@ -775,24 +769,17 @@ class OrgCoverageCalculator:
 
         return result
 
-    async def _get_all_techniques(self, cloud_only: bool = True) -> list[Technique]:
-        """Get MITRE techniques from database.
+    async def _get_all_techniques(self, cloud_only: bool = True) -> list[dict]:
+        """Get MITRE techniques from cache.
 
         Args:
             cloud_only: If True, only return cloud-relevant techniques (AWS, GCP, etc.)
                        If False, return all Enterprise techniques.
+
+        Returns:
+            List of technique dicts. Use dict access: t["technique_id"], t["tactic_id"]
         """
-        query = select(Technique).options(selectinload(Technique.tactic))
-
-        if cloud_only:
-            # Filter to only include cloud-relevant techniques
-            platform_conditions = [
-                Technique.platforms.contains([platform]) for platform in CLOUD_PLATFORMS
-            ]
-            query = query.where(or_(*platform_conditions))
-
-        result = await self.db.execute(query)
-        return list(result.scalars().unique().all())
+        return await get_cached_techniques(self.db, cloud_only=cloud_only)
 
     async def _get_org_mappings(
         self,
@@ -834,7 +821,7 @@ class OrgCoverageCalculator:
 
     def _calculate_aggregate_tactic_coverage(
         self,
-        techniques: list[Technique],
+        techniques: list[dict],
         union_covered: set[str],
         minimum_covered: set[str],
     ) -> dict[str, dict]:
@@ -842,8 +829,8 @@ class OrgCoverageCalculator:
         tactic_stats: dict[str, dict] = {}
 
         for technique in techniques:
-            tid = technique.tactic.tactic_id if technique.tactic else "unknown"
-            tactic_name = technique.tactic.name if technique.tactic else "Unknown"
+            tid = technique.get("tactic_id") or "unknown"
+            tactic_name = technique.get("tactic_name") or "Unknown"
 
             if tid not in tactic_stats:
                 tactic_stats[tid] = {
@@ -854,9 +841,9 @@ class OrgCoverageCalculator:
                 }
 
             tactic_stats[tid]["total"] += 1
-            if technique.technique_id in union_covered:
+            if technique["technique_id"] in union_covered:
                 tactic_stats[tid]["union_covered"] += 1
-            if technique.technique_id in minimum_covered:
+            if technique["technique_id"] in minimum_covered:
                 tactic_stats[tid]["minimum_covered"] += 1
 
         result = {}

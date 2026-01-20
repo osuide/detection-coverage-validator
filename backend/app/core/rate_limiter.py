@@ -9,7 +9,6 @@ import hashlib
 
 from fastapi import HTTPException, status
 
-
 # Rate limits by tier (requests per hour)
 # Note: Free tier does not have API access - handled in auth.py
 RATE_LIMITS = {

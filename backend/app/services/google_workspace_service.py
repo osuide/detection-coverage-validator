@@ -124,6 +124,9 @@ class GoogleWorkspaceService:
         self._credentials_expiry = 0.0
         # WIF credentials expire after 1 hour, refresh after 50 mins to be safe
         self._credentials_ttl = 50 * 60  # 50 minutes in seconds
+        # Track consecutive auth failures for circuit breaker pattern
+        self._auth_failure_count = 0
+        self._max_auth_failures = 3
 
     @property
     def credentials(
@@ -146,7 +149,56 @@ class GoogleWorkspaceService:
             self._credentials = self._get_service_account_credentials()
 
         self._credentials_expiry = current_time + self._credentials_ttl
+        # Reset failure count on successful credential fetch
+        self._auth_failure_count = 0
         return self._credentials
+
+    def invalidate_credentials(self) -> None:
+        """Invalidate cached credentials, forcing a refresh on next access.
+
+        Call this when an API call fails with an authentication error (401/403)
+        to ensure fresh credentials are obtained on the next attempt.
+        """
+        self._credentials = None
+        self._credentials_expiry = 0.0
+        # Also invalidate cached service clients
+        for attr in list(vars(self).keys()):
+            if attr.endswith("_service"):
+                delattr(self, attr)
+        logger.info("workspace_credentials_invalidated")
+
+    def _is_auth_error(self, error: HttpError) -> bool:
+        """Check if an HttpError is an authentication/authorisation error.
+
+        Args:
+            error: The HttpError from a Google API call.
+
+        Returns:
+            True if the error indicates credential issues (401/403).
+        """
+        return error.resp.status in (401, 403)
+
+    def _handle_api_error(self, error: HttpError, operation: str) -> None:
+        """Handle API errors with credential invalidation for auth failures.
+
+        Args:
+            error: The HttpError from a Google API call.
+            operation: Description of the operation that failed.
+
+        Raises:
+            HttpError: Re-raises the original error after handling.
+        """
+        if self._is_auth_error(error):
+            self._auth_failure_count += 1
+            logger.warning(
+                "workspace_auth_error",
+                operation=operation,
+                status=error.resp.status,
+                failure_count=self._auth_failure_count,
+            )
+            # Invalidate credentials so next attempt gets fresh ones
+            self.invalidate_credentials()
+        raise error
 
     def _get_wif_credentials(self) -> oauth2_credentials.Credentials:
         """
@@ -476,28 +528,35 @@ class GoogleWorkspaceService:
 
         Returns:
             Update response
+
+        Raises:
+            HttpError: If the API call fails. Auth errors (401/403) will
+                      invalidate credentials before re-raising.
         """
-        result = (
-            self.sheets.spreadsheets()
-            .values()
-            .append(
-                spreadsheetId=spreadsheet_id,
-                range=f"{sheet_name}!A1",
-                valueInputOption="USER_ENTERED",
-                insertDataOption="INSERT_ROWS",
-                body={"values": values},
+        try:
+            result = (
+                self.sheets.spreadsheets()
+                .values()
+                .append(
+                    spreadsheetId=spreadsheet_id,
+                    range=f"{sheet_name}!A1",
+                    valueInputOption="USER_ENTERED",
+                    insertDataOption="INSERT_ROWS",
+                    body={"values": values},
+                )
+                .execute()
             )
-            .execute()
-        )
 
-        logger.debug(
-            "sheet_rows_appended",
-            spreadsheet_id=spreadsheet_id,
-            sheet=sheet_name,
-            rows=len(values),
-        )
+            logger.debug(
+                "sheet_rows_appended",
+                spreadsheet_id=spreadsheet_id,
+                sheet=sheet_name,
+                rows=len(values),
+            )
 
-        return result
+            return result
+        except HttpError as e:
+            self._handle_api_error(e, f"append_to_sheet:{sheet_name}")
 
     # =========================================================================
     # Group Member Management
@@ -712,25 +771,32 @@ class GoogleWorkspaceService:
 
         Returns:
             2D array of values
-        """
-        result = (
-            self.sheets.spreadsheets()
-            .values()
-            .get(
-                spreadsheetId=spreadsheet_id,
-                range=range_name,
-            )
-            .execute()
-        )
 
-        values = result.get("values", [])
-        logger.debug(
-            "sheet_values_read",
-            spreadsheet_id=spreadsheet_id,
-            range=range_name,
-            rows=len(values),
-        )
-        return values
+        Raises:
+            HttpError: If the API call fails. Auth errors (401/403) will
+                      invalidate credentials before re-raising.
+        """
+        try:
+            result = (
+                self.sheets.spreadsheets()
+                .values()
+                .get(
+                    spreadsheetId=spreadsheet_id,
+                    range=range_name,
+                )
+                .execute()
+            )
+
+            values = result.get("values", [])
+            logger.debug(
+                "sheet_values_read",
+                spreadsheet_id=spreadsheet_id,
+                range=range_name,
+                rows=len(values),
+            )
+            return values
+        except HttpError as e:
+            self._handle_api_error(e, f"get_sheet_values:{range_name}")
 
     def update_sheet_values(
         self,
@@ -748,25 +814,32 @@ class GoogleWorkspaceService:
 
         Returns:
             Update response
-        """
-        result = (
-            self.sheets.spreadsheets()
-            .values()
-            .update(
-                spreadsheetId=spreadsheet_id,
-                range=range_name,
-                valueInputOption="USER_ENTERED",
-                body={"values": values},
-            )
-            .execute()
-        )
 
-        logger.debug(
-            "sheet_values_updated",
-            spreadsheet_id=spreadsheet_id,
-            range=range_name,
-        )
-        return result
+        Raises:
+            HttpError: If the API call fails. Auth errors (401/403) will
+                      invalidate credentials before re-raising.
+        """
+        try:
+            result = (
+                self.sheets.spreadsheets()
+                .values()
+                .update(
+                    spreadsheetId=spreadsheet_id,
+                    range=range_name,
+                    valueInputOption="USER_ENTERED",
+                    body={"values": values},
+                )
+                .execute()
+            )
+
+            logger.debug(
+                "sheet_values_updated",
+                spreadsheet_id=spreadsheet_id,
+                range=range_name,
+            )
+            return result
+        except HttpError as e:
+            self._handle_api_error(e, f"update_sheet_values:{range_name}")
 
     # =========================================================================
     # Drive File Operations

@@ -17,7 +17,6 @@ from app.core.security import (
 )
 from app.services.analytics_service import AnalyticsService
 
-
 router = APIRouter()
 
 

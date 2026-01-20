@@ -906,6 +906,105 @@ async def store_webauthn_challenge(key: str, challenge: bytes) -> bool:
         return False
 
 
+# ============================================================================
+# Distributed Lock (Redis-backed)
+# ============================================================================
+# Used for leader election in multi-instance deployments.
+# Ensures only one instance runs certain tasks (e.g., telemetry push).
+
+DISTRIBUTED_LOCK_PREFIX = "dcv:lock:"
+
+
+async def try_acquire_lock(
+    lock_name: str,
+    lock_value: str,
+    ttl_seconds: int = 300,
+) -> bool:
+    """Try to acquire a distributed lock (non-blocking).
+
+    Uses Redis SET NX (set if not exists) for atomic lock acquisition.
+    The lock auto-expires after ttl_seconds to prevent deadlocks.
+
+    Args:
+        lock_name: Name of the lock (e.g., "telemetry_push")
+        lock_value: Unique value for this lock holder (e.g., task ID)
+        ttl_seconds: Lock expiry time in seconds (default 5 minutes)
+
+    Returns:
+        True if lock was acquired, False if already held by another process
+
+    Usage:
+        if await try_acquire_lock("telemetry", my_task_id, 60):
+            try:
+                # Do exclusive work
+            finally:
+                await release_lock("telemetry", my_task_id)
+    """
+    if not _redis_cache:
+        # No Redis - allow operation (single instance mode)
+        return True
+
+    try:
+        key = f"{DISTRIBUTED_LOCK_PREFIX}{lock_name}"
+        # SET NX = set only if not exists, with expiry
+        result = await _redis_cache.set(
+            key,
+            lock_value,
+            nx=True,  # Only set if not exists
+            ex=ttl_seconds,  # Expiry in seconds
+        )
+        acquired = result is not None
+        if acquired:
+            logger.debug(
+                "distributed_lock_acquired",
+                lock_name=lock_name,
+                ttl=ttl_seconds,
+            )
+        return acquired
+    except Exception as e:
+        logger.warning(
+            "distributed_lock_acquire_failed",
+            lock_name=lock_name,
+            error=str(e),
+        )
+        # On error, allow operation to prevent blocking
+        return True
+
+
+async def release_lock(lock_name: str, lock_value: str) -> bool:
+    """Release a distributed lock.
+
+    Only releases if the lock is held by this process (matching lock_value).
+    This prevents accidentally releasing a lock held by another process.
+
+    Args:
+        lock_name: Name of the lock
+        lock_value: Value used when acquiring (must match)
+
+    Returns:
+        True if lock was released, False if not held or error
+    """
+    if not _redis_cache:
+        return True
+
+    try:
+        key = f"{DISTRIBUTED_LOCK_PREFIX}{lock_name}"
+        # Check if we hold the lock before deleting
+        current_value = await _redis_cache.get(key)
+        if current_value == lock_value:
+            await _redis_cache.delete(key)
+            logger.debug("distributed_lock_released", lock_name=lock_name)
+            return True
+        return False
+    except Exception as e:
+        logger.warning(
+            "distributed_lock_release_failed",
+            lock_name=lock_name,
+            error=str(e),
+        )
+        return False
+
+
 async def get_and_consume_webauthn_challenge(key: str) -> Optional[bytes]:
     """Get and consume a WebAuthn challenge (single-use).
 
@@ -967,3 +1066,94 @@ async def get_and_consume_webauthn_challenge(key: str) -> Optional[bytes]:
             error=str(e),
         )
         return None
+
+
+# ============================================================================
+# MITRE ATT&CK Data Caching
+# ============================================================================
+# Caches MITRE technique data to reduce database load during coverage
+# calculations. MITRE data changes quarterly, so 24h TTL is appropriate.
+
+MITRE_CACHE_TTL = 86400  # 24 hours
+
+
+async def get_cached_techniques(
+    db: Any,  # AsyncSession - use Any to avoid circular import
+    cloud_only: bool = True,
+    force_refresh: bool = False,
+) -> list[dict]:
+    """Get MITRE techniques with 24h cache.
+
+    Returns list[dict], NOT ORM objects. Callers must use dict access:
+    - t["technique_id"] not t.technique_id
+    - t["tactic_id"] not t.tactic_id
+
+    Args:
+        db: AsyncSession for database queries on cache miss
+        cloud_only: Filter to cloud-relevant platforms only
+        force_refresh: Bypass cache and fetch fresh data
+
+    Returns:
+        List of technique dicts with id, technique_id, name, platforms, etc.
+    """
+    from sqlalchemy import select, or_
+    from sqlalchemy.orm import selectinload
+    from app.models.mitre import Technique
+
+    cache_key = f"{mitre_techniques_key()}:cloud={cloud_only}"
+
+    if not force_refresh:
+        cached = await get_cached(cache_key)
+        if cached:
+            logger.debug("mitre_techniques_cache_hit", cloud_only=cloud_only)
+            return cached
+
+    logger.debug("mitre_techniques_cache_miss", cloud_only=cloud_only)
+
+    # Fetch from database
+    query = select(Technique).options(selectinload(Technique.tactic))
+    if cloud_only:
+        platforms = [
+            "IaaS",
+            "SaaS",
+            "AWS",
+            "Azure",
+            "GCP",
+            "Azure AD",
+            "Google Workspace",
+            "Office 365",
+        ]
+        query = query.where(
+            or_(*[Technique.platforms.contains([p]) for p in platforms])
+        )
+
+    result = await db.execute(query)
+    techniques = [
+        {
+            "id": str(t.id),
+            "technique_id": t.technique_id,
+            "name": t.name,
+            "platforms": t.platforms,
+            "tactic_id": t.tactic.tactic_id if t.tactic else None,
+            "tactic_name": t.tactic.name if t.tactic else None,
+            "is_subtechnique": t.is_subtechnique,
+        }
+        for t in result.scalars().unique().all()
+    ]
+
+    await set_cached(cache_key, techniques, ttl=MITRE_CACHE_TTL)
+    logger.info(
+        "mitre_techniques_cached",
+        count=len(techniques),
+        cloud_only=cloud_only,
+    )
+
+    return techniques
+
+
+async def invalidate_mitre_cache() -> None:
+    """Clear MITRE caches (call after data update)."""
+    await delete_cached(f"{mitre_techniques_key()}:cloud=True")
+    await delete_cached(f"{mitre_techniques_key()}:cloud=False")
+    await delete_cached(mitre_tactics_key())
+    logger.info("mitre_cache_invalidated")

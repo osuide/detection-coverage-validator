@@ -14,7 +14,6 @@ from app.models.user import APIKey, Organization
 from app.models.billing import Subscription
 from app.services.auth_service import AuthService
 
-
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 

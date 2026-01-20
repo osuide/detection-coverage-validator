@@ -10,7 +10,6 @@ from typing import Any, Optional
 import structlog
 from botocore.exceptions import ClientError
 
-
 logger = structlog.get_logger()
 
 

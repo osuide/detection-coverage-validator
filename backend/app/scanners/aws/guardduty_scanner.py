@@ -6,7 +6,6 @@ from botocore.exceptions import ClientError
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
 
-
 # GuardDuty feature names as returned by the API
 # See: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty-features-activation-model.html
 FEATURE_S3_DATA_EVENTS = "S3_DATA_EVENTS"

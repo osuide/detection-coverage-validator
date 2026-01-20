@@ -11,7 +11,6 @@ from typing import Any, Optional
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
 
-
 # SCC finding categories mapped to MITRE ATT&CK techniques
 SCC_FINDING_MITRE_MAPPING = {
     # Event Threat Detection findings

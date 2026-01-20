@@ -29,8 +29,12 @@ class DetectionMapping(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    # CASCADE: When Detection is deleted, associated mappings are deleted.
     detection_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("detections.id"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("detections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     technique_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("techniques.id"), nullable=False, index=True

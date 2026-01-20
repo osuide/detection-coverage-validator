@@ -52,7 +52,6 @@ from app.services.evaluation_history_service import (
     unacknowledge_alert,
 )
 
-
 # Cache control headers
 TREND_CACHE_HEADER = "private, max-age=300"  # 5 minutes
 SUMMARY_CACHE_HEADER = "private, max-age=600"  # 10 minutes

@@ -6,6 +6,7 @@ from app.api.deps.admin import (
     require_reauth,
     get_client_ip,
 )
+from app.api.deps.authorization import verified_account
 from app.api.deps.rate_limit import (
     init_rate_limiter,
     close_rate_limiter,
@@ -21,6 +22,8 @@ __all__ = [
     "require_permission",
     "require_reauth",
     "get_client_ip",
+    # Authorization
+    "verified_account",
     # Rate limiting
     "init_rate_limiter",
     "close_rate_limiter",

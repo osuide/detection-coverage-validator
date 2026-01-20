@@ -586,14 +586,68 @@ class SchedulerService:
         self.logger.info("telemetry_schedule_loaded", interval="5m")
 
     async def _execute_telemetry_push(self) -> None:
-        """Fetch metrics and push to Google Sheets."""
-        try:
-            raw = await fetch_metrics()
-            if raw:
-                data = parse_metrics(raw)
-                await push_to_sheets(data)
-        except Exception as e:
-            self.logger.error("telemetry_push_failed", error=str(e))
+        """Fetch metrics and push to Google Sheets.
+
+        Includes retry logic for auth failures - if the first attempt fails
+        with an auth error, credentials are invalidated and a retry is attempted.
+        """
+        from googleapiclient.errors import HttpError
+        from app.services.google_workspace_service import get_workspace_service
+
+        max_retries = 1
+        last_error = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                raw = await fetch_metrics()
+                if raw:
+                    data = parse_metrics(raw)
+                    await push_to_sheets(data)
+                    if attempt > 0:
+                        self.logger.info(
+                            "telemetry_push_recovered",
+                            attempt=attempt + 1,
+                        )
+                return  # Success
+            except HttpError as e:
+                last_error = e
+                if e.resp.status in (401, 403) and attempt < max_retries:
+                    # Auth error - invalidate credentials and retry
+                    self.logger.warning(
+                        "telemetry_auth_error_retrying",
+                        status=e.resp.status,
+                        attempt=attempt + 1,
+                    )
+                    try:
+                        ws = get_workspace_service()
+                        ws.invalidate_credentials()
+                    except Exception:
+                        pass  # Best effort invalidation
+                    continue
+                # Non-auth error or final attempt - log and exit
+                self.logger.error(
+                    "telemetry_push_failed",
+                    error=str(e),
+                    status=getattr(e.resp, "status", None),
+                    attempt=attempt + 1,
+                )
+                return
+            except Exception as e:
+                last_error = e
+                self.logger.error(
+                    "telemetry_push_failed",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    attempt=attempt + 1,
+                )
+                return
+
+        # Should not reach here, but log if we do
+        if last_error:
+            self.logger.error(
+                "telemetry_push_exhausted_retries",
+                error=str(last_error),
+            )
 
 
 # Singleton instance for import

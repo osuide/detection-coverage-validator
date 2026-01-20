@@ -17,7 +17,6 @@ from app.models.detection import Detection
 from app.models.mapping import DetectionMapping
 from app.models.mitre import Technique
 
-
 # Drift thresholds
 DRIFT_CRITICAL_THRESHOLD = 10.0  # >10% drop is critical
 DRIFT_WARNING_THRESHOLD = 5.0  # >5% drop is warning

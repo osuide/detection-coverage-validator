@@ -20,11 +20,13 @@ Metrics Collected:
     - CPU: Percentage utilisation (calculated from delta)
     - Memory: Resident memory in MB
     - Uptime: Time since process start
+    - Task ID: ECS task identifier for multi-instance aggregation
 """
 
 import asyncio
 import os
 import re
+import socket
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -33,6 +35,22 @@ import structlog
 
 from app.core.config import get_settings
 from app.services.google_workspace_service import get_workspace_service
+
+
+def get_task_id() -> str:
+    """Get a unique identifier for this ECS task.
+
+    In ECS, we can use the hostname which is set to the task ID.
+    Falls back to a short hostname if not in ECS.
+
+    Returns:
+        Short task identifier (last 8 chars of hostname or task ID)
+    """
+    # ECS sets hostname to the task ID
+    hostname = socket.gethostname()
+    # Return last 8 characters as a short identifier
+    return hostname[-8:] if len(hostname) > 8 else hostname
+
 
 # Configure logger
 logger = structlog.get_logger()
@@ -286,9 +304,13 @@ async def push_to_sheets(metrics: dict) -> None:
     """
     ws = get_workspace_service()
 
-    # Headers for the sheet
+    # Get task identifier for multi-instance aggregation
+    task_id = get_task_id()
+
+    # Headers for the sheet (Task ID added for multi-instance aggregation)
     headers = [
         "Timestamp",
+        "Task ID",
         "Total Requests",
         "2xx",
         "4xx",
@@ -307,6 +329,7 @@ async def push_to_sheets(metrics: dict) -> None:
     # Format row with formula injection protection
     row = [
         sanitise_for_sheets(metrics["timestamp"]),
+        sanitise_for_sheets(task_id),
         metrics["total_requests"],
         metrics["requests_2xx"],
         metrics["requests_4xx"],
@@ -326,7 +349,7 @@ async def push_to_sheets(metrics: dict) -> None:
         # Check if header exists in A1
         try:
             current_headers = await asyncio.to_thread(
-                ws.get_sheet_values, SHEET_ID, f"{SHEET_NAME}!A1:N1"
+                ws.get_sheet_values, SHEET_ID, f"{SHEET_NAME}!A1:O1"
             )
             if not current_headers or not current_headers[0]:
                 logger.info("telemetry_initialising_headers", sheet=SHEET_NAME)

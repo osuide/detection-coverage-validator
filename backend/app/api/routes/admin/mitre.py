@@ -417,3 +417,21 @@ async def get_mitre_statistics(
         groups_by_activity={},  # TODO: Implement grouping
         software_by_type={},  # TODO: Implement grouping
     )
+
+
+@router.post("/cache/invalidate")
+async def invalidate_mitre_cache_endpoint(
+    admin: AdminUser = Depends(require_permission("settings:write")),
+) -> dict:
+    """
+    Invalidate MITRE ATT&CK technique cache.
+
+    Call this after updating MITRE data to ensure coverage calculations
+    use the latest data. The cache will be repopulated on next request.
+
+    Requires settings:write permission (SUPER_ADMIN or PLATFORM_ADMIN).
+    """
+    from app.core.cache import invalidate_mitre_cache
+
+    await invalidate_mitre_cache()
+    return {"status": "ok", "message": "MITRE cache invalidated"}

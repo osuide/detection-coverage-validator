@@ -23,7 +23,6 @@ from app.models.detection_evaluation_history import (
     EvaluationAlertSeverity,
 )
 
-
 # Mapping from detection types to evaluation types
 DETECTION_TYPE_TO_EVALUATION_TYPE = {
     DetectionType.CONFIG_RULE: EvaluationType.CONFIG_COMPLIANCE,

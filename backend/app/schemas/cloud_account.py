@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field, model_validator, ConfigDict
 
 from app.models.cloud_account import CloudProvider
 
-
 # AWS account IDs are exactly 12 digits
 AWS_ACCOUNT_ID_PATTERN = re.compile(r"^\d{12}$")
 

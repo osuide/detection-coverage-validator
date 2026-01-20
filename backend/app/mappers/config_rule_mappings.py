@@ -11,7 +11,6 @@ These mappings are based on ATT&CK v9.0+ and cover AWS Config managed rules.
 
 from typing import Optional
 
-
 # AWS Config managed rule identifier to MITRE technique mappings
 # Each rule maps to a list of (technique_id, confidence) tuples
 # Confidence is based on MITRE's coverage assessment:

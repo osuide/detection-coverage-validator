@@ -18,7 +18,6 @@ from botocore.exceptions import ClientError
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
 
-
 # Macie finding categories
 FINDING_CATEGORIES = [
     "CLASSIFICATION",  # Sensitive data classification findings

@@ -1123,8 +1123,10 @@ class ScanService:
         """
         stats = {"found": len(raw_detections), "new": 0, "updated": 0, "removed": 0}
 
-        # Clean up any duplicate detections first (keep oldest by id)
-        await self._cleanup_duplicate_detections(cloud_account_id)
+        # NOTE: Duplicate prevention is now handled by the unique index
+        # ix_detections_account_arn_unique on (cloud_account_id, source_arn).
+        # The _cleanup_duplicate_detections method is no longer called here.
+        # See migration 058_add_detection_unique_index.py
 
         # Track which ARNs are found in this scan (used later for removal detection)
         found_arns = set(raw.source_arn for raw in raw_detections)
@@ -1278,7 +1280,12 @@ class ScanService:
         return DetectionStatus.ACTIVE
 
     async def _cleanup_duplicate_detections(self, cloud_account_id: UUID) -> None:
-        """Remove duplicate detections keeping only the oldest one per source_arn."""
+        """Remove duplicate detections keeping only the oldest one per source_arn.
+
+        DEPRECATED: This method is no longer called during scans as of migration
+        058_add_detection_unique_index.py which adds a unique index preventing
+        duplicates at the database level. Retained for potential manual cleanup.
+        """
         from sqlalchemy import func
 
         # Find source_arns with duplicates

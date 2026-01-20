@@ -111,9 +111,10 @@ class Detection(Base):
     )
 
     # Account-level detection link (nullable for org-level detections)
+    # CASCADE: When CloudAccount is deleted, associated detections are deleted.
     cloud_account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("cloud_accounts.id"),
+        ForeignKey("cloud_accounts.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )

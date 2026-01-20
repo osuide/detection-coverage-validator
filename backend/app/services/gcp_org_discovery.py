@@ -21,7 +21,6 @@ from app.models.cloud_organization import (
 )
 from app.models.cloud_account import CloudProvider
 
-
 logger = structlog.get_logger()
 
 

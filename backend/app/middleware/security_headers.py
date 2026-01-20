@@ -16,7 +16,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-
 # === CSP Policies (ordered from most to least restrictive) ===
 
 # Strictest CSP for API endpoints - they return JSON, not HTML

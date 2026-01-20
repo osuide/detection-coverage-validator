@@ -34,7 +34,6 @@ from reportlab.platypus import (
 from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.pdfgen import canvas
 
-
 # =============================================================================
 # BRAND COLOURS (extracted from A13E logo - deep navy, teal accents)
 # =============================================================================

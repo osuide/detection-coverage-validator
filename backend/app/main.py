@@ -59,7 +59,6 @@ from app.middleware.request_id import RequestIDMiddleware
 from app.services.scheduler_service import scheduler_service
 from app.core.metrics import record_request
 
-
 # === Security: Request Logging Middleware ===
 # Excludes sensitive endpoints from body logging
 

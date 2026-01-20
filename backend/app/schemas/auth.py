@@ -9,7 +9,6 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 
 from app.schemas.validators import ValidatedEmail
 
-
 # Password validation
 PASSWORD_PATTERN = re.compile(
     r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$"

@@ -22,7 +22,6 @@ from app.models.custom_detection import (
 )
 from app.services.custom_detection_service import CustomDetectionService
 
-
 router = APIRouter()
 
 

@@ -18,7 +18,6 @@ from botocore.exceptions import ClientError
 from app.models.detection import DetectionType
 from app.scanners.base import BaseScanner, RawDetection
 
-
 # Inspector resource types that can be scanned
 RESOURCE_TYPES = ["EC2", "ECR", "LAMBDA", "LAMBDA_CODE"]
 
