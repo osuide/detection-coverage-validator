@@ -27,6 +27,7 @@ import asyncio
 import os
 import re
 import socket
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -63,6 +64,11 @@ METRICS_URL = os.environ.get("METRICS_URL", "http://localhost:8000/metrics")
 
 # Cache for CPU delta calculation
 _last_cpu_sample: Optional[dict] = None
+
+# Track actual container start time (when this module loads)
+# This is more reliable than Prometheus process_start_time_seconds which can
+# report EC2 instance start time instead of container start time in ECS
+_container_start_time: float = time.time()
 
 
 def sanitise_for_sheets(value: str) -> str:
@@ -158,14 +164,12 @@ def parse_metrics(raw_data: str) -> dict:
     # Process metrics
     cpu_pattern = re.compile(r"process_cpu_seconds_total\s+([\d.eE+\-]+)")
     memory_pattern = re.compile(r"process_resident_memory_bytes\s+([\d.eE+\-]+)")
-    start_time_pattern = re.compile(r"process_start_time_seconds\s+([\d.eE+\-]+)")
 
     # Collect histogram buckets for percentile calculation
     histogram_buckets: list[tuple[float, float]] = []
     total_latency_sum = 0.0
     total_latency_count = 0.0
     cpu_seconds = 0.0
-    process_start_time = 0.0
 
     for line in raw_data.split("\n"):
         if line.startswith("#"):
@@ -215,12 +219,6 @@ def parse_metrics(raw_data: str) -> dict:
         if match:
             memory_bytes = parse_scientific_notation(match.group(1))
             metrics["memory_mb"] = round(memory_bytes / 1024 / 1024, 2)
-            continue
-
-        # Process start time
-        match = start_time_pattern.search(line)
-        if match:
-            process_start_time = parse_scientific_notation(match.group(1))
             continue
 
     # Calculate total requests
@@ -286,10 +284,11 @@ def parse_metrics(raw_data: str) -> dict:
         "total_requests": metrics["total_requests"],
     }
 
-    # Calculate uptime
-    if process_start_time > 0:
-        uptime_seconds = current_time - process_start_time
-        metrics["uptime_hours"] = round(uptime_seconds / 3600, 2)
+    # Calculate uptime using our tracked container start time
+    # This is more reliable than Prometheus process_start_time_seconds which can
+    # report EC2 instance start time instead of container start time in ECS
+    uptime_seconds = current_time - _container_start_time
+    metrics["uptime_hours"] = round(uptime_seconds / 3600, 2)
 
     return metrics
 
