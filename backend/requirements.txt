@@ -62,7 +62,7 @@ webauthn==2.7.0  # FIDO2/WebAuthn for passkeys and hardware keys
 cbor2>=5.8.0  # CVE-2025-68131 - required by webauthn, pinned for security
 
 # Payments
-stripe==11.6.0
+stripe==14.2.0
 
 # Utilities
 python-dotenv==1.2.1
