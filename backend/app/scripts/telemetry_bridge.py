@@ -125,9 +125,9 @@ def parse_metrics(raw_data: str) -> dict:
     now = datetime.now(timezone.utc)
 
     metrics = {
-        # Format: YYYYMMDDHHMMSS - Looker Studio parses this with PARSE_DATETIME
-        # Or use directly as a string that Sheets auto-formats as datetime
-        "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+        # Prefix with single quote to force Sheets to treat as text string
+        # (prevents auto-conversion to serial date number)
+        "timestamp": "'" + now.strftime("%Y-%m-%d %H:%M:%S"),
         "requests_2xx": 0,
         "requests_4xx": 0,
         "requests_5xx": 0,
