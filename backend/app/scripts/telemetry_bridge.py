@@ -290,6 +290,15 @@ def parse_metrics(raw_data: str) -> dict:
     uptime_seconds = current_time - _container_start_time
     metrics["uptime_hours"] = round(uptime_seconds / 3600, 2)
 
+    # Debug: Log the container start time to verify it's correct
+    logger.debug(
+        "uptime_calculation",
+        container_start_time=_container_start_time,
+        current_time=current_time,
+        uptime_seconds=uptime_seconds,
+        uptime_hours=metrics["uptime_hours"],
+    )
+
     return metrics
 
 
@@ -366,6 +375,7 @@ async def push_to_sheets(metrics: dict) -> None:
             error_rate=metrics["error_rate_pct"],
             cpu_pct=metrics["cpu_pct"],
             memory_mb=metrics["memory_mb"],
+            uptime_hours=metrics["uptime_hours"],
         )
     except Exception as e:
         logger.error("telemetry_push_failed", error=str(e))
