@@ -5,7 +5,7 @@
 repos:
   # Python formatting with Black
   - repo: https://github.com/psf/black
-    rev: 24.10.0
+    rev: 26.1.0
     hooks:
       - id: black
         name: black (Python formatter)
@@ -14,7 +14,7 @@ repos:
 
   # Python linting with Ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.14.13
     hooks:
       - id: ruff
         name: ruff (Python linter)
