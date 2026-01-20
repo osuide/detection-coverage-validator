@@ -183,13 +183,11 @@ def seed_mitre_data() -> None:
                 if tactic_id not in existing_tactics:
                     tactic_uuid = str(uuid4())
                     conn.execute(
-                        text(
-                            """
+                        text("""
                             INSERT INTO tactics (id, tactic_id, name, short_name, display_order, mitre_version, created_at)
                             VALUES (:id, :tactic_id, :name, :short_name, :display_order, :mitre_version, :created_at)
                             ON CONFLICT (tactic_id) DO NOTHING
-                        """
-                        ),
+                        """),
                         {
                             "id": tactic_uuid,
                             "tactic_id": tactic_id,
@@ -244,8 +242,7 @@ def seed_mitre_data() -> None:
                     platforms = ["AWS", "Azure", "GCP", "IaaS"]
 
                 conn.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO techniques (
                             id, technique_id, name, description, tactic_id, parent_technique_id,
                             platforms, mitre_version, is_subtechnique, created_at, updated_at
@@ -255,8 +252,7 @@ def seed_mitre_data() -> None:
                             CAST(:platforms AS jsonb), :mitre_version, :is_subtechnique, :created_at, :updated_at
                         )
                         ON CONFLICT (technique_id) DO NOTHING
-                    """
-                    ),
+                    """),
                     {
                         "id": tech_uuid,
                         "technique_id": technique_id,
@@ -335,8 +331,7 @@ def seed_admin_user() -> None:
 
             admin_id = uuid4()
             conn.execute(
-                text(
-                    """
+                text("""
                     INSERT INTO admin_users (
                         id, email, password_hash, role, full_name,
                         mfa_enabled, is_active, failed_login_attempts,
@@ -345,8 +340,7 @@ def seed_admin_user() -> None:
                         :id, :email, :password_hash, 'super_admin', :full_name,
                         false, true, 0, true
                     )
-                """
-                ),
+                """),
                 {
                     "id": admin_id,
                     "email": "admin@a13e.com",
@@ -565,8 +559,7 @@ async def custom_redoc_html() -> HTMLResponse:
     Uses self-hosted ReDoc bundle for strict CSP compliance.
     No external CDN dependencies.
     """
-    return HTMLResponse(
-        """
+    return HTMLResponse("""
 <!DOCTYPE html>
 <html>
 <head>
@@ -630,8 +623,7 @@ async def custom_redoc_html() -> HTMLResponse:
     <script src="/static/docs/redoc.standalone.js"></script>
 </body>
 </html>
-        """
-    )
+        """)
 
 
 # === Global Exception Handler ===

@@ -30,16 +30,14 @@ async def reset_admin_password(email: str, new_password: str) -> None:
 
         # Update password
         await conn.execute(
-            text(
-                """
+            text("""
                 UPDATE admin_users
                 SET password_hash = :password_hash,
                     failed_login_attempts = 0,
                     locked_until = NULL,
                     requires_password_change = false
                 WHERE email = :email
-            """
-            ),
+            """),
             {
                 "email": email.lower(),
                 "password_hash": password_hash,

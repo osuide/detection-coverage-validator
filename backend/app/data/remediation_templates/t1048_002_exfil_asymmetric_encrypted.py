@@ -859,8 +859,7 @@ resource "google_monitoring_alert_policy" "https_exfil" {
             cloud_provider=CloudProvider.GCP,
             implementation=DetectionImplementation(
                 gcp_logging_query="""protoPayload.methodName="storage.objects.get"
-protoPayload.authenticationInfo.principalEmail!="""
-                "",
+protoPayload.authenticationInfo.principalEmail!=""" "",
                 gcp_terraform_template="""# GCP: Detect Cloud Storage access before exfiltration
 
 variable "project_id" { type = string }

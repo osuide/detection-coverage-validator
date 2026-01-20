@@ -1005,12 +1005,10 @@ def seed_mitre_sync() -> None:
             if tactic_id not in existing_tactics:
                 tactic_uuid = str(uuid4())
                 conn.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO tactics (id, tactic_id, name, short_name, display_order, mitre_version, created_at)
                         VALUES (:id, :tactic_id, :name, :short_name, :display_order, :mitre_version, :created_at)
-                    """
-                    ),
+                    """),
                     {
                         "id": tactic_uuid,
                         "tactic_id": tactic_id,
@@ -1066,8 +1064,7 @@ def seed_mitre_sync() -> None:
                     platforms = ["AWS", "Azure", "GCP", "IaaS"]
 
                 conn.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO techniques (
                             id, technique_id, name, description, tactic_id, parent_technique_id,
                             platforms, mitre_version, is_subtechnique, created_at, updated_at
@@ -1076,8 +1073,7 @@ def seed_mitre_sync() -> None:
                             :id, :technique_id, :name, :description, :tactic_id, :parent_id,
                             CAST(:platforms AS jsonb), :mitre_version, :is_subtechnique, :created_at, :updated_at
                         )
-                    """
-                    ),
+                    """),
                     {
                         "id": str(uuid4()),
                         "technique_id": technique_id,

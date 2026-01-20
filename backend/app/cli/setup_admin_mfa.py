@@ -24,13 +24,11 @@ async def get_admin_by_email(email: str) -> Any:
 
     async with engine.begin() as conn:
         result = await conn.execute(
-            text(
-                """
+            text("""
                 SELECT id, email, full_name, mfa_enabled, mfa_secret_encrypted
                 FROM admin_users
                 WHERE email = :email
-                """
-            ),
+                """),
             {"email": email.lower()},
         )
         row = result.fetchone()
@@ -105,13 +103,11 @@ async def setup_mfa(email: str) -> None:
     # Store encrypted secret
     async with engine.begin() as conn:
         await conn.execute(
-            text(
-                """
+            text("""
                 UPDATE admin_users
                 SET mfa_secret_encrypted = :secret
                 WHERE email = :email
-                """
-            ),
+                """),
             {"secret": encrypted_secret, "email": email.lower()},
         )
 
@@ -170,13 +166,11 @@ async def verify_and_enable_mfa(email: str, totp_code: str) -> None:
     # Enable MFA
     async with engine.begin() as conn:
         await conn.execute(
-            text(
-                """
+            text("""
                 UPDATE admin_users
                 SET mfa_enabled = true
                 WHERE email = :email
-                """
-            ),
+                """),
             {"email": email.lower()},
         )
 
@@ -202,13 +196,11 @@ async def disable_mfa(email: str) -> None:
 
     async with engine.begin() as conn:
         await conn.execute(
-            text(
-                """
+            text("""
                 UPDATE admin_users
                 SET mfa_enabled = false, mfa_secret_encrypted = NULL
                 WHERE email = :email
-                """
-            ),
+                """),
             {"email": email.lower()},
         )
 
@@ -223,15 +215,11 @@ async def list_admins() -> None:
     from app.core.database import engine
 
     async with engine.begin() as conn:
-        result = await conn.execute(
-            text(
-                """
+        result = await conn.execute(text("""
                 SELECT email, full_name, role, mfa_enabled, is_active
                 FROM admin_users
                 ORDER BY email
-                """
-            )
-        )
+                """))
         rows = result.fetchall()
 
     if not rows:

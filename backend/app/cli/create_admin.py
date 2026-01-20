@@ -33,8 +33,7 @@ async def create_super_admin(
 
         # Insert admin
         await conn.execute(
-            text(
-                """
+            text("""
                 INSERT INTO admin_users (
                     id, email, password_hash, role, full_name,
                     mfa_enabled, is_active, failed_login_attempts,
@@ -43,8 +42,7 @@ async def create_super_admin(
                     :id, :email, :password_hash, 'super_admin', :full_name,
                     false, true, 0, false
                 )
-            """
-            ),
+            """),
             {
                 "id": admin_id,
                 "email": email.lower(),
