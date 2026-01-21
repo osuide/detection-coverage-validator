@@ -13,7 +13,7 @@ import {
 import { cloudOrganizationsApi } from '../services/organizationsApi'
 import { PageHeader } from '../components/navigation'
 
-type Provider = 'aws' | 'gcp' | null
+type Provider = 'aws' | 'gcp' | 'azure' | null
 type Step = 'provider' | 'credentials' | 'discovering' | 'complete'
 
 export default function ConnectOrganization() {
@@ -56,7 +56,7 @@ export default function ConnectOrganization() {
     },
   })
 
-  const handleProviderSelect = (selectedProvider: 'aws' | 'gcp') => {
+  const handleProviderSelect = (selectedProvider: 'aws' | 'gcp' | 'azure') => {
     setProvider(selectedProvider)
     setStep('credentials')
     setError(null)

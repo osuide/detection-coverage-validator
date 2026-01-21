@@ -10,7 +10,7 @@ import api from './api'
 export interface CloudOrganization {
   id: string
   organization_id: string
-  provider: 'aws' | 'gcp'
+  provider: 'aws' | 'gcp' | 'azure'
   cloud_org_id: string
   name: string
   status: 'discovering' | 'active' | 'partial' | 'error' | 'disconnected'
@@ -50,7 +50,7 @@ export interface CloudOrganizationMember {
 }
 
 export interface DiscoverOrganizationRequest {
-  provider: 'aws' | 'gcp'
+  provider: 'aws' | 'gcp' | 'azure'
   credentials_arn?: string
   gcp_org_id?: string
   gcp_service_account_email?: string

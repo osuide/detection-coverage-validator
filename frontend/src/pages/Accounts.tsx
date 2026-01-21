@@ -309,11 +309,12 @@ export default function Accounts() {
                 </label>
                 <select
                   value={formData.provider}
-                  onChange={(e) => setFormData({ ...formData, provider: e.target.value as 'aws' | 'gcp' })}
+                  onChange={(e) => setFormData({ ...formData, provider: e.target.value as 'aws' | 'gcp' | 'azure' })}
                   className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="aws">AWS</option>
                   <option value="gcp">GCP</option>
+                  <option value="azure">Azure</option>
                 </select>
               </div>
             </div>
