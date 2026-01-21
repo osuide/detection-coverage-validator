@@ -105,20 +105,29 @@ export interface RegionConfig {
   auto_discovered_at?: string
 }
 
+export interface AzureWIFConfig {
+  tenant_id: string
+  client_id: string
+  subscription_id: string
+}
+
 export interface CloudAccount {
   id: string
   name: string
-  provider: 'aws' | 'gcp'
+  provider: 'aws' | 'gcp' | 'azure'
   account_id: string
   regions: string[]
   region_config?: RegionConfig
   is_active: boolean
   last_scan_at: string | null
   created_at: string
+  // Azure-specific fields
+  azure_workload_identity_config?: AzureWIFConfig
+  azure_enabled?: boolean
 }
 
 export interface AvailableRegionsResponse {
-  provider: 'aws' | 'gcp'
+  provider: 'aws' | 'gcp' | 'azure'
   regions: string[]
   default_regions: string[]
 }
@@ -275,7 +284,7 @@ export const accountsApi = {
 }
 
 export const regionsApi = {
-  getAvailable: (provider: 'aws' | 'gcp') =>
+  getAvailable: (provider: 'aws' | 'gcp' | 'azure') =>
     api.get<AvailableRegionsResponse>(`/accounts/regions/${provider}`).then(r => r.data),
   discover: (accountId: string) =>
     api.post<DiscoverRegionsResponse>(`/accounts/${accountId}/discover-regions`).then(r => r.data),
@@ -329,7 +338,7 @@ export interface DetectionListResponse {
   // Optional: regions in scope for the cloud account (for regional coverage analysis)
   effective_regions?: string[]
   // Optional: cloud provider for this account (needed for regional detection type checking)
-  provider?: 'aws' | 'gcp'
+  provider?: 'aws' | 'gcp' | 'azure'
 }
 
 export const detectionsApi = {

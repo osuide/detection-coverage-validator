@@ -19,7 +19,7 @@ import { credentialsApi } from '../services/api'
 
 interface CredentialWizardProps {
   cloudAccountId: string
-  provider: 'aws' | 'gcp'
+  provider: 'aws' | 'gcp' | 'azure'
   accountName: string
   onClose: () => void
   onSuccess: () => void

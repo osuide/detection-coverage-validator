@@ -25,6 +25,7 @@ class CloudProvider(str, enum.Enum):
 
     AWS = "aws"
     GCP = "gcp"
+    AZURE = "azure"
 
 
 class RegionScanMode(str, enum.Enum):
@@ -84,6 +85,16 @@ class CloudAccount(Base):
     # Structure: {mode, regions, excluded_regions, discovered_regions, auto_discovered_at}
     region_config: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     credentials_arn: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Azure Workload Identity Federation configuration
+    # Structure: {tenant_id, client_id, subscription_id} - no secrets, only public identifiers
+    azure_workload_identity_config: Mapped[Optional[dict]] = mapped_column(
+        JSONB, nullable=True
+    )
+
+    # Feature flag for Azure scanning
+    azure_enabled: Mapped[bool] = mapped_column(default=False)
+
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True)
     last_scan_at: Mapped[Optional[datetime]] = mapped_column(

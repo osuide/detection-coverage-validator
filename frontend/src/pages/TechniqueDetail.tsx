@@ -490,9 +490,10 @@ export default function TechniqueDetail() {
   const { selectedAccount } = useSelectedAccount()
 
   // Initialize filter based on selected account's cloud provider
-  const [cloudFilter, setCloudFilter] = useState<'all' | 'aws' | 'gcp'>(() => {
+  const [cloudFilter, setCloudFilter] = useState<'all' | 'aws' | 'gcp' | 'azure'>(() => {
     if (selectedAccount?.provider === 'gcp') return 'gcp'
     if (selectedAccount?.provider === 'aws') return 'aws'
+    if (selectedAccount?.provider === 'azure') return 'azure'
     return 'all'
   })
 

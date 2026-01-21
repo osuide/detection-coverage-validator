@@ -4,7 +4,7 @@ import { Globe, Search, ChevronDown, ChevronUp, RefreshCw, Info } from 'lucide-r
 import { regionsApi, RegionConfig, RegionScanMode } from '../services/api'
 
 interface RegionSelectorProps {
-  provider: 'aws' | 'gcp'
+  provider: 'aws' | 'gcp' | 'azure'
   accountId?: string
   value: RegionConfig
   onChange: (config: RegionConfig) => void
@@ -27,6 +27,14 @@ const GCP_REGION_GROUPS: Record<string, string[]> = {
   'Australia': ['australia-southeast1', 'australia-southeast2'],
   'Americas': ['northamerica-northeast1', 'northamerica-northeast2', 'southamerica-east1', 'southamerica-west1'],
   'Middle East & Africa': ['me-west1', 'me-central1', 'me-central2', 'africa-south1'],
+}
+
+const AZURE_REGION_GROUPS: Record<string, string[]> = {
+  'US': ['eastus', 'eastus2', 'centralus', 'northcentralus', 'southcentralus', 'westcentralus', 'westus', 'westus2', 'westus3'],
+  'Europe': ['northeurope', 'westeurope', 'uksouth', 'ukwest', 'francecentral', 'francesouth', 'germanywestcentral', 'germanynorth', 'norwayeast', 'norwaywest', 'swedencentral', 'switzerlandnorth', 'switzerlandwest'],
+  'Asia Pacific': ['eastasia', 'southeastasia', 'japaneast', 'japanwest', 'koreacentral', 'koreasouth', 'australiaeast', 'australiasoutheast', 'australiacentral', 'centralindia', 'southindia', 'westindia'],
+  'Americas': ['canadacentral', 'canadaeast', 'brazilsouth', 'brazilsoutheast'],
+  'Middle East & Africa': ['uaenorth', 'uaecentral', 'southafricanorth', 'southafricawest', 'qatarcentral'],
 }
 
 export default function RegionSelector({
@@ -60,7 +68,7 @@ export default function RegionSelector({
     },
   })
 
-  const regionGroups = provider === 'aws' ? AWS_REGION_GROUPS : GCP_REGION_GROUPS
+  const regionGroups = provider === 'aws' ? AWS_REGION_GROUPS : provider === 'gcp' ? GCP_REGION_GROUPS : AZURE_REGION_GROUPS
   const allRegions = availableRegions?.regions || []
 
   // Filter regions based on search

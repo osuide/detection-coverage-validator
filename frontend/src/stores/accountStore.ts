@@ -13,7 +13,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 export interface SelectedAccount {
   id: string
   name: string
-  provider: 'aws' | 'gcp'
+  provider: 'aws' | 'gcp' | 'azure'
   account_id: string
 }
 

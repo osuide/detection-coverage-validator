@@ -23,6 +23,11 @@ const providerStyles = {
     bgColour: 'bg-blue-500/10',
     label: 'GCP',
   },
+  azure: {
+    iconColour: 'text-cyan-500',
+    bgColour: 'bg-cyan-500/10',
+    label: 'Azure',
+  },
 }
 
 export function AccountSelector() {

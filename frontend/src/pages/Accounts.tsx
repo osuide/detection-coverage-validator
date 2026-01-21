@@ -15,13 +15,16 @@ export default function Accounts() {
   const [schedulingAccount, setSchedulingAccount] = useState<CloudAccount | null>(null)
   const [formData, setFormData] = useState({
     name: '',
-    provider: 'aws' as 'aws' | 'gcp',
+    provider: 'aws' as 'aws' | 'gcp' | 'azure',
     account_id: '',
     regions: [] as string[],
     region_config: {
       mode: 'selected',
       regions: ['eu-west-2'],  // A13E's primary region
     } as RegionConfig,
+    // Azure-specific fields
+    azure_workload_identity_config: undefined as { tenant_id: string; client_id: string; subscription_id: string } | undefined,
+    azure_enabled: false,
   })
 
   const { data: accounts, isLoading } = useQuery({
@@ -42,10 +45,12 @@ export default function Accounts() {
       setShowForm(false)
       setFormData({
         name: '',
-        provider: 'aws' as 'aws' | 'gcp',
+        provider: 'aws' as 'aws' | 'gcp' | 'azure',
         account_id: '',
         regions: [],
         region_config: { mode: 'selected', regions: ['eu-west-2'] },
+        azure_workload_identity_config: undefined,
+        azure_enabled: false,
       })
     },
   })
@@ -304,11 +309,12 @@ export default function Accounts() {
                 </label>
                 <select
                   value={formData.provider}
-                  onChange={(e) => setFormData({ ...formData, provider: e.target.value as 'aws' | 'gcp' })}
+                  onChange={(e) => setFormData({ ...formData, provider: e.target.value as 'aws' | 'gcp' | 'azure' })}
                   className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="aws">AWS</option>
                   <option value="gcp">GCP</option>
+                  <option value="azure">Azure</option>
                 </select>
               </div>
             </div>

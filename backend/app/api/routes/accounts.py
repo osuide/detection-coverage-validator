@@ -272,6 +272,9 @@ async def update_account(
         # Serialize region_config to JSON-compatible dict for JSONB storage
         if field == "region_config" and value is not None:
             value = account_in.region_config.model_dump(mode="json")
+        # Serialize azure_workload_identity_config to JSON-compatible dict for JSONB storage
+        elif field == "azure_workload_identity_config" and value is not None:
+            value = account_in.azure_workload_identity_config.model_dump(mode="json")
         setattr(account, field, value)
 
     await db.flush()

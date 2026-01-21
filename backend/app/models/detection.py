@@ -43,6 +43,12 @@ class DetectionType(str, enum.Enum):
     GCP_CLOUD_FUNCTION = "gcp_cloud_function"
     GCP_CHRONICLE = "gcp_chronicle"
 
+    # Azure Detection Types
+    AZURE_DEFENDER = (
+        "azure_defender"  # Microsoft Defender for Cloud security assessments
+    )
+    AZURE_POLICY = "azure_policy"  # Azure Policy compliance assessments
+
 
 class DetectionStatus(str, enum.Enum):
     """Detection status."""
