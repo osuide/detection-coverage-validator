@@ -299,7 +299,7 @@ export default function Accounts() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder={formData.provider === 'gcp' ? 'My GCP Project' : 'My AWS Account'}
+                  placeholder={formData.provider === 'gcp' ? 'My GCP Project' : formData.provider === 'azure' ? 'My Azure Subscription' : 'My AWS Account'}
                   required
                 />
               </div>
@@ -309,7 +309,18 @@ export default function Accounts() {
                 </label>
                 <select
                   value={formData.provider}
-                  onChange={(e) => setFormData({ ...formData, provider: e.target.value as 'aws' | 'gcp' | 'azure' })}
+                  onChange={(e) => {
+                    const newProvider = e.target.value as 'aws' | 'gcp' | 'azure'
+                    setFormData({
+                      ...formData,
+                      provider: newProvider,
+                      account_id: '', // Reset account ID when changing provider
+                      azure_workload_identity_config: newProvider === 'azure'
+                        ? { tenant_id: '', client_id: '', subscription_id: '' }
+                        : undefined,
+                      azure_enabled: newProvider === 'azure',
+                    })
+                  }}
                   className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="aws">AWS</option>
@@ -320,17 +331,87 @@ export default function Accounts() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">
-                {formData.provider === 'gcp' ? 'Project ID' : 'Account ID'}
+                {formData.provider === 'gcp' ? 'Project ID' : formData.provider === 'azure' ? 'Subscription ID' : 'Account ID'}
               </label>
               <input
                 type="text"
                 value={formData.account_id}
-                onChange={(e) => setFormData({ ...formData, account_id: e.target.value })}
+                onChange={(e) => {
+                  const newAccountId = e.target.value
+                  // For Azure, also update subscription_id in WIF config
+                  if (formData.provider === 'azure') {
+                    setFormData({
+                      ...formData,
+                      account_id: newAccountId,
+                      azure_workload_identity_config: {
+                        ...(formData.azure_workload_identity_config || { tenant_id: '', client_id: '', subscription_id: '' }),
+                        subscription_id: newAccountId,
+                      },
+                    })
+                  } else {
+                    setFormData({ ...formData, account_id: newAccountId })
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder={formData.provider === 'gcp' ? 'my-gcp-project-id' : '123456789012'}
+                placeholder={formData.provider === 'gcp' ? 'my-gcp-project-id' : formData.provider === 'azure' ? '12345678-1234-1234-1234-123456789abc' : '123456789012'}
                 required
               />
+              {formData.provider === 'azure' && (
+                <p className="text-xs text-gray-500 mt-1">Azure Subscription ID (GUID format)</p>
+              )}
             </div>
+
+            {/* Azure Workload Identity Federation Configuration */}
+            {formData.provider === 'azure' && (
+              <div className="space-y-4 p-4 bg-blue-900/20 border border-blue-700/50 rounded-lg">
+                <h4 className="text-sm font-medium text-blue-300">Azure Workload Identity Federation</h4>
+                <p className="text-xs text-gray-400">
+                  Configure the Azure AD application for secure cross-cloud authentication.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Tenant ID
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.azure_workload_identity_config?.tenant_id || ''}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        azure_workload_identity_config: {
+                          ...(formData.azure_workload_identity_config || { tenant_id: '', client_id: '', subscription_id: formData.account_id }),
+                          tenant_id: e.target.value,
+                        },
+                      })}
+                      className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="12345678-1234-1234-1234-123456789abc"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Azure AD Directory (tenant) ID</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Client ID
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.azure_workload_identity_config?.client_id || ''}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        azure_workload_identity_config: {
+                          ...(formData.azure_workload_identity_config || { tenant_id: '', client_id: '', subscription_id: formData.account_id }),
+                          client_id: e.target.value,
+                        },
+                      })}
+                      className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="12345678-1234-1234-1234-123456789abc"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Azure AD Application (client) ID</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Region Configuration */}
             <div>
