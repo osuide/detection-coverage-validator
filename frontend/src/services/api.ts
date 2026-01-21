@@ -284,7 +284,7 @@ export const accountsApi = {
 }
 
 export const regionsApi = {
-  getAvailable: (provider: 'aws' | 'gcp') =>
+  getAvailable: (provider: 'aws' | 'gcp' | 'azure') =>
     api.get<AvailableRegionsResponse>(`/accounts/regions/${provider}`).then(r => r.data),
   discover: (accountId: string) =>
     api.post<DiscoverRegionsResponse>(`/accounts/${accountId}/discover-regions`).then(r => r.data),
@@ -338,7 +338,7 @@ export interface DetectionListResponse {
   // Optional: regions in scope for the cloud account (for regional coverage analysis)
   effective_regions?: string[]
   // Optional: cloud provider for this account (needed for regional detection type checking)
-  provider?: 'aws' | 'gcp'
+  provider?: 'aws' | 'gcp' | 'azure'
 }
 
 export const detectionsApi = {
