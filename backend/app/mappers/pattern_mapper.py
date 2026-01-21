@@ -20,6 +20,10 @@ from app.mappers.securityhub_mappings import (
 )
 from app.mappers.gcp_scc_mappings import get_mitre_mappings_for_scc_finding
 from app.mappers.gcp_chronicle_mappings import get_mitre_mappings_for_chronicle_rule
+from app.mappers.azure_defender_mappings import (
+    get_mitre_techniques_for_defender_assessment,
+)
+from app.mappers.azure_policy_mappings import get_mitre_techniques_for_policy
 from app.scanners.base import RawDetection
 from app.models.detection import DetectionType
 
@@ -60,6 +64,7 @@ class PatternMapper:
         DetectionType.CONFIG_RULE,
         DetectionType.GCP_SECURITY_COMMAND_CENTER,
         DetectionType.GCP_CHRONICLE,
+        DetectionType.AZURE_DEFENDER,  # Azure Defender has native MITRE tags
     }
 
     def map_detection(
@@ -314,6 +319,70 @@ class PatternMapper:
                         "missing_technique_metadata",
                         technique_id=technique_id,
                         source="chronicle",
+                    )
+
+        # Azure Defender mappings - using MITRE CTID Security Stack Mappings
+        elif detection.detection_type == DetectionType.AZURE_DEFENDER:
+            # Defender assessments have displayName in raw_config
+            raw_config = detection.raw_config or {}
+            display_name = raw_config.get("displayName", "") or detection.name or ""
+
+            # Get MITRE mappings for this Defender assessment
+            technique_mappings = get_mitre_techniques_for_defender_assessment(
+                display_name
+            )
+
+            for technique_id, confidence in technique_mappings:
+                metadata = get_technique_metadata(technique_id)
+                if metadata:
+                    results.append(
+                        MappingResult(
+                            technique_id=technique_id,
+                            technique_name=metadata.technique_name,
+                            tactic_id=metadata.tactic_id,
+                            tactic_name=metadata.tactic_name,
+                            confidence=confidence,
+                            matched_indicators=[f"defender:{display_name}"],
+                            rationale="Azure Defender assessment - MITRE CTID mapping",
+                        )
+                    )
+                else:
+                    self.logger.warning(
+                        "missing_technique_metadata",
+                        technique_id=technique_id,
+                        source="azure_defender",
+                    )
+
+        # Azure Policy mappings - pattern-based (no native MITRE tags)
+        elif detection.detection_type == DetectionType.AZURE_POLICY:
+            # Policy assignments have assignmentName in raw_config
+            raw_config = detection.raw_config or {}
+            assignment_name = (
+                raw_config.get("assignmentName", "") or detection.name or ""
+            )
+
+            # Get pattern-based MITRE mappings for this policy
+            technique_mappings = get_mitre_techniques_for_policy(assignment_name)
+
+            for technique_id, confidence in technique_mappings:
+                metadata = get_technique_metadata(technique_id)
+                if metadata:
+                    results.append(
+                        MappingResult(
+                            technique_id=technique_id,
+                            technique_name=metadata.technique_name,
+                            tactic_id=metadata.tactic_id,
+                            tactic_name=metadata.tactic_name,
+                            confidence=confidence,
+                            matched_indicators=[f"policy:{assignment_name}"],
+                            rationale="Azure Policy pattern mapping",
+                        )
+                    )
+                else:
+                    self.logger.warning(
+                        "missing_technique_metadata",
+                        technique_id=technique_id,
+                        source="azure_policy",
                     )
 
         # Deduplicate by technique_id, keeping highest confidence
