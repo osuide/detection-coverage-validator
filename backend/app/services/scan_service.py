@@ -40,6 +40,11 @@ from app.scanners.gcp.security_command_center_scanner import (
     SecurityCommandCenterScanner,
 )
 from app.scanners.gcp.eventarc_scanner import EventarcScanner
+
+# Azure scanners use BaseScanner interface with WIF credentials passed to constructor
+from app.scanners.azure.defender_scanner import DefenderScanner
+from app.scanners.azure.policy_scanner import PolicyScanner
+
 from app.mappers.pattern_mapper import PatternMapper
 from app.services.coverage_service import CoverageService
 from app.services.drift_detection_service import DriftDetectionService
@@ -51,6 +56,11 @@ from app.services.evaluation_history_service import (
 )
 from app.services.aws_credential_service import aws_credential_service
 from app.services.gcp_wif_service import gcp_wif_service, GCPWIFError, WIFConfiguration
+from app.services.azure_wif_service import (
+    get_azure_credential,
+    AzureWIFConfiguration,
+    AzureWIFError,
+)
 from app.services.region_discovery_service import region_discovery_service
 from app.core.service_registry import get_all_regions, get_default_regions
 from app.core.cache import (
@@ -221,9 +231,37 @@ class ScanService:
             await self._cache_scan_status(scan)
 
             # Route to provider-specific credential and scan logic
-            is_gcp = account.provider == CloudProvider.GCP
+            if account.provider == CloudProvider.AZURE:
+                # Azure: Use Workload Identity Federation
+                azure_credential, azure_config = await self._get_azure_credentials(
+                    account
+                )
 
-            if is_gcp:
+                # Azure is subscription-level (not regional)
+                region_config = RegionConfig(
+                    regional_regions=["global"], global_region="global"
+                )
+
+                self.logger.info(
+                    "azure_scan_starting",
+                    scan_id=str(scan_id),
+                    subscription_id=azure_config.subscription_id,
+                )
+
+                # Scan for detections
+                scan.current_step = "Scanning Azure for detections"
+                scan.progress_percent = 10
+                await self.db.commit()
+                await self._cache_scan_status(scan)
+
+                # Azure scans are always full (no incremental support yet)
+                raw_detections, scanner_errors = await self._scan_azure_detections(
+                    azure_credential,
+                    azure_config,
+                    scan.detection_types,
+                )
+
+            elif account.provider == CloudProvider.GCP:
                 # GCP: Use Workload Identity Federation
                 gcp_credentials, wif_config = await self._get_gcp_credentials(account)
 
@@ -973,6 +1011,146 @@ class ScanService:
             total_detections=len(all_detections),
             scanner_errors=len(scan_errors),
             project_id=wif_config.project_id,
+        )
+
+        return all_detections, scan_errors
+
+    async def _get_azure_credentials(
+        self, account: CloudAccount
+    ) -> tuple[Any, AzureWIFConfiguration]:
+        """Get Azure credentials using Workload Identity Federation.
+
+        Args:
+            account: Cloud account with azure_workload_identity_config
+
+        Returns:
+            Tuple of (azure_credential, azure_config)
+
+        Raises:
+            ValueError: If Azure not enabled or config invalid
+            AzureWIFError: If WIF authentication fails
+        """
+        # Check feature flag
+        if not account.azure_enabled:
+            raise ValueError(
+                f"Azure scanning not enabled for account {account.account_id}"
+            )
+
+        # Get WIF configuration from account's JSONB column
+        # Following CLAUDE.md guidance: defensive dict access for JSONB
+        config_data = account.azure_workload_identity_config
+        if not config_data:
+            raise ValueError(
+                f"No Azure WIF configuration for account {account.account_id}. "
+                f"Please configure tenant_id, client_id, and subscription_id."
+            )
+
+        try:
+            azure_config = AzureWIFConfiguration.from_dict(config_data)
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid Azure WIF configuration for account {account.account_id}: {e}"
+            )
+
+        self.logger.info(
+            "obtaining_azure_wif_credentials",
+            account_id=str(account.id),
+            subscription_id=azure_config.subscription_id,
+            tenant_id=azure_config.tenant_id,
+        )
+
+        try:
+            credential = await get_azure_credential(azure_config)
+            return credential, azure_config
+        except AzureWIFError as e:
+            self.logger.error(
+                "azure_wif_failed",
+                account_id=str(account.id),
+                subscription_id=azure_config.subscription_id,
+                error=str(e),
+            )
+            raise ValueError(f"Azure WIF authentication failed: {e}")
+
+    async def _scan_azure_detections(
+        self,
+        credential: Any,
+        azure_config: AzureWIFConfiguration,
+        detection_types: list[str],
+    ) -> tuple[list[RawDetection], list[str]]:
+        """Run all applicable Azure scanners in parallel.
+
+        Azure scanners use the BaseScanner interface with:
+        - session = Azure ClientAssertionCredential
+        - options["subscription_id"] = Azure subscription ID
+
+        Args:
+            credential: Azure ClientAssertionCredential from WIF
+            azure_config: Azure WIF configuration
+            detection_types: List of detection types to scan for
+
+        Returns:
+            Tuple of (detections, errors)
+        """
+        scan_options: dict[str, Any] = {
+            "subscription_id": azure_config.subscription_id,
+        }
+
+        # Build list of Azure scanners
+        scanners: list[BaseScanner] = []
+
+        if not detection_types or "azure_defender" in detection_types:
+            scanners.append(DefenderScanner(credential))
+        if not detection_types or "azure_policy" in detection_types:
+            scanners.append(PolicyScanner(credential))
+
+        async def run_azure_scanner(
+            scanner: BaseScanner,
+        ) -> tuple[list[RawDetection], str | None]:
+            """Run an Azure scanner."""
+            try:
+                # Azure is subscription-level, use "global" as region
+                detections = await scanner.scan(["global"], options=scan_options)
+
+                self.logger.info(
+                    "azure_scanner_complete",
+                    scanner=scanner.__class__.__name__,
+                    count=len(detections),
+                )
+                return detections, None
+            except Exception as e:
+                error_msg = f"{scanner.__class__.__name__}: {str(e)}"
+                self.logger.error(
+                    "azure_scanner_error",
+                    scanner=scanner.__class__.__name__,
+                    error=str(e),
+                )
+                return [], error_msg
+
+        self.logger.info(
+            "starting_azure_parallel_scan",
+            scanner_count=len(scanners),
+            scanners=[s.__class__.__name__ for s in scanners],
+            subscription_id=azure_config.subscription_id,
+        )
+
+        results = await asyncio.gather(
+            *[run_azure_scanner(scanner) for scanner in scanners],
+            return_exceptions=False,
+        )
+
+        all_detections: list[RawDetection] = []
+        scan_errors: list[str] = []
+
+        for detections, error in results:
+            all_detections.extend(detections)
+            if error:
+                scan_errors.append(error)
+
+        self.logger.info(
+            "azure_parallel_scan_complete",
+            total_detections=len(all_detections),
+            scanner_errors=len(scan_errors),
+            subscription_id=azure_config.subscription_id,
         )
 
         return all_detections, scan_errors
