@@ -105,20 +105,29 @@ export interface RegionConfig {
   auto_discovered_at?: string
 }
 
+export interface AzureWIFConfig {
+  tenant_id: string
+  client_id: string
+  subscription_id: string
+}
+
 export interface CloudAccount {
   id: string
   name: string
-  provider: 'aws' | 'gcp'
+  provider: 'aws' | 'gcp' | 'azure'
   account_id: string
   regions: string[]
   region_config?: RegionConfig
   is_active: boolean
   last_scan_at: string | null
   created_at: string
+  // Azure-specific fields
+  azure_workload_identity_config?: AzureWIFConfig
+  azure_enabled?: boolean
 }
 
 export interface AvailableRegionsResponse {
-  provider: 'aws' | 'gcp'
+  provider: 'aws' | 'gcp' | 'azure'
   regions: string[]
   default_regions: string[]
 }
