@@ -34,6 +34,11 @@ google-cloud-compute==1.41.0
 # Google SecOps (Chronicle SIEM) - requires Python 3.10+
 secops==0.34.0
 
+# Azure
+azure-identity==1.22.0
+azure-mgmt-security==8.1.0
+azure-mgmt-policyinsights==2.3.0
+
 # Encryption
 cryptography==46.0.3
 
