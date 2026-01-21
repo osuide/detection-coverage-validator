@@ -17,6 +17,11 @@ AWS_ACCOUNT_ID_PATTERN = re.compile(r"^\d{12}$")
 # Must start with a letter, cannot end with hyphen
 GCP_PROJECT_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
 
+# Azure subscription IDs are GUIDs (8-4-4-4-12 hex digits)
+AZURE_GUID_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
+)
+
 
 class RegionScanMode(str, Enum):
     """Mode for determining which regions to scan."""
@@ -51,6 +56,30 @@ class RegionConfig(BaseModel):
     )
 
 
+class AzureWIFConfig(BaseModel):
+    """Azure Workload Identity Federation configuration.
+
+    Contains public identifiers for Azure WIF authentication.
+    No secrets - authentication uses AWS session tokens from ECS task.
+    """
+
+    tenant_id: str = Field(
+        ...,
+        description="Azure AD tenant ID (GUID)",
+        pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    )
+    client_id: str = Field(
+        ...,
+        description="Azure AD application (client) ID (GUID)",
+        pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    )
+    subscription_id: str = Field(
+        ...,
+        description="Azure subscription ID (GUID)",
+        pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    )
+
+
 class CloudAccountBase(BaseModel):
     """Base cloud account schema."""
 
@@ -68,7 +97,15 @@ class CloudAccountBase(BaseModel):
 class CloudAccountCreate(CloudAccountBase):
     """Schema for creating a cloud account."""
 
+    # AWS credentials (IAM Roles Anywhere)
     credentials_arn: Optional[str] = None
+
+    # Azure Workload Identity Federation configuration
+    azure_workload_identity_config: Optional[AzureWIFConfig] = None
+    azure_enabled: bool = Field(
+        default=False,
+        description="Feature flag for Azure scanning (gradual rollout)",
+    )
 
     @model_validator(mode="after")
     def validate_account_id_format(self) -> "CloudAccountCreate":
@@ -84,6 +121,19 @@ class CloudAccountCreate(CloudAccountBase):
                     "GCP project ID must be 6-30 characters, start with a letter, "
                     "contain only lowercase letters, digits, and hyphens, "
                     "and cannot end with a hyphen (e.g., my-project-123)"
+                )
+        elif self.provider == CloudProvider.AZURE:
+            # Azure uses subscription ID as account_id
+            if not AZURE_GUID_PATTERN.match(self.account_id):
+                raise ValueError(
+                    "Azure subscription ID must be a valid GUID "
+                    "(e.g., 12345678-1234-1234-1234-123456789abc)"
+                )
+            # Azure accounts must have WIF config
+            if not self.azure_workload_identity_config:
+                raise ValueError(
+                    "Azure accounts require azure_workload_identity_config "
+                    "(tenant_id, client_id, subscription_id)"
                 )
         return self
 
@@ -101,6 +151,10 @@ class CloudAccountUpdate(BaseModel):
     credentials_arn: Optional[str] = None
     is_active: Optional[bool] = None
 
+    # Azure-specific fields
+    azure_workload_identity_config: Optional[AzureWIFConfig] = None
+    azure_enabled: Optional[bool] = None
+
 
 class CloudAccountResponse(CloudAccountBase):
     """Schema for cloud account response."""
@@ -110,6 +164,15 @@ class CloudAccountResponse(CloudAccountBase):
     last_scan_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+
+    # Azure-specific fields
+    azure_workload_identity_config: Optional[dict] = Field(
+        default=None,
+        description="Azure WIF configuration (JSONB from database)",
+    )
+    azure_enabled: Optional[bool] = Field(
+        default=False, description="Azure scanning feature flag"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
