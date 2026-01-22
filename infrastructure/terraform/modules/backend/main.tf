@@ -1119,44 +1119,12 @@ resource "aws_wafv2_web_acl" "api" {
     }
   }
 
-  # Rule 0.5: Allow public access to credential templates (setup scripts)
-  # These are non-sensitive bash scripts that users need to download from
-  # various environments (Azure Cloud Shell, GCP Cloud Shell, etc.)
-  rule {
-    name     = "AllowCredentialTemplates"
-    priority = 1
-
-    action {
-      allow {}
-    }
-
-    statement {
-      byte_match_statement {
-        positional_constraint = "STARTS_WITH"
-        search_string         = "/api/v1/credentials/templates/"
-        field_to_match {
-          uri_path {}
-        }
-        text_transformation {
-          priority = 0
-          type     = "LOWERCASE"
-        }
-      }
-    }
-
-    visibility_config {
-      cloudwatch_metrics_enabled = true
-      metric_name                = "a13e-${var.environment}-allow-templates"
-      sampled_requests_enabled   = true
-    }
-  }
-
-  # Rule 2: Allow traffic from allowlisted IPs (only when IPs specified)
+  # Rule 1: Allow traffic from allowlisted IPs (only when IPs specified)
   dynamic "rule" {
     for_each = length(var.allowed_ips) > 0 ? [1] : []
     content {
       name     = "AllowListedIPs"
-      priority = 2
+      priority = 1
 
       action {
         allow {}
@@ -1176,10 +1144,10 @@ resource "aws_wafv2_web_acl" "api" {
     }
   }
 
-  # Rule 3: AWS Managed Core Rule Set (CRS) - OWASP Top 10
+  # Rule 2: AWS Managed Core Rule Set (CRS) - OWASP Top 10
   rule {
     name     = "AWSManagedRulesCommonRuleSet"
-    priority = 3
+    priority = 2
 
     override_action {
       none {}
@@ -1199,10 +1167,10 @@ resource "aws_wafv2_web_acl" "api" {
     }
   }
 
-  # Rule 4: Known Bad Inputs
+  # Rule 3: Known Bad Inputs
   rule {
     name     = "AWSManagedRulesKnownBadInputsRuleSet"
-    priority = 4
+    priority = 3
 
     override_action {
       none {}
@@ -1222,10 +1190,10 @@ resource "aws_wafv2_web_acl" "api" {
     }
   }
 
-  # Rule 5: SQL Injection Protection
+  # Rule 4: SQL Injection Protection
   rule {
     name     = "AWSManagedRulesSQLiRuleSet"
-    priority = 5
+    priority = 4
 
     override_action {
       none {}
@@ -1245,10 +1213,10 @@ resource "aws_wafv2_web_acl" "api" {
     }
   }
 
-  # Rule 6: Rate Limiting - 2000 requests per 5 minutes per IP
+  # Rule 5: Rate Limiting - 2000 requests per 5 minutes per IP
   rule {
     name     = "RateLimitRule"
-    priority = 6
+    priority = 5
 
     action {
       block {}
@@ -1268,14 +1236,14 @@ resource "aws_wafv2_web_acl" "api" {
     }
   }
 
-  # Rule 7: Block Anonymous IPs (VPN, Proxy, Tor, Hosting) for Signup Only
+  # Rule 6: Block Anonymous IPs (VPN, Proxy, Tor, Hosting) for Signup Only
   # Fraud prevention: Blocks registration attempts from VPNs, proxies, Tor, and datacentres
   # NOTE: Only applies to POST /api/v1/auth/signup, NOT to:
   # - /auth/accept-invite (invitee may be joining paid org)
   # - OAuth callbacks (can't distinguish login from registration)
   rule {
     name     = "BlockAnonymousIPsForSignup"
-    priority = 7
+    priority = 6
 
     override_action {
       none {} # Use the rule group's block action
