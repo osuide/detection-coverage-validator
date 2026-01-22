@@ -704,6 +704,53 @@ GCP_REQUIRED_PERMISSIONS = [
     },
 ]
 
+# Azure required permissions (roles)
+# Azure uses role-based access control (RBAC) rather than individual permissions
+AZURE_REQUIRED_PERMISSIONS = [
+    # Reader role permissions
+    {
+        "role": "Reader",
+        "service": "Azure RBAC",
+        "purpose": "Read-only access to view resources and their configurations",
+    },
+    {
+        "role": "Security Reader",
+        "service": "Microsoft Defender for Cloud",
+        "purpose": "View security assessments, recommendations, and alerts",
+    },
+    # Specific permissions included in these roles
+    {
+        "permission": "Microsoft.Security/assessments/read",
+        "service": "Microsoft Defender for Cloud",
+        "purpose": "Read security assessments and compliance status",
+    },
+    {
+        "permission": "Microsoft.Security/securityStatuses/read",
+        "service": "Microsoft Defender for Cloud",
+        "purpose": "Read security health status of resources",
+    },
+    {
+        "permission": "Microsoft.Security/alerts/read",
+        "service": "Microsoft Defender for Cloud",
+        "purpose": "Read security alerts and incidents",
+    },
+    {
+        "permission": "Microsoft.PolicyInsights/policyStates/queryResults/read",
+        "service": "Azure Policy",
+        "purpose": "Query policy compliance state",
+    },
+    {
+        "permission": "Microsoft.Authorization/policyAssignments/read",
+        "service": "Azure Policy",
+        "purpose": "Read policy assignments for compliance checking",
+    },
+    {
+        "permission": "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "service": "Azure Resource Manager",
+        "purpose": "List resource groups in subscription",
+    },
+]
+
 # What we DON'T access (for transparency)
 PERMISSIONS_NOT_REQUESTED = {
     "aws": [
@@ -725,5 +772,16 @@ PERMISSIONS_NOT_REQUESTED = {
         "VPC flow log contents",
         "Cloud KMS key material",
         "Any write or modify operations",
+    ],
+    "azure": [
+        "Azure Blob Storage contents",
+        "Azure SQL or Cosmos DB data",
+        "Key Vault secrets or certificates",
+        "Service principal credentials",
+        "Virtual Machine data or SSH keys",
+        "Virtual Network traffic contents",
+        "Azure Key Vault key material",
+        "Any write or modify operations",
+        "Billing or cost data",
     ],
 }
