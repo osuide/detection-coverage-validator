@@ -17,6 +17,8 @@ import {
 } from 'lucide-react'
 import { credentialsApi, accountsApi } from '../services/api'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+
 interface CredentialWizardProps {
   cloudAccountId: string
   provider: 'aws' | 'gcp' | 'azure'
@@ -808,7 +810,7 @@ export default function CredentialWizard({
                     <h6 className="font-medium text-gray-900 mb-2 text-sm">Quick Start</h6>
                     <pre className="text-xs text-gray-700 font-mono bg-gray-100 p-2 rounded overflow-x-auto">
 {`# Download and run the setup script
-curl -sL https://app.a13e.com/api/v1/credentials/templates/azure/wif-setup -o azure_wif_setup.sh
+curl -sL ${API_BASE_URL}/api/v1/credentials/templates/azure/wif-setup -o azure_wif_setup.sh
 chmod +x azure_wif_setup.sh
 ./azure_wif_setup.sh --subscription ${rawAccountId || 'YOUR_SUBSCRIPTION_ID'}`}
                     </pre>
