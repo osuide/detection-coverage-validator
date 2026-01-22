@@ -1060,7 +1060,13 @@ class ScanService:
         )
 
         try:
-            credential = await get_azure_credential(azure_config)
+            # Pass cloud_account_id for Cognito Identity Pool authentication
+            # cognito_identity_id may be stored in JSONB from previous validation
+            credential, _cognito_identity_id = await get_azure_credential(
+                azure_config,
+                cloud_account_id=str(account.id),
+                cognito_identity_id=config_data.get("cognito_identity_id"),
+            )
             return credential, azure_config
         except AzureWIFError as e:
             self.logger.error(
