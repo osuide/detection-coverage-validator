@@ -952,6 +952,16 @@ async def get_azure_wif_setup_script() -> str:
     return _read_template("azure_wif_setup.sh")
 
 
+@router.get("/templates/entra/wif-setup", response_class=PlainTextResponse)
+async def get_entra_wif_setup_script() -> str:
+    """Download Microsoft Entra ID WIF setup script (alias for Azure endpoint).
+
+    Azure Cloud Shell blocks outbound requests to URLs containing 'azure',
+    so this alias uses 'entra' (Microsoft Entra ID) instead.
+    """
+    return _read_template("azure_wif_setup.sh")
+
+
 # === Helper Functions ===
 
 
