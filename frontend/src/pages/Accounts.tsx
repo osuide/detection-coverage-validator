@@ -38,11 +38,15 @@ export default function Accounts() {
     queryFn: scanStatusApi.get,
   })
 
+  // Error state for form submission
+  const [formError, setFormError] = useState<string | null>(null)
+
   const createMutation = useMutation({
     mutationFn: accountsApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
       setShowForm(false)
+      setFormError(null)
       setFormData({
         name: '',
         provider: 'aws' as 'aws' | 'gcp' | 'azure',
@@ -52,6 +56,11 @@ export default function Accounts() {
         azure_workload_identity_config: undefined,
         azure_enabled: false,
       })
+    },
+    onError: (error: unknown) => {
+      const err = error as { message?: string; response?: { data?: { detail?: string } } }
+      const detail = err.response?.data?.detail || err.message || 'Failed to add account. Please try again.'
+      setFormError(detail)
     },
   })
 
@@ -288,6 +297,33 @@ export default function Accounts() {
       {showForm && (
         <div className="card mb-6">
           <h3 className="text-lg font-semibold mb-4">Add Cloud Account</h3>
+          {/* Error Display */}
+          {formError && (
+            <div className="mb-4 p-4 bg-red-900/30 border border-red-500/50 rounded-lg">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-red-400 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <div className="flex-1">
+                  <p className="text-red-300 text-sm font-medium">{formError}</p>
+                  {formError.includes('limit reached') && (
+                    <a href="/billing" className="text-red-400 hover:text-red-300 text-sm underline mt-1 inline-block">
+                      View subscription options →
+                    </a>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormError(null)}
+                  className="text-red-400 hover:text-red-300 ml-2"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -425,7 +461,10 @@ export default function Accounts() {
             <div className="flex justify-end space-x-3">
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false)
+                  setFormError(null)
+                }}
                 className="btn-secondary"
               >
                 Cancel

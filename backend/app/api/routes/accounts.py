@@ -150,10 +150,13 @@ async def create_account(
             current_count = count_result.scalar() or 0
 
             if current_count >= max_accounts:
+                # Get tier name for better error message
+                tier_name = subscription.tier.value.replace("_", " ").title()
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Cloud account limit reached ({max_accounts}). "
-                    "Please upgrade your subscription to add more accounts.",
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail=f"Cloud account limit reached ({current_count}/{max_accounts}) "
+                    f"on your {tier_name} plan. "
+                    "Upgrade to add more cloud accounts.",
                 )
 
     # Fraud prevention: Check cloud account uniqueness and email binding
