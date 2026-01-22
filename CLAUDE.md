@@ -251,11 +251,23 @@ Don't use `UpdatedAt` for compliance - misses unchanged failed controls.
 
 ## Deployment (CRITICAL)
 
-**NEVER manually build/push Docker images. Deploy via git:**
-```bash
-git push origin main  # Deploys to STAGING
-gh workflow run deploy.yml -f environment=prod  # Production
-```
+**ALL deployments MUST go through git push and GitHub Actions. NEVER manually deploy.**
+
+| What | Command |
+|------|---------|
+| Deploy to staging | `git push origin main` |
+| Deploy to production | `gh workflow run deploy.yml -f environment=prod` |
+
+**Forbidden manual actions:**
+- ❌ `docker build` / `docker push` - Images built by GitHub Actions
+- ❌ `aws s3 sync` for frontend - CloudFront invalidation handled by workflow
+- ❌ `aws ecs update-service` - Task definitions managed by Terraform
+- ❌ `terraform apply` for deployment changes - Run via GitHub Actions
+
+**Fix deployment errors, don't work around them:**
+- If GitHub Actions fails, fix the root cause (IAM permissions, secrets, etc.)
+- Never bypass CI/CD with manual AWS CLI commands
+- Local `terraform apply` only for infrastructure changes not related to deployments
 
 ## Google Workspace Integration
 
