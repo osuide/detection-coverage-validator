@@ -179,10 +179,15 @@ class DefenderScanner(BaseScanner):
 
                 # Create detection object
                 # source_arn format: arn:azure:defender:assessment/{assessmentId}
+                # Only include unhealthy (active) findings
+                if status.lower() != "unhealthy":
+                    continue
+
                 detection = RawDetection(
                     name=display_name,
+                    detection_type=DetectionType.AZURE_DEFENDER,
                     source_arn=f"arn:azure:defender:assessment/{assessment_id}",
-                    enabled=status.lower() == "unhealthy",  # Unhealthy = active finding
+                    region="global",  # Azure Defender is subscription-wide
                     raw_config=raw_config,
                 )
 
