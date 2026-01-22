@@ -57,7 +57,7 @@ class DefenderScanner(BaseScanner):
         all_detections = []
 
         try:
-            from azure.mgmt.security import SecurityCenter
+            from azure.mgmt.security.aio import SecurityCenter
             from azure.core.exceptions import (
                 AzureError,
                 HttpResponseError,
@@ -65,14 +65,14 @@ class DefenderScanner(BaseScanner):
             )
 
             # Create Security Center client with WIF credentials
-            # self.session is ClientAssertionCredential from azure_wif_service
-            client = SecurityCenter(
+            # self.session is async ClientAssertionCredential from azure_wif_service
+            # CRITICAL: Must use async client from .aio module with async credential
+            async with SecurityCenter(
                 credential=self.session, subscription_id=subscription_id
-            )
-
-            # Scan security assessments
-            assessments = await self._scan_assessments(client, subscription_id)
-            all_detections.extend(assessments)
+            ) as client:
+                # Scan security assessments
+                assessments = await self._scan_assessments(client, subscription_id)
+                all_detections.extend(assessments)
 
             self.logger.info(
                 "defender_scan_complete",
@@ -124,15 +124,10 @@ class DefenderScanner(BaseScanner):
         detections = []
 
         try:
-            # Azure SDK methods are synchronous - use run_sync to avoid blocking
-            def fetch_assessments() -> list:
-                assessments = []
-                # List all security assessments at subscription scope
-                for assessment in client.assessments.list():
-                    assessments.append(assessment)
-                return assessments
-
-            assessments = await self.run_sync(fetch_assessments)
+            # Use async iteration with the async Azure SDK client
+            assessments = []
+            async for assessment in client.assessments.list():
+                assessments.append(assessment)
 
             # Process each assessment
             for assessment in assessments:

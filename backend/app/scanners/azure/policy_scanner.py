@@ -58,7 +58,7 @@ class PolicyScanner(BaseScanner):
         all_detections = []
 
         try:
-            from azure.mgmt.policyinsights import PolicyInsightsClient
+            from azure.mgmt.policyinsights.aio import PolicyInsightsClient
             from azure.core.exceptions import (
                 AzureError,
                 HttpResponseError,
@@ -66,14 +66,16 @@ class PolicyScanner(BaseScanner):
             )
 
             # Create Policy Insights client with WIF credentials
-            # self.session is ClientAssertionCredential from azure_wif_service
-            client = PolicyInsightsClient(
+            # self.session is async ClientAssertionCredential from azure_wif_service
+            # CRITICAL: Must use async client from .aio module with async credential
+            async with PolicyInsightsClient(
                 credential=self.session, subscription_id=subscription_id
-            )
-
-            # Scan policy assignments and states
-            assignments = await self._scan_policy_assignments(client, subscription_id)
-            all_detections.extend(assignments)
+            ) as client:
+                # Scan policy assignments and states
+                assignments = await self._scan_policy_assignments(
+                    client, subscription_id
+                )
+                all_detections.extend(assignments)
 
             self.logger.info(
                 "policy_scan_complete",
@@ -127,19 +129,13 @@ class PolicyScanner(BaseScanner):
         try:
             # Query policy states at subscription scope
             # This gets the latest compliance state for all policy assignments
-
-            # Azure SDK methods are synchronous - use run_sync to avoid blocking
-            def fetch_policy_states() -> list:
-                states = []
-                # Query latest policy states (most recent compliance results)
-                for state in client.policy_states.list_query_results_for_subscription(
-                    policy_states_resource="latest",
-                    subscription_id=subscription_id,
-                ):
-                    states.append(state)
-                return states
-
-            policy_states = await self.run_sync(fetch_policy_states)
+            # Use async iteration with the async Azure SDK client
+            policy_states = []
+            async for state in client.policy_states.list_query_results_for_subscription(
+                policy_states_resource="latest",
+                subscription_id=subscription_id,
+            ):
+                policy_states.append(state)
 
             # Group policy states by assignment for aggregation
             assignment_map: dict[str, list] = {}
