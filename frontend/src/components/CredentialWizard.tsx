@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   X,
@@ -68,6 +68,26 @@ export default function CredentialWizard({
     retry: false,
   })
 
+  // Fetch cloud account data (for Azure WIF config pre-population)
+  const { data: accountData } = useQuery({
+    queryKey: ['account', cloudAccountId],
+    queryFn: () => accountsApi.get(cloudAccountId),
+    enabled: provider === 'azure',
+  })
+
+  // Pre-populate Azure form fields from existing account config
+  useEffect(() => {
+    if (provider === 'azure' && accountData?.azure_workload_identity_config) {
+      const config = accountData.azure_workload_identity_config
+      if (config.tenant_id && !azureTenantId) {
+        setAzureTenantId(config.tenant_id)
+      }
+      if (config.client_id && !azureClientId) {
+        setAzureClientId(config.client_id)
+      }
+    }
+  }, [provider, accountData, azureTenantId, azureClientId])
+
   // Create AWS credential
   const createAwsMutation = useMutation({
     mutationFn: (data: { cloud_account_id: string; role_arn: string }) =>
@@ -105,7 +125,8 @@ export default function CredentialWizard({
     }) => accountsApi.update(cloudAccountId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
-      onSuccess()
+      refetchCredential()
+      setStep('validate')
     },
   })
 
