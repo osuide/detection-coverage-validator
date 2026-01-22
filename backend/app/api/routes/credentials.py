@@ -848,6 +848,7 @@ _ALLOWED_TEMPLATES = {
     "terraform/aws/main.tf",
     "terraform/gcp/main.tf",  # WIF-based setup
     "gcp_wif_setup.sh",
+    "azure_wif_setup.sh",
 }
 
 
