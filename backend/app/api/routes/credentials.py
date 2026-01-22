@@ -873,7 +873,53 @@ async def get_credential(
         )
     )
     credential = result.scalar_one_or_none()
+
+    # If no credential found, check if this is an Azure account
+    # Azure stores WIF config on the CloudAccount itself, not in CloudCredential
     if not credential:
+        account_result = await db.execute(
+            select(CloudAccount).where(
+                CloudAccount.id == cloud_account_id,
+                CloudAccount.organization_id == auth.organization_id,
+            )
+        )
+        account = account_result.scalar_one_or_none()
+
+        if account and account.provider == CloudProvider.AZURE:
+            # Return synthetic credential response for Azure
+            wif_config = account.azure_workload_identity_config or {}
+            has_config = bool(
+                wif_config.get("tenant_id") and wif_config.get("client_id")
+            )
+            return CredentialResponse(
+                id=account.id,  # Use account ID as credential ID for Azure
+                cloud_account_id=account.id,
+                credential_type="azure_workload_identity",
+                status=(
+                    "valid"
+                    if account.azure_enabled
+                    else ("pending" if has_config else "not_configured")
+                ),
+                status_message=(
+                    "Azure WIF configured and validated"
+                    if account.azure_enabled
+                    else (
+                        "Azure WIF configured, awaiting validation"
+                        if has_config
+                        else "Azure WIF not configured"
+                    )
+                ),
+                last_validated_at=(
+                    account.updated_at.isoformat() if account.updated_at else None
+                ),
+                granted_permissions=[],
+                missing_permissions=[],
+                aws_role_arn=None,
+                aws_external_id=None,
+                gcp_project_id=None,
+                gcp_service_account_email=None,
+            )
+
         raise HTTPException(status_code=404, detail="Credential not found")
 
     return _credential_to_response(credential)
