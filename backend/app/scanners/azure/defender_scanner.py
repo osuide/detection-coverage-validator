@@ -119,9 +119,10 @@ class DefenderScanner(BaseScanner):
             subscription_id: Azure subscription ID
 
         Returns:
-            List of RawDetection objects for each assessment
+            List of RawDetection objects for each assessment (deduplicated by assessment_id)
         """
         detections = []
+        seen_assessment_ids: set[str] = set()  # Track unique assessments
 
         try:
             # Use async iteration with the async Azure SDK client
@@ -131,10 +132,16 @@ class DefenderScanner(BaseScanner):
             async for assessment in client.assessments.list(scope=scope):
                 assessments.append(assessment)
 
-            # Process each assessment
+            # Process each assessment (deduplicate by assessment_id)
+            # Azure returns the same assessment multiple times (once per affected resource)
             for assessment in assessments:
                 # Extract assessment details
                 assessment_id = assessment.name if hasattr(assessment, "name") else None
+
+                # Skip if we've already processed this assessment
+                if not assessment_id or assessment_id in seen_assessment_ids:
+                    continue
+                seen_assessment_ids.add(assessment_id)
                 display_name = (
                     assessment.display_name
                     if hasattr(assessment, "display_name")
