@@ -170,10 +170,130 @@ async def get_azure_credential(
         raise AzureWIFError(f"Failed to create Azure credential: {e}")
 
 
+async def validate_wif_configuration(wif_config: AzureWIFConfiguration) -> dict:
+    """Validate Azure WIF configuration by attempting to authenticate.
+
+    Tests the full WIF flow:
+    1. Get AWS STS token from ECS task role
+    2. Exchange for Azure credential via federated trust
+    3. Verify we can list resources in the subscription
+
+    Args:
+        wif_config: WIF configuration to validate
+
+    Returns:
+        dict with keys:
+            - valid: bool
+            - message: str
+            - steps_completed: list[str]
+            - steps_failed: list[str]
+    """
+    steps_completed = []
+    steps_failed = []
+
+    try:
+        # Step 1: Get AWS STS token
+        try:
+            await get_aws_sts_token()
+            steps_completed.append("AWS STS token obtained")
+        except AzureWIFError as e:
+            steps_failed.append(f"AWS STS token: {e}")
+            return {
+                "valid": False,
+                "message": f"Failed to get AWS identity token: {e}",
+                "steps_completed": steps_completed,
+                "steps_failed": steps_failed,
+            }
+
+        # Step 2: Get Azure credential via WIF
+        try:
+            credential = await get_azure_credential(wif_config)
+            steps_completed.append("Azure credential created via WIF")
+        except AzureWIFError as e:
+            steps_failed.append(f"Azure WIF credential: {e}")
+            return {
+                "valid": False,
+                "message": f"Failed to create Azure credential: {e}",
+                "steps_completed": steps_completed,
+                "steps_failed": steps_failed,
+            }
+
+        # Step 3: Test the credential by getting a token
+        try:
+            # Request a token for Azure Resource Manager
+            token = await credential.get_token("https://management.azure.com/.default")
+            if token and token.token:
+                steps_completed.append("Azure access token obtained")
+            else:
+                steps_failed.append("Azure token was empty")
+                return {
+                    "valid": False,
+                    "message": "Azure credential returned empty token",
+                    "steps_completed": steps_completed,
+                    "steps_failed": steps_failed,
+                }
+        except Exception as e:
+            steps_failed.append(f"Azure token exchange: {e}")
+            return {
+                "valid": False,
+                "message": f"Failed to exchange token with Azure: {e}",
+                "steps_completed": steps_completed,
+                "steps_failed": steps_failed,
+            }
+
+        # Step 4: Test subscription access with a lightweight API call
+        try:
+            from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
+
+            async with SubscriptionClient(credential) as sub_client:
+                subscription = await sub_client.subscriptions.get(
+                    wif_config.subscription_id
+                )
+                steps_completed.append(
+                    f"Subscription access verified: {subscription.display_name}"
+                )
+        except Exception as e:
+            steps_failed.append(f"Subscription access: {e}")
+            return {
+                "valid": False,
+                "message": f"Cannot access subscription {wif_config.subscription_id}: {e}",
+                "steps_completed": steps_completed,
+                "steps_failed": steps_failed,
+            }
+
+        logger.info(
+            "azure_wif_validation_success",
+            tenant_id=wif_config.tenant_id,
+            subscription_id=wif_config.subscription_id,
+            steps_completed=steps_completed,
+        )
+
+        return {
+            "valid": True,
+            "message": "Azure WIF configuration is valid",
+            "steps_completed": steps_completed,
+            "steps_failed": steps_failed,
+        }
+
+    except Exception as e:
+        logger.error(
+            "azure_wif_validation_error",
+            error=str(e),
+            tenant_id=wif_config.tenant_id,
+        )
+        return {
+            "valid": False,
+            "message": f"Unexpected validation error: {e}",
+            "steps_completed": steps_completed,
+            "steps_failed": [str(e)],
+        }
+
+
 # Export public API
 __all__ = [
     "AzureWIFConfiguration",
     "AzureWIFError",
     "get_azure_credential",
     "get_aws_sts_token",
+    "validate_wif_configuration",
 ]

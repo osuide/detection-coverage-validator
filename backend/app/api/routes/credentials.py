@@ -33,6 +33,11 @@ from app.models.cloud_credential import (
 from app.services.aws_credential_service import aws_credential_service
 from app.services.gcp_credential_service import gcp_credential_service
 from app.services.gcp_wif_service import gcp_wif_service, GCPWIFError
+from app.services.azure_wif_service import (
+    AzureWIFConfiguration,
+    AzureWIFError,
+    validate_wif_configuration as validate_azure_wif,
+)
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -667,7 +672,9 @@ async def validate_credential(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Validate a credential and check permissions."""
-    # Get credential
+    from datetime import datetime, timezone
+
+    # Get credential (for AWS/GCP)
     result = await db.execute(
         select(CloudCredential).where(
             CloudCredential.cloud_account_id == cloud_account_id,
@@ -675,10 +682,96 @@ async def validate_credential(
         )
     )
     credential = result.scalar_one_or_none()
-    if not credential:
-        raise HTTPException(status_code=404, detail="Credential not found")
 
-    # Validate based on provider
+    # If no credential found, check if this is an Azure account
+    # Azure stores WIF config on the CloudAccount itself, not in CloudCredential
+    if not credential:
+        account_result = await db.execute(
+            select(CloudAccount).where(
+                CloudAccount.id == cloud_account_id,
+                CloudAccount.organization_id == auth.organization_id,
+            )
+        )
+        account = account_result.scalar_one_or_none()
+
+        if not account:
+            raise HTTPException(status_code=404, detail="Account not found")
+
+        if account.provider != CloudProvider.AZURE:
+            raise HTTPException(status_code=404, detail="Credential not found")
+
+        # Azure account - validate WIF config stored on account
+        wif_data = account.azure_workload_identity_config
+        if not wif_data:
+            raise HTTPException(
+                status_code=400,
+                detail="Azure WIF configuration not set. Please configure Tenant ID and Client ID.",
+            )
+
+        try:
+            azure_wif_config = AzureWIFConfiguration.from_dict(wif_data)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid Azure WIF configuration: {e}",
+            )
+
+        try:
+            wif_result = await validate_azure_wif(azure_wif_config)
+            if wif_result["valid"]:
+                validation = {
+                    "status": CredentialStatus.VALID,
+                    "message": wif_result["message"],
+                    "granted_permissions": [],
+                    "missing_permissions": [],
+                }
+                account.azure_enabled = True
+            else:
+                validation = {
+                    "status": CredentialStatus.INVALID,
+                    "message": wif_result["message"],
+                    "granted_permissions": [],
+                    "missing_permissions": [],
+                }
+                account.azure_enabled = False
+        except AzureWIFError as e:
+            validation = {
+                "status": CredentialStatus.INVALID,
+                "message": f"Azure WIF validation error: {str(e)}",
+                "granted_permissions": [],
+                "missing_permissions": [],
+            }
+            account.azure_enabled = False
+
+        account.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+
+        # Audit log for Azure
+        audit_log = AuditLog(
+            organization_id=auth.organization_id,
+            user_id=auth.user.id,
+            action=AuditLogAction.ORG_SETTINGS_UPDATED,
+            resource_type="cloud_account",
+            resource_id=str(account.id),
+            details={
+                "action": "azure_wif_validated",
+                "status": validation["status"].value,
+                "provider": "azure",
+            },
+            ip_address=get_client_ip(request),
+            success=validation["status"] == CredentialStatus.VALID,
+        )
+        db.add(audit_log)
+        await db.commit()
+
+        return ValidationResponse(
+            status=validation["status"].value,
+            message=validation["message"],
+            granted_permissions=validation["granted_permissions"],
+            missing_permissions=validation["missing_permissions"],
+        )
+
+    # AWS/GCP: Validate based on credential type
     if credential.credential_type == CredentialType.AWS_IAM_ROLE:
         validation = await aws_credential_service.validate_credentials(credential)
     elif credential.credential_type == CredentialType.GCP_WORKLOAD_IDENTITY:
@@ -720,8 +813,6 @@ async def validate_credential(
         raise HTTPException(status_code=400, detail="Unknown credential type")
 
     # Update credential status
-    from datetime import datetime, timezone
-
     credential.status = validation["status"]
     credential.status_message = validation["message"]
     credential.last_validated_at = datetime.now(timezone.utc)
