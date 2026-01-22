@@ -498,6 +498,9 @@ export const credentialsApi = {
 
   getGCPSetupScript: () =>
     api.get<string>('/credentials/templates/gcp/setup-script', { responseType: 'text' }).then(r => r.data),
+
+  getAzureSetupScript: () =>
+    api.get<string>('/credentials/templates/azure/wif-setup', { responseType: 'text' }).then(r => r.data),
 }
 
 // Gap acknowledgement API

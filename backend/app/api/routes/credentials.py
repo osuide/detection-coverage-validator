@@ -931,6 +931,26 @@ async def get_gcp_setup_script() -> str:
     return _read_template("gcp_wif_setup.sh")
 
 
+@router.get("/templates/gcp/wif-setup", response_class=PlainTextResponse)
+async def get_gcp_wif_setup_script() -> str:
+    """Download GCP Workload Identity Federation setup script (alias for setup-script)."""
+    return _read_template("gcp_wif_setup.sh")
+
+
+@router.get("/templates/azure/wif-setup", response_class=PlainTextResponse)
+async def get_azure_wif_setup_script() -> str:
+    """Download Azure Workload Identity Federation setup script.
+
+    Uses WIF for keyless authentication from AWS to Azure.
+    No client secrets required.
+
+    Usage:
+        chmod +x azure_wif_setup.sh
+        ./azure_wif_setup.sh --subscription YOUR_SUBSCRIPTION_ID
+    """
+    return _read_template("azure_wif_setup.sh")
+
+
 # === Helper Functions ===
 
 

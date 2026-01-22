@@ -15,12 +15,13 @@ import {
   Loader2,
   Info,
 } from 'lucide-react'
-import { credentialsApi } from '../services/api'
+import { credentialsApi, accountsApi } from '../services/api'
 
 interface CredentialWizardProps {
   cloudAccountId: string
   provider: 'aws' | 'gcp' | 'azure'
   accountName: string
+  rawAccountId?: string // For Azure: subscription ID; For GCP: project ID; For AWS: account ID
   onClose: () => void
   onSuccess: () => void
 }
@@ -31,6 +32,7 @@ export default function CredentialWizard({
   cloudAccountId,
   provider,
   accountName,
+  rawAccountId,
   onClose,
   onSuccess,
 }: CredentialWizardProps) {
@@ -44,6 +46,9 @@ export default function CredentialWizard({
   // WIF configuration (no SA keys - security best practice)
   const [gcpWifPoolId, setGcpWifPoolId] = useState('a13e-pool')
   const [gcpWifProviderId, setGcpWifProviderId] = useState('aws')
+  // Azure WIF configuration
+  const [azureTenantId, setAzureTenantId] = useState('')
+  const [azureClientId, setAzureClientId] = useState('')
 
   // Fetch setup instructions
   const { data: instructions, isLoading: instructionsLoading } = useQuery({
@@ -83,6 +88,22 @@ export default function CredentialWizard({
     },
   })
 
+  // Update Azure WIF configuration (stored on account, not separate credential)
+  const updateAzureMutation = useMutation({
+    mutationFn: (data: {
+      azure_workload_identity_config: {
+        tenant_id: string
+        client_id: string
+        subscription_id: string
+      }
+      azure_enabled: boolean
+    }) => accountsApi.update(cloudAccountId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      onSuccess()
+    },
+  })
+
   // Validate credential
   const validateMutation = useMutation({
     mutationFn: () => credentialsApi.validate(cloudAccountId),
@@ -107,7 +128,7 @@ export default function CredentialWizard({
         cloud_account_id: cloudAccountId,
         role_arn: awsRoleArn,
       })
-    } else {
+    } else if (provider === 'gcp') {
       // GCP: WIF only - no service account keys for security
       createGcpMutation.mutate({
         cloud_account_id: cloudAccountId,
@@ -116,10 +137,20 @@ export default function CredentialWizard({
         pool_id: gcpWifPoolId,
         provider_id: gcpWifProviderId,
       })
+    } else if (provider === 'azure') {
+      // Azure: Update account with WIF config (stored on account, not separate credential)
+      updateAzureMutation.mutate({
+        azure_workload_identity_config: {
+          tenant_id: azureTenantId,
+          client_id: azureClientId,
+          subscription_id: rawAccountId || '',
+        },
+        azure_enabled: true,
+      })
     }
   }
 
-  const downloadTemplate = async (type: 'cloudformation' | 'terraform-aws' | 'terraform-gcp' | 'gcloud') => {
+  const downloadTemplate = async (type: 'cloudformation' | 'terraform-aws' | 'terraform-gcp' | 'gcloud' | 'azure') => {
     try {
       let content: string
       let filename: string
@@ -140,6 +171,10 @@ export default function CredentialWizard({
         case 'gcloud':
           content = await credentialsApi.getGCPSetupScript()
           filename = 'a13e-gcp-setup.sh'
+          break
+        case 'azure':
+          content = await credentialsApi.getAzureSetupScript()
+          filename = 'azure_wif_setup.sh'
           break
       }
 
@@ -457,17 +492,16 @@ export default function CredentialWizard({
           </div>
         </div>
       )
-    }
-
-    // GCP Setup
-    return (
-      <div className="space-y-4">
-        {/* Required Information for GCP */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h5 className="font-medium text-blue-900 mb-3 flex items-center">
-            <Shield className="w-5 h-5 mr-2" />
-            Required Information for WIF Setup
-          </h5>
+    } else if (provider === 'gcp') {
+      // GCP Setup
+      return (
+        <div className="space-y-4">
+          {/* Required Information for GCP */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h5 className="font-medium text-blue-900 mb-3 flex items-center">
+              <Shield className="w-5 h-5 mr-2" />
+              Required Information for WIF Setup
+            </h5>
           <div className="grid grid-cols-1 gap-3">
             <div className="bg-white rounded-lg p-3 border border-blue-100">
               <div className="flex items-center justify-between">
@@ -661,6 +695,179 @@ export default function CredentialWizard({
         </div>
       </div>
     )
+    } else if (provider === 'azure') {
+      // Azure Setup
+      return (
+        <div className="space-y-4">
+          {/* Required Information for Azure */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h5 className="font-medium text-blue-900 mb-3 flex items-center">
+              <Shield className="w-5 h-5 mr-2" />
+              Required Information for WIF Setup
+            </h5>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="bg-white rounded-lg p-3 border border-blue-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-blue-600 uppercase tracking-wide font-medium">A13E AWS Account ID</p>
+                    <code className="text-lg font-mono text-gray-900">{instructions?.a13e_aws_account_id || 'Loading...'}</code>
+                  </div>
+                  {instructions?.a13e_aws_account_id && (
+                    <button
+                      onClick={() => copyToClipboard(instructions.a13e_aws_account_id, 'a13e_account')}
+                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                    >
+                      {copied === 'a13e_account' ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Use this when configuring the AWS federated credential</p>
+              </div>
+
+              <div className="bg-white rounded-lg p-3 border border-blue-100">
+                <p className="text-xs text-blue-600 uppercase tracking-wide font-medium">Your Azure Subscription ID</p>
+                <code className="text-lg font-mono text-gray-900">{rawAccountId || 'Loading...'}</code>
+                <p className="text-xs text-gray-500 mt-1">The Azure subscription to scan</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Prerequisites */}
+          <details className="border border-amber-200 rounded-lg bg-amber-50">
+            <summary className="px-4 py-2 cursor-pointer font-medium text-amber-900 text-sm">
+              Prerequisites - Permissions you need
+            </summary>
+            <div className="px-4 pb-3">
+              <ul className="text-sm text-amber-900 space-y-1">
+                <li>• <strong>Application Administrator</strong> or <strong>Global Administrator</strong> role in Microsoft Entra ID</li>
+                <li>• <code className="bg-amber-100 text-amber-900 px-1 rounded-sm text-xs">az</code> CLI installed (for script method)</li>
+                <li>• Permission to create app registrations and federated credentials</li>
+              </ul>
+            </div>
+          </details>
+
+          {/* WIF explanation */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <div className="flex items-start">
+              <Info className="w-4 h-4 text-green-700 mt-0.5 mr-2 shrink-0" />
+              <p className="text-sm text-green-900">
+                <strong>Workload Identity Federation</strong> enables keyless authentication from AWS to Azure (no client secrets required).
+              </p>
+            </div>
+          </div>
+
+          {/* Setup Method Tabs */}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="flex border-b">
+              <button
+                onClick={() => setSetupMethod('template')}
+                className={`flex-1 px-4 py-2 text-sm font-medium ${
+                  setupMethod === 'template'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Use Script (Recommended)
+              </button>
+              <button
+                onClick={() => setSetupMethod('manual')}
+                className={`flex-1 px-4 py-2 text-sm font-medium ${
+                  setupMethod === 'manual'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Manual Setup
+              </button>
+            </div>
+
+            <div className="p-4">
+              {setupMethod === 'template' ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    Download and run the setup script to automatically configure Azure AD app registration and federated credential.
+                  </p>
+                  <div className="grid grid-cols-1 gap-3">
+                    <button
+                      onClick={() => downloadTemplate('azure')}
+                      className="border-2 border-dashed border-gray-300 rounded-lg p-3 hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
+                    >
+                      <div className="flex items-center mb-1">
+                        <Terminal className="w-4 h-4 text-blue-600 mr-2" />
+                        <span className="font-medium text-sm">Azure CLI Script</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Run in Azure Cloud Shell or local terminal</p>
+                      <div className="mt-2 flex items-center text-blue-600 text-xs">
+                        <Download className="w-3 h-3 mr-1" />
+                        Download azure_wif_setup.sh
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <h6 className="font-medium text-gray-900 mb-2 text-sm">Quick Start</h6>
+                    <pre className="text-xs text-gray-700 font-mono bg-gray-100 p-2 rounded overflow-x-auto">
+{`# Download and run the setup script
+curl -sL https://app.a13e.com/api/v1/credentials/templates/azure/wif-setup -o azure_wif_setup.sh
+chmod +x azure_wif_setup.sh
+./azure_wif_setup.sh --subscription ${rawAccountId || 'YOUR_SUBSCRIPTION_ID'}`}
+                    </pre>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <h6 className="font-medium text-gray-900 mb-2 text-sm">Step-by-Step Instructions</h6>
+                    <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
+                      <li>Go to <strong>Azure Portal → Microsoft Entra ID → App registrations</strong></li>
+                      <li>Click <strong>New registration</strong></li>
+                      <li>Name the app <strong>"A13E-DetectionScanner"</strong>, select <strong>Single tenant</strong></li>
+                      <li>Go to the app → <strong>Certificates & secrets → Federated credentials</strong></li>
+                      <li>Add credential for <strong>AWS</strong> with A13E's account ID: <code className="bg-gray-100 px-1 rounded">{instructions?.a13e_aws_account_id}</code></li>
+                      <li>Go to <strong>Subscriptions → {rawAccountId || 'Your Subscription'} → Access control (IAM)</strong></li>
+                      <li>Add role assignment: <strong>Reader</strong> + <strong>Security Reader</strong> to the app</li>
+                      <li>Note the <strong>Tenant ID</strong> and <strong>Application (client) ID</strong></li>
+                    </ol>
+                  </div>
+
+                  {/* Required Permissions */}
+                  <div className="border rounded-lg">
+                    <div className="px-3 py-2 bg-gray-100 border-b">
+                      <span className="font-medium text-sm text-gray-900">Required Azure Roles</span>
+                    </div>
+                    <div className="p-3 text-sm text-gray-700">
+                      <ul className="space-y-1">
+                        <li>• <strong>Reader</strong> - View all resources</li>
+                        <li>• <strong>Security Reader</strong> - View Microsoft Defender for Cloud data</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-between pt-2">
+            <button
+              onClick={() => setStep('instructions')}
+              className="btn-secondary flex items-center"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Back
+            </button>
+            <button
+              onClick={() => setStep('credentials')}
+              className="btn-primary flex items-center"
+            >
+              I've Set Up the App Registration
+              <ChevronRight className="w-4 h-4 ml-2" />
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    return null
   }
 
   const renderCredentialsStep = () => {
@@ -729,40 +936,39 @@ export default function CredentialWizard({
           </div>
         </div>
       )
-    }
+    } else if (provider === 'gcp') {
+      // GCP Credentials - WIF only (no service account keys for security)
+      return (
+        <div className="space-y-6">
+          <div>
+            <h4 className="font-medium text-gray-900 mb-3">Enter WIF Configuration</h4>
+            <p className="text-sm text-gray-600 mb-4">
+              Provide the Workload Identity Federation details from your GCP setup.
+            </p>
+          </div>
 
-    // GCP Credentials - WIF only (no service account keys for security)
-    return (
-      <div className="space-y-6">
-        <div>
-          <h4 className="font-medium text-gray-900 mb-3">Enter WIF Configuration</h4>
-          <p className="text-sm text-gray-600 mb-4">
-            Provide the Workload Identity Federation details from your GCP setup.
-          </p>
-        </div>
-
-        {/* Security notice */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <Shield className="w-5 h-5 text-green-600 mt-0.5 mr-3 shrink-0" />
-            <div>
-              <h5 className="font-medium text-green-900">Workload Identity Federation</h5>
-              <p className="text-sm text-green-700 mt-1">
-                A13E uses keyless authentication via WIF. No service account keys to manage,
-                rotate, or risk leaking. All credentials are short-lived (1 hour max).
-              </p>
+          {/* Security notice */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <Shield className="w-5 h-5 text-green-600 mt-0.5 mr-3 shrink-0" />
+              <div>
+                <h5 className="font-medium text-green-900">Workload Identity Federation</h5>
+                <p className="text-sm text-green-700 mt-1">
+                  A13E uses keyless authentication via WIF. No service account keys to manage,
+                  rotate, or risk leaking. All credentials are short-lived (1 hour max).
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Service Account Email <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            value={gcpServiceAccountEmail}
-            onChange={(e) => setGcpServiceAccountEmail(e.target.value)}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Service Account Email <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              value={gcpServiceAccountEmail}
+              onChange={(e) => setGcpServiceAccountEmail(e.target.value)}
             placeholder="a13e-scanner@my-project.iam.gserviceaccount.com"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
           />
@@ -839,6 +1045,107 @@ export default function CredentialWizard({
         </div>
       </div>
     )
+    } else if (provider === 'azure') {
+      // Azure Credentials - Tenant ID and Client ID from app registration
+      return (
+        <div className="space-y-6">
+          <div>
+            <h4 className="font-medium text-gray-900 mb-3">Enter Azure App Registration Details</h4>
+            <p className="text-sm text-gray-600 mb-4">
+              Provide the Tenant ID and Client ID from your Azure AD app registration.
+            </p>
+          </div>
+
+          {/* Security notice */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <Shield className="w-5 h-5 text-green-600 mt-0.5 mr-3 shrink-0" />
+              <div>
+                <h5 className="font-medium text-green-900">Workload Identity Federation</h5>
+                <p className="text-sm text-green-700 mt-1">
+                  A13E uses keyless authentication via WIF. No client secrets to manage,
+                  rotate, or risk leaking. Authentication uses AWS credentials from our ECS task.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tenant ID <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={azureTenantId}
+                onChange={(e) => setAzureTenantId(e.target.value)}
+                placeholder="12345678-1234-1234-1234-123456789abc"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Found in Azure Portal → Microsoft Entra ID → Overview
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Client ID (Application ID) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={azureClientId}
+                onChange={(e) => setAzureClientId(e.target.value)}
+                placeholder="12345678-1234-1234-1234-123456789abc"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Found in App registrations → Your app → Overview
+              </p>
+            </div>
+          </div>
+
+          {updateAzureMutation.error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+                <span className="text-red-800">
+                  {(updateAzureMutation.error as Error).message || 'Failed to save credentials'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between">
+            <button
+              onClick={() => setStep('setup')}
+              className="btn-secondary flex items-center"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Back
+            </button>
+            <button
+              onClick={handleSubmitCredentials}
+              disabled={!azureTenantId || !azureClientId || updateAzureMutation.isPending}
+              className="btn-primary flex items-center disabled:opacity-50"
+            >
+              {updateAzureMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  Save & Connect
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    return null
   }
 
   const renderValidateStep = () => {

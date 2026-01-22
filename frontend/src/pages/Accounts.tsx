@@ -539,6 +539,7 @@ export default function Accounts() {
           cloudAccountId={connectingAccount.id}
           provider={connectingAccount.provider}
           accountName={connectingAccount.name}
+          rawAccountId={connectingAccount.account_id}
           onClose={() => setConnectingAccount(null)}
           onSuccess={() => {
             setConnectingAccount(null)
