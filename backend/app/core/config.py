@@ -171,10 +171,15 @@ class Settings(BaseSettings):
     # Leave empty for same-origin setups (localhost development)
     cookie_domain: Optional[str] = None
 
-    # AWS Cognito
+    # AWS Cognito User Pool (for authentication)
     cognito_user_pool_id: Optional[str] = None
     cognito_client_id: Optional[str] = None
     cognito_domain: Optional[str] = None  # e.g., "dcv-dev-abc123"
+
+    # AWS Cognito Identity Pool (for Azure WIF)
+    # Used to generate OIDC JWTs for Azure Workload Identity Federation
+    # See: backend/app/services/azure_wif_service.py
+    cognito_identity_pool_id: Optional[str] = None
 
     # OAuth Providers (used by Cognito identity providers)
     google_client_id: Optional[str] = None

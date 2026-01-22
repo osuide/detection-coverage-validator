@@ -239,3 +239,84 @@ resource "aws_cognito_resource_server" "api" {
     scope_description = "View coverage data"
   }
 }
+
+# ============================================================================
+# Cognito Identity Pool for Azure WIF
+# ============================================================================
+# This Identity Pool issues OIDC JWTs for Azure Workload Identity Federation.
+# It is separate from the User Pool above - used only for Azure authentication.
+#
+# How it works:
+# 1. A13E backend calls GetOpenIdTokenForDeveloperIdentity with customer ID
+# 2. Cognito returns a JWT with issuer=cognito-identity.amazonaws.com
+# 3. Customer's Azure federated credential validates the JWT
+# 4. Azure grants access to Defender/Policy APIs
+
+resource "aws_cognito_identity_pool" "azure_wif" {
+  identity_pool_name               = "a13e-azure-wif-${var.environment}"
+  allow_unauthenticated_identities = false
+  allow_classic_flow               = false
+
+  # Developer provider name - used in GetOpenIdTokenForDeveloperIdentity API
+  # This becomes part of the Logins map: {"a13e-azure-wif": "cloud-account-id"}
+  developer_provider_name = "a13e-azure-wif"
+
+  tags = {
+    Environment = var.environment
+    Project     = "detection-coverage-validator"
+    Purpose     = "Azure WIF authentication via OIDC"
+  }
+
+  # Prevent accidental deletion - customer Cognito IdentityIds are stored in DB
+  # and referenced by their Azure federated credentials
+  # Per CLAUDE.md: Use lifecycle settings to prevent Cognito drift issues
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# IAM role for authenticated Cognito identities
+# Minimal permissions - we only need the OIDC token, not AWS credentials
+resource "aws_iam_role" "azure_wif_authenticated" {
+  name = "a13e-${var.environment}-azure-wif-auth"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = "cognito-identity.amazonaws.com"
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "cognito-identity.amazonaws.com:aud" = aws_cognito_identity_pool.azure_wif.id
+        }
+        "ForAnyValue:StringLike" = {
+          "cognito-identity.amazonaws.com:amr" = "authenticated"
+        }
+      }
+    }]
+  })
+
+  # No inline policy needed - we don't use AWS credentials from this role
+  # The Identity Pool is only used to generate OIDC tokens for Azure
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "detection-coverage-validator"
+  }
+}
+
+# Attach the role to the Identity Pool
+resource "aws_cognito_identity_pool_roles_attachment" "azure_wif" {
+  identity_pool_id = aws_cognito_identity_pool.azure_wif.id
+
+  roles = {
+    "authenticated" = aws_iam_role.azure_wif_authenticated.arn
+  }
+}

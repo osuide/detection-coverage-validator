@@ -125,8 +125,10 @@ class DefenderScanner(BaseScanner):
 
         try:
             # Use async iteration with the async Azure SDK client
+            # Scope is required - use subscription scope for subscription-wide assessments
+            scope = f"/subscriptions/{subscription_id}"
             assessments = []
-            async for assessment in client.assessments.list():
+            async for assessment in client.assessments.list(scope=scope):
                 assessments.append(assessment)
 
             # Process each assessment

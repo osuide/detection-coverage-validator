@@ -11,7 +11,11 @@
 #
 # Usage:
 #   chmod +x azure_wif_setup.sh
-#   ./azure_wif_setup.sh --subscription <subscription-id>
+#   ./azure_wif_setup.sh --subscription <subscription-id> --cognito-identity-id <identity-id>
+#
+# The --cognito-identity-id is provided by A13E after clicking "Validate" in the
+# Azure Connect wizard. This ID uniquely identifies your cloud account for secure
+# federated authentication.
 #
 # For help:
 #   ./azure_wif_setup.sh --help
@@ -25,11 +29,19 @@ set -euo pipefail
 # Your Azure subscription ID (required)
 SUBSCRIPTION_ID=""
 
+# Cognito Identity ID (required - provided by A13E after clicking "Validate")
+COGNITO_IDENTITY_ID=""
+
 # A13E's AWS Account ID (fixed - A13E's infrastructure)
 A13E_AWS_ACCOUNT_ID="123080274263"
 
 # A13E's AWS Region
 A13E_AWS_REGION="eu-west-2"
+
+# A13E's Cognito Identity Pool ID (fixed - A13E's infrastructure)
+# This is the pool that issues OIDC JWTs for Azure Workload Identity Federation
+# Value will be updated after Terraform deployment
+A13E_IDENTITY_POOL_ID="${A13E_IDENTITY_POOL_ID:-}"  # Set via env or update after deploy
 
 # App registration configuration (defaults work for most cases)
 APP_NAME="A13E-DetectionScanner"
@@ -70,14 +82,24 @@ for A13E to scan your Azure subscription for security detection coverage.
 Usage: $0 [OPTIONS]
 
 Required:
-  --subscription SUBSCRIPTION_ID   Your Azure subscription ID (GUID)
+  --subscription SUBSCRIPTION_ID        Your Azure subscription ID (GUID)
+  --cognito-identity-id IDENTITY_ID     Your Cognito Identity ID from A13E
+                                        (shown after clicking "Validate" in the wizard)
 
 Optional:
   --app-name NAME                  Azure AD app name (default: A13E-DetectionScanner)
   --help                           Show this help message
 
 Example:
-  $0 --subscription 12345678-1234-1234-1234-123456789abc
+  $0 --subscription 12345678-1234-1234-1234-123456789abc \\
+     --cognito-identity-id eu-west-2:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+
+How to get your Cognito Identity ID:
+  1. Go to A13E Dashboard > Cloud Accounts > Add Azure
+  2. Enter your Subscription ID
+  3. Click "Validate" - A13E will generate your unique Identity ID
+  4. Copy the Identity ID and use it with this script
+  5. Re-run validation after completing the script
 
 What this script creates:
   1. Azure AD App Registration (A13E-DetectionScanner)
@@ -111,6 +133,10 @@ while [[ $# -gt 0 ]]; do
             SUBSCRIPTION_ID="$2"
             shift 2
             ;;
+        --cognito-identity-id)
+            COGNITO_IDENTITY_ID="$2"
+            shift 2
+            ;;
         --app-name)
             APP_NAME="$2"
             shift 2
@@ -132,9 +158,34 @@ if [[ -z "$SUBSCRIPTION_ID" ]]; then
     usage
 fi
 
+if [[ -z "$COGNITO_IDENTITY_ID" ]]; then
+    log_error "Missing required argument: --cognito-identity-id"
+    echo ""
+    echo "To get your Cognito Identity ID:"
+    echo "  1. Go to A13E Dashboard > Cloud Accounts > Add Azure"
+    echo "  2. Enter your Subscription ID"
+    echo "  3. Click 'Validate' - A13E will generate your unique Identity ID"
+    echo "  4. Copy the Identity ID and re-run this script with --cognito-identity-id"
+    echo ""
+    exit 1
+fi
+
 # Validate subscription ID format (GUID)
 if ! [[ "$SUBSCRIPTION_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
     log_error "Invalid subscription ID format. Expected GUID (e.g., 12345678-1234-1234-1234-123456789abc)"
+    exit 1
+fi
+
+# Validate Cognito Identity ID format (region:uuid)
+if ! [[ "$COGNITO_IDENTITY_ID" =~ ^[a-z]{2}-[a-z]+-[0-9]:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+    log_error "Invalid Cognito Identity ID format. Expected format: region:uuid (e.g., eu-west-2:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee)"
+    exit 1
+fi
+
+# Validate Identity Pool ID is configured (required for federated credential)
+if [[ -z "$A13E_IDENTITY_POOL_ID" ]]; then
+    log_error "A13E Identity Pool ID not configured in script. Please ensure you have the latest version."
+    log_error "Contact support@a13e.com if this error persists."
     exit 1
 fi
 
@@ -258,17 +309,27 @@ sleep 10
 
 log_step "Step 3/4: Creating Federated Identity Credential..."
 
-# Federated credential configuration for AWS ECS
-# Uses sts.amazonaws.com as the OIDC issuer with the A13E AWS account/role as subject
-FIC_NAME="A13E-AWS-Federation"
+# Federated credential configuration using AWS Cognito Identity Pool
+# Cognito issues OIDC JWTs that Azure can validate via federated credential trust
+FIC_NAME="A13E-Cognito-Federation"
 
-# AWS STS regional endpoint as OIDC issuer
-# Subject format: arn:aws:sts::{account}:assumed-role/{role-name}/{session-name}
-FIC_ISSUER="https://sts.${A13E_AWS_REGION}.amazonaws.com"
-FIC_SUBJECT="arn:aws:sts::${A13E_AWS_ACCOUNT_ID}:assumed-role/A13E-Scanner-Role/*"
-FIC_AUDIENCE="sts.amazonaws.com"
+# Cognito Identity as OIDC issuer (fixed - AWS managed)
+# Subject is your unique Cognito Identity ID (provided by A13E)
+# Audience is A13E's Cognito Identity Pool ID
+FIC_ISSUER="https://cognito-identity.amazonaws.com"
+FIC_SUBJECT="$COGNITO_IDENTITY_ID"
+FIC_AUDIENCE="$A13E_IDENTITY_POOL_ID"
 
-# Check if federated credential already exists
+# Clean up old STS-based federated credential if it exists (migration from v1)
+OLD_FIC_NAME="A13E-AWS-Federation"
+EXISTING_OLD_FIC=$(az ad app federated-credential list --id "$APP_OBJECT_ID" --query "[?name=='$OLD_FIC_NAME'].name" -o tsv 2>/dev/null || echo "")
+if [[ -n "$EXISTING_OLD_FIC" ]]; then
+    log_warn "Removing outdated federated credential '$OLD_FIC_NAME'..."
+    az ad app federated-credential delete --id "$APP_OBJECT_ID" --federated-credential-id "$OLD_FIC_NAME" 2>/dev/null || true
+    sleep 3
+fi
+
+# Check if current federated credential already exists
 EXISTING_FIC=$(az ad app federated-credential list --id "$APP_OBJECT_ID" --query "[?name=='$FIC_NAME'].name" -o tsv 2>/dev/null || echo "")
 
 if [[ -n "$EXISTING_FIC" ]]; then
@@ -278,14 +339,14 @@ if [[ -n "$EXISTING_FIC" ]]; then
 fi
 
 # Create federated credential using JSON parameters
-# Note: Azure AD WIF supports various OIDC providers
+# Note: Azure AD WIF trusts AWS Cognito Identity Pool as OIDC provider
 cat > /tmp/a13e_fic.json << EOF
 {
     "name": "$FIC_NAME",
     "issuer": "$FIC_ISSUER",
     "subject": "$FIC_SUBJECT",
     "audiences": ["$FIC_AUDIENCE"],
-    "description": "A13E Detection Coverage Validator - AWS ECS to Azure federation"
+    "description": "A13E Detection Coverage Validator - Cognito WIF to Azure federation"
 }
 EOF
 
@@ -373,14 +434,19 @@ echo "  ✓ Security Reader (Microsoft Defender for Cloud access)"
 echo ""
 echo "============================================================================"
 echo ""
-log_info "Setup complete! You can now add this Azure subscription to A13E."
+log_info "Setup complete! Return to A13E to complete the connection."
 echo ""
 echo "Next steps:"
-echo "  1. Go to A13E Dashboard > Cloud Accounts"
-echo "  2. Click 'Add Account' and select 'Azure'"
-echo "  3. Enter the values shown above:"
-echo "     - Subscription ID: $SUBSCRIPTION_ID"
+echo "  1. Return to the A13E Azure Setup wizard"
+echo "  2. Enter the values shown above:"
 echo "     - Tenant ID: $TENANT_ID"
 echo "     - Client ID: $APP_ID"
-echo "  4. Click 'Save' to complete the connection"
+echo "     - Subscription ID: $SUBSCRIPTION_ID"
+echo "  3. Click 'Validate' to test the connection"
+echo "  4. Once validation succeeds, click 'Save' to complete setup"
+echo ""
+echo "Federated credential configured with:"
+echo "  - Issuer:   $FIC_ISSUER"
+echo "  - Subject:  $FIC_SUBJECT"
+echo "  - Audience: $FIC_AUDIENCE"
 echo ""

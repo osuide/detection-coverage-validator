@@ -241,6 +241,18 @@ variable "ses_domain" {
   default     = ""
 }
 
+variable "azure_wif_identity_pool_arn" {
+  type        = string
+  description = "Cognito Identity Pool ARN for Azure WIF (enables GetOpenIdTokenForDeveloperIdentity)"
+  default     = ""
+}
+
+variable "azure_wif_identity_pool_id" {
+  type        = string
+  description = "Cognito Identity Pool ID for Azure WIF (passed to backend as env var)"
+  default     = ""
+}
+
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
@@ -699,6 +711,17 @@ resource "aws_iam_role_policy" "ecs_task" {
           "ssmmessages:OpenDataChannel"
         ]
         Resource = "*"
+      },
+      {
+        # Azure WIF via Cognito Identity Pool
+        # GetOpenIdTokenForDeveloperIdentity returns OIDC JWTs for Azure authentication
+        # See: backend/app/services/azure_wif_service.py
+        Sid    = "CognitoAzureWIF"
+        Effect = "Allow"
+        Action = [
+          "cognito-identity:GetOpenIdTokenForDeveloperIdentity"
+        ]
+        Resource = var.azure_wif_identity_pool_arn != "" ? [var.azure_wif_identity_pool_arn] : []
       }
     ]
   })
@@ -946,6 +969,10 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "WORKSPACE_ADMIN_EMAIL", value = var.workspace_admin_email },
         { name = "SUPPORT_CRM_SPREADSHEET_ID", value = var.support_crm_spreadsheet_id },
         { name = "TELEMETRY_SHEET_ID", value = var.telemetry_sheet_id }
+      ] : [],
+      # Azure WIF via Cognito Identity Pool (only when configured)
+      var.azure_wif_identity_pool_id != "" ? [
+        { name = "COGNITO_IDENTITY_POOL_ID", value = var.azure_wif_identity_pool_id }
       ] : []
     )
 

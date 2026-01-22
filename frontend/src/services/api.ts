@@ -405,6 +405,7 @@ export interface ValidationResult {
   message: string
   granted_permissions: string[]
   missing_permissions: string[]
+  cognito_identity_id?: string  // For Azure WIF - customer needs this for setup script
 }
 
 // Strategy detail with full implementation artefacts

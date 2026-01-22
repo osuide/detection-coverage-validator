@@ -344,6 +344,10 @@ module "backend" {
 
   # SES domain for scoped email permissions (CWE-732 fix)
   ses_domain = var.domain_name
+
+  # Azure WIF via Cognito Identity Pool
+  azure_wif_identity_pool_arn = var.enable_cognito ? module.cognito[0].azure_wif_identity_pool_arn : ""
+  azure_wif_identity_pool_id  = var.enable_cognito ? module.cognito[0].azure_wif_identity_pool_id : ""
 }
 
 # Frontend (S3 + CloudFront)

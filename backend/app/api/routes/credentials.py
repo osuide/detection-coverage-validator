@@ -150,6 +150,9 @@ class ValidationResponse(BaseModel):
     message: str
     granted_permissions: list[str]
     missing_permissions: list[str]
+    # Azure-specific: Cognito Identity ID for federated credential setup
+    # Returned after first validation to be used in the setup script
+    cognito_identity_id: Optional[str] = None
 
 
 # === Endpoints ===
@@ -344,17 +347,23 @@ async def get_setup_instructions(
                 "Azure uses Workload Identity Federation (WIF) for secure, keyless authentication.",
                 "",
                 "Option A - Automated Setup (Recommended):",
-                "  1. Open Azure Cloud Shell (Bash) or a terminal with Azure CLI installed",
-                "  2. Download the setup script:",
-                "     curl -sL https://app.a13e.com/api/v1/credentials/templates/azure/wif-setup -o azure_wif_setup.sh",
-                "  3. Make it executable: chmod +x azure_wif_setup.sh",
-                f"  4. Run: ./azure_wif_setup.sh --subscription {account.account_id}",
-                "  5. Copy the Tenant ID and Client ID from the output",
-                "  6. Return here to enter the credentials and complete setup",
+                "  1. Click 'Generate Setup' below to get your unique Cognito Identity ID",
+                "  2. Open Azure Cloud Shell (Bash) or a terminal with Azure CLI installed",
+                "  3. Download the setup script:",
+                "     curl -sL https://app.a13e.com/api/v1/credentials/templates/entra/wif-setup -o azure_wif_setup.sh",
+                "  4. Make it executable: chmod +x azure_wif_setup.sh",
+                f"  5. Run: ./azure_wif_setup.sh --subscription {account.account_id} --cognito-identity-id YOUR_IDENTITY_ID",
+                "     (Replace YOUR_IDENTITY_ID with the value from step 1)",
+                "  6. Copy the Tenant ID and Client ID from the output",
+                "  7. Return here to enter the credentials and click 'Validate'",
                 "",
                 "Option B - Manual Setup via Azure Portal:",
                 "",
-                "  Step 1: Register an Azure AD Application",
+                "  Step 1: Get Your Cognito Identity ID",
+                "    • Click 'Generate Setup' below to get your unique Identity ID",
+                "    • Save this value - you'll need it for the federated credential",
+                "",
+                "  Step 2: Register an Azure AD Application",
                 "    • Go to Azure Portal → Microsoft Entra ID → App registrations",
                 "    • Click 'New registration'",
                 "    • Name: 'A13E-DetectionScanner'",
@@ -362,17 +371,17 @@ async def get_setup_instructions(
                 "    • No redirect URI needed",
                 "    • Click 'Register'",
                 "",
-                "  Step 2: Configure Federated Identity Credential",
+                "  Step 3: Configure Federated Identity Credential",
                 "    • In your app registration, go to 'Certificates & secrets'",
                 "    • Click 'Federated credentials' → 'Add credential'",
                 "    • Scenario: 'Other issuer'",
-                "    • Issuer: https://sts.eu-west-2.amazonaws.com",
-                f"    • Subject: arn:aws:sts::{a13e_account_id}:assumed-role/A13E-Scanner-Role/*",
-                "    • Audience: sts.amazonaws.com",
-                "    • Name: 'A13E-AWS-Federation'",
+                "    • Issuer: https://cognito-identity.amazonaws.com",
+                "    • Subject: YOUR_COGNITO_IDENTITY_ID (from step 1)",
+                "    • Audience: YOUR_A13E_IDENTITY_POOL_ID (shown in setup wizard)",
+                "    • Name: 'A13E-Cognito-Federation'",
                 "    • Click 'Add'",
                 "",
-                "  Step 3: Assign Roles to the Application",
+                "  Step 4: Assign Roles to the Application",
                 "    • Go to your Subscription → Access control (IAM)",
                 "    • Click 'Add' → 'Add role assignment'",
                 "    • Role: 'Reader' → Next",
@@ -380,12 +389,12 @@ async def get_setup_instructions(
                 "    • Select: 'A13E-DetectionScanner' → Select → Review + assign",
                 "    • Repeat for 'Security Reader' role",
                 "",
-                "  Step 4: Note the Required IDs",
+                "  Step 5: Note the Required IDs",
                 "    • Tenant ID: Found in Azure AD → Overview",
                 "    • Client ID: Found in your App registration → Overview (Application ID)",
                 f"    • Subscription ID: {account.account_id}",
                 "",
-                "  Step 5: Return here with Tenant ID and Client ID to complete setup",
+                "  Step 6: Return here with Tenant ID and Client ID to complete setup",
             ],
         )
 
@@ -716,22 +725,47 @@ async def validate_credential(
                 detail=f"Invalid Azure WIF configuration: {e}",
             )
 
+        # Get existing Cognito Identity ID if previously generated
+        existing_cognito_identity_id = wif_data.get("cognito_identity_id")
+
         try:
-            wif_result = await validate_azure_wif(azure_wif_config)
+            # Validate WIF configuration using Cognito-based authentication
+            # Pass cloud_account_id for Cognito identity generation
+            wif_result = await validate_azure_wif(
+                azure_wif_config,
+                cloud_account_id=str(cloud_account_id),
+                existing_cognito_identity_id=existing_cognito_identity_id,
+            )
+
+            # Store the Cognito Identity ID for future use (if generated)
+            returned_cognito_id = wif_result.get("cognito_identity_id")
+            if (
+                returned_cognito_id
+                and returned_cognito_id != existing_cognito_identity_id
+            ):
+                # Update the JSONB with the new Cognito Identity ID
+                updated_config = dict(wif_data)
+                updated_config["cognito_identity_id"] = returned_cognito_id
+                account.azure_workload_identity_config = updated_config
+
             if wif_result["valid"]:
                 validation = {
                     "status": CredentialStatus.VALID,
                     "message": wif_result["message"],
                     "granted_permissions": [],
                     "missing_permissions": [],
+                    "cognito_identity_id": returned_cognito_id,
                 }
                 account.azure_enabled = True
             else:
+                # Include Cognito Identity ID in response even on failure
+                # so customer can use it in the setup script
                 validation = {
                     "status": CredentialStatus.INVALID,
                     "message": wif_result["message"],
                     "granted_permissions": [],
                     "missing_permissions": [],
+                    "cognito_identity_id": returned_cognito_id,
                 }
                 account.azure_enabled = False
         except AzureWIFError as e:
@@ -740,6 +774,7 @@ async def validate_credential(
                 "message": f"Azure WIF validation error: {str(e)}",
                 "granted_permissions": [],
                 "missing_permissions": [],
+                "cognito_identity_id": existing_cognito_identity_id,
             }
             account.azure_enabled = False
 
@@ -757,6 +792,11 @@ async def validate_credential(
                 "action": "azure_wif_validated",
                 "status": validation["status"].value,
                 "provider": "azure",
+                "cognito_identity_id": (
+                    validation.get("cognito_identity_id", "")[:20] + "..."
+                    if validation.get("cognito_identity_id")
+                    else None
+                ),
             },
             ip_address=get_client_ip(request),
             success=validation["status"] == CredentialStatus.VALID,
@@ -769,6 +809,7 @@ async def validate_credential(
             message=validation["message"],
             granted_permissions=validation["granted_permissions"],
             missing_permissions=validation["missing_permissions"],
+            cognito_identity_id=validation.get("cognito_identity_id"),
         )
 
     # AWS/GCP: Validate based on credential type
@@ -1075,18 +1116,40 @@ async def get_gcp_wif_setup_script() -> str:
     return _read_template("gcp_wif_setup.sh")
 
 
+def _get_azure_wif_script_with_pool_id() -> str:
+    """Get Azure WIF setup script with Identity Pool ID injected.
+
+    Replaces the placeholder A13E_IDENTITY_POOL_ID with the actual
+    value from settings.cognito_identity_pool_id.
+    """
+    from app.core.config import get_settings
+
+    script = _read_template("azure_wif_setup.sh")
+    settings = get_settings()
+
+    # Inject the Identity Pool ID if configured
+    if settings.cognito_identity_pool_id:
+        # Replace the environment variable fallback with the actual value
+        script = script.replace(
+            'A13E_IDENTITY_POOL_ID="${A13E_IDENTITY_POOL_ID:-}"',
+            f'A13E_IDENTITY_POOL_ID="{settings.cognito_identity_pool_id}"',
+        )
+
+    return script
+
+
 @router.get("/templates/azure/wif-setup", response_class=PlainTextResponse)
 async def get_azure_wif_setup_script() -> str:
     """Download Azure Workload Identity Federation setup script.
 
-    Uses WIF for keyless authentication from AWS to Azure.
+    Uses Cognito-based WIF for keyless authentication from AWS to Azure.
     No client secrets required.
 
     Usage:
         chmod +x azure_wif_setup.sh
-        ./azure_wif_setup.sh --subscription YOUR_SUBSCRIPTION_ID
+        ./azure_wif_setup.sh --subscription YOUR_SUBSCRIPTION_ID --cognito-identity-id YOUR_IDENTITY_ID
     """
-    return _read_template("azure_wif_setup.sh")
+    return _get_azure_wif_script_with_pool_id()
 
 
 @router.get("/templates/entra/wif-setup", response_class=PlainTextResponse)
@@ -1096,7 +1159,7 @@ async def get_entra_wif_setup_script() -> str:
     Azure Cloud Shell blocks outbound requests to URLs containing 'azure',
     so this alias uses 'entra' (Microsoft Entra ID) instead.
     """
-    return _read_template("azure_wif_setup.sh")
+    return _get_azure_wif_script_with_pool_id()
 
 
 # === Helper Functions ===

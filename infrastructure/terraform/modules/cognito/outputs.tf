@@ -64,3 +64,14 @@ output "token_endpoint" {
 }
 
 data "aws_region" "current" {}
+
+# Azure WIF Identity Pool outputs
+output "azure_wif_identity_pool_id" {
+  description = "Cognito Identity Pool ID for Azure WIF (used in COGNITO_IDENTITY_POOL_ID env var)"
+  value       = aws_cognito_identity_pool.azure_wif.id
+}
+
+output "azure_wif_identity_pool_arn" {
+  description = "Cognito Identity Pool ARN for Azure WIF (used in IAM policies)"
+  value       = aws_cognito_identity_pool.azure_wif.arn
+}

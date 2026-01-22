@@ -1,9 +1,9 @@
 """Azure Workload Identity Federation Service - AWS to Azure authentication.
 
 Security Architecture:
-1. A13E ECS task assumes AWS IAM role
-2. AWS STS generates identity token
-3. Azure AD validates AWS identity via federated credential
+1. A13E ECS task calls Cognito GetOpenIdTokenForDeveloperIdentity
+2. Cognito returns OIDC JWT with issuer=cognito-identity.amazonaws.com
+3. Azure AD validates JWT via federated credential trust
 4. Short-lived (1h) Azure credentials - NEVER stored
 
 MITRE ATT&CK Relevance:
@@ -14,9 +14,12 @@ MITRE ATT&CK Relevance:
 
 import asyncio
 from dataclasses import dataclass
+from typing import Optional, Tuple
 
 import structlog
 from azure.identity.aio import ClientAssertionCredential
+
+from app.core.config import get_settings
 
 logger = structlog.get_logger()
 
@@ -67,6 +70,115 @@ class AzureWIFError(Exception):
     """Base exception for WIF-related errors."""
 
     pass
+
+
+@dataclass
+class CognitoJWTResult:
+    """Result from Cognito GetOpenIdTokenForDeveloperIdentity.
+
+    Contains the OIDC JWT token and the Cognito IdentityId.
+    The IdentityId is stable per cloud_account_id and must be stored
+    for use in Azure federated credential configuration.
+    """
+
+    token: str  # OIDC JWT for Azure WIF
+    identity_id: str  # Cognito IdentityId (e.g., eu-west-2:abc123-...)
+
+
+async def get_cognito_jwt(
+    cloud_account_id: str,
+    existing_identity_id: Optional[str] = None,
+) -> CognitoJWTResult:
+    """Get Cognito OIDC JWT for Azure WIF authentication.
+
+    Uses GetOpenIdTokenForDeveloperIdentity to generate a proper OIDC JWT that:
+    - Has issuer: https://cognito-identity.amazonaws.com
+    - Has subject: The Cognito IdentityId (stable per cloud account)
+    - Has audience: The Identity Pool ID
+
+    CRITICAL: Runs boto3 in thread pool to avoid blocking asyncio event loop.
+    Per CLAUDE.md: "boto3 blocks asyncio. Always use run_sync()."
+
+    Args:
+        cloud_account_id: The A13E cloud account ID (used as developer user identifier)
+        existing_identity_id: If known, reuse existing Cognito Identity ID for consistency
+
+    Returns:
+        CognitoJWTResult with token and identity_id
+
+    Raises:
+        AzureWIFError: If token generation fails
+    """
+    settings = get_settings()
+
+    if not settings.cognito_identity_pool_id:
+        raise AzureWIFError(
+            "Cognito Identity Pool not configured. "
+            "Azure WIF requires COGNITO_IDENTITY_POOL_ID to be set."
+        )
+
+    def _get_token_sync() -> CognitoJWTResult:
+        """Synchronous token generation (runs in thread pool)."""
+        import boto3
+        from botocore.exceptions import ClientError
+
+        try:
+            client = boto3.client(
+                "cognito-identity",
+                region_name=settings.aws_region,
+            )
+
+            # Build request parameters
+            params = {
+                "IdentityPoolId": settings.cognito_identity_pool_id,
+                "Logins": {
+                    # Developer provider name must match Terraform config
+                    "a13e-azure-wif": cloud_account_id,
+                },
+                "TokenDuration": 3600,  # 1 hour (max allowed)
+            }
+
+            # If we have existing identity, reuse it for consistency
+            # This ensures the same cloud account always gets the same IdentityId
+            if existing_identity_id:
+                params["IdentityId"] = existing_identity_id
+
+            response = client.get_open_id_token_for_developer_identity(**params)
+
+            token = response["Token"]
+            identity_id = response["IdentityId"]
+
+            logger.debug(
+                "cognito_jwt_obtained",
+                identity_id=identity_id[:20] + "...",
+                cloud_account_id=cloud_account_id[:8] + "...",
+            )
+
+            return CognitoJWTResult(token=token, identity_id=identity_id)
+
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            error_message = e.response.get("Error", {}).get("Message", str(e))
+            logger.error(
+                "cognito_jwt_error",
+                error_code=error_code,
+                error_message=error_message,
+                cloud_account_id=cloud_account_id[:8] + "...",
+            )
+            raise AzureWIFError(
+                f"Cognito identity pool error ({error_code}): {error_message}"
+            )
+        except Exception as e:
+            logger.error(
+                "cognito_jwt_unexpected_error",
+                error=str(e),
+                cloud_account_id=cloud_account_id[:8] + "...",
+            )
+            raise AzureWIFError(f"Failed to get Cognito JWT: {e}")
+
+    # Run in thread pool to avoid blocking event loop
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _get_token_sync)
 
 
 async def get_aws_sts_token() -> str:
@@ -131,55 +243,82 @@ async def get_aws_sts_token() -> str:
 
 async def get_azure_credential(
     wif_config: AzureWIFConfiguration,
-) -> ClientAssertionCredential:
-    """Get Azure credential using WIF.
+    cloud_account_id: str,
+    cognito_identity_id: Optional[str] = None,
+) -> Tuple[ClientAssertionCredential, str]:
+    """Get Azure credential using Cognito-based WIF.
 
-    SIMPLIFIED: Let Azure SDK handle token caching and refresh.
-    No custom cache needed - SDK automatically:
-    - Caches the token
-    - Refreshes before expiry
-    - Handles errors and retries
+    Uses Cognito Identity Pool to generate OIDC JWTs that Azure can validate.
+    The Cognito IdentityId is stable per cloud_account_id and must be stored
+    in the database for use in the customer's Azure federated credential config.
 
     Args:
         wif_config: WIF configuration for the customer
+        cloud_account_id: A13E cloud account ID (used as developer identity)
+        cognito_identity_id: Existing Cognito Identity ID (if known)
 
     Returns:
-        ClientAssertionCredential (Azure SDK manages token lifecycle)
+        Tuple of (ClientAssertionCredential, cognito_identity_id)
+        The cognito_identity_id should be stored for future use
 
     Raises:
         AzureWIFError: If credential creation fails
     """
     try:
-        # Create credential with AWS token supplier
+        # Get initial JWT to discover/confirm the Cognito Identity ID
+        jwt_result = await get_cognito_jwt(
+            cloud_account_id=cloud_account_id,
+            existing_identity_id=cognito_identity_id,
+        )
+
+        # Create a token supplier that fetches fresh JWTs when needed
+        # This is called by Azure SDK when it needs a new token
+        async def token_supplier() -> str:
+            result = await get_cognito_jwt(
+                cloud_account_id=cloud_account_id,
+                existing_identity_id=jwt_result.identity_id,
+            )
+            return result.token
+
+        # Create credential with Cognito JWT supplier
         # Azure SDK automatically manages token lifecycle
         credential = ClientAssertionCredential(
             tenant_id=wif_config.tenant_id,
             client_id=wif_config.client_id,
-            func=get_aws_sts_token,  # Called by SDK when token needed
+            func=token_supplier,  # Called by SDK when token needed
         )
 
         logger.info(
             "azure_credential_created",
             tenant_id=wif_config.tenant_id,
             subscription_id=wif_config.subscription_id,
+            cognito_identity_id=jwt_result.identity_id[:20] + "...",
         )
 
-        return credential
+        return credential, jwt_result.identity_id
 
+    except AzureWIFError:
+        raise  # Re-raise WIF errors as-is
     except Exception as e:
         raise AzureWIFError(f"Failed to create Azure credential: {e}")
 
 
-async def validate_wif_configuration(wif_config: AzureWIFConfiguration) -> dict:
+async def validate_wif_configuration(
+    wif_config: AzureWIFConfiguration,
+    cloud_account_id: str,
+    existing_cognito_identity_id: Optional[str] = None,
+) -> dict:
     """Validate Azure WIF configuration by attempting to authenticate.
 
     Tests the full WIF flow:
-    1. Get AWS STS token from ECS task role
+    1. Get Cognito OIDC JWT from Identity Pool
     2. Exchange for Azure credential via federated trust
-    3. Verify we can list resources in the subscription
+    3. Verify we can access the subscription
 
     Args:
-        wif_config: WIF configuration to validate
+        wif_config: WIF configuration for the customer
+        cloud_account_id: A13E cloud account ID
+        existing_cognito_identity_id: Existing Cognito Identity ID (if known)
 
     Returns:
         dict with keys:
@@ -187,27 +326,38 @@ async def validate_wif_configuration(wif_config: AzureWIFConfiguration) -> dict:
             - message: str
             - steps_completed: list[str]
             - steps_failed: list[str]
+            - cognito_identity_id: str (if successful, for storage)
     """
     steps_completed = []
     steps_failed = []
+    cognito_identity_id = None
 
     try:
-        # Step 1: Get AWS STS token
+        # Step 1: Get Cognito OIDC JWT
         try:
-            await get_aws_sts_token()
-            steps_completed.append("AWS STS token obtained")
+            jwt_result = await get_cognito_jwt(
+                cloud_account_id=cloud_account_id,
+                existing_identity_id=existing_cognito_identity_id,
+            )
+            cognito_identity_id = jwt_result.identity_id
+            steps_completed.append("Cognito OIDC JWT obtained")
         except AzureWIFError as e:
-            steps_failed.append(f"AWS STS token: {e}")
+            steps_failed.append(f"Cognito JWT: {e}")
             return {
                 "valid": False,
-                "message": f"Failed to get AWS identity token: {e}",
+                "message": f"Failed to get Cognito identity token: {e}",
                 "steps_completed": steps_completed,
                 "steps_failed": steps_failed,
+                "cognito_identity_id": None,
             }
 
         # Step 2: Get Azure credential via WIF
         try:
-            credential = await get_azure_credential(wif_config)
+            credential, _ = await get_azure_credential(
+                wif_config,
+                cloud_account_id=cloud_account_id,
+                cognito_identity_id=cognito_identity_id,
+            )
             steps_completed.append("Azure credential created via WIF")
         except AzureWIFError as e:
             steps_failed.append(f"Azure WIF credential: {e}")
@@ -216,6 +366,7 @@ async def validate_wif_configuration(wif_config: AzureWIFConfiguration) -> dict:
                 "message": f"Failed to create Azure credential: {e}",
                 "steps_completed": steps_completed,
                 "steps_failed": steps_failed,
+                "cognito_identity_id": cognito_identity_id,
             }
 
         # Step 3: Test the credential by getting a token
@@ -231,6 +382,7 @@ async def validate_wif_configuration(wif_config: AzureWIFConfiguration) -> dict:
                     "message": "Azure credential returned empty token",
                     "steps_completed": steps_completed,
                     "steps_failed": steps_failed,
+                    "cognito_identity_id": cognito_identity_id,
                 }
         except Exception as e:
             steps_failed.append(f"Azure token exchange: {e}")
@@ -239,6 +391,7 @@ async def validate_wif_configuration(wif_config: AzureWIFConfiguration) -> dict:
                 "message": f"Failed to exchange token with Azure: {e}",
                 "steps_completed": steps_completed,
                 "steps_failed": steps_failed,
+                "cognito_identity_id": cognito_identity_id,
             }
 
         # Step 4: Test subscription access with a lightweight API call
@@ -259,12 +412,14 @@ async def validate_wif_configuration(wif_config: AzureWIFConfiguration) -> dict:
                 "message": f"Cannot access subscription {wif_config.subscription_id}: {e}",
                 "steps_completed": steps_completed,
                 "steps_failed": steps_failed,
+                "cognito_identity_id": cognito_identity_id,
             }
 
         logger.info(
             "azure_wif_validation_success",
             tenant_id=wif_config.tenant_id,
             subscription_id=wif_config.subscription_id,
+            cognito_identity_id=cognito_identity_id[:20] + "...",
             steps_completed=steps_completed,
         )
 
@@ -273,6 +428,7 @@ async def validate_wif_configuration(wif_config: AzureWIFConfiguration) -> dict:
             "message": "Azure WIF configuration is valid",
             "steps_completed": steps_completed,
             "steps_failed": steps_failed,
+            "cognito_identity_id": cognito_identity_id,
         }
 
     except Exception as e:
@@ -286,6 +442,7 @@ async def validate_wif_configuration(wif_config: AzureWIFConfiguration) -> dict:
             "message": f"Unexpected validation error: {e}",
             "steps_completed": steps_completed,
             "steps_failed": [str(e)],
+            "cognito_identity_id": cognito_identity_id,
         }
 
 
@@ -293,7 +450,9 @@ async def validate_wif_configuration(wif_config: AzureWIFConfiguration) -> dict:
 __all__ = [
     "AzureWIFConfiguration",
     "AzureWIFError",
+    "CognitoJWTResult",
     "get_azure_credential",
-    "get_aws_sts_token",
+    "get_aws_sts_token",  # Deprecated - kept for backwards compatibility
+    "get_cognito_jwt",
     "validate_wif_configuration",
 ]
