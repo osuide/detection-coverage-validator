@@ -271,21 +271,64 @@ async def get_azure_credential(
             existing_identity_id=cognito_identity_id,
         )
 
-        # Create a token supplier that fetches fresh JWTs when needed
-        # This is called by Azure SDK when it needs a new token
-        async def token_supplier() -> str:
-            result = await get_cognito_jwt(
-                cloud_account_id=cloud_account_id,
-                existing_identity_id=jwt_result.identity_id,
-            )
-            return result.token
+        # Create a SYNCHRONOUS token supplier that fetches fresh JWTs when needed
+        # CRITICAL: Azure SDK's ClientAssertionCredential calls func() synchronously,
+        # so this MUST be a regular function, NOT async def
+        def token_supplier() -> str:
+            """Synchronous token supplier for Azure SDK.
 
-        # Create credential with Cognito JWT supplier
-        # Azure SDK automatically manages token lifecycle
+            Azure's ClientAssertionCredential.func parameter expects a synchronous
+            callable that returns a JWT string. Using async def here would return
+            a coroutine object instead, causing AADSTS90013 errors.
+            """
+            import boto3
+            from botocore.exceptions import ClientError
+
+            settings = get_settings()
+
+            try:
+                client = boto3.client(
+                    "cognito-identity",
+                    region_name=settings.aws_region,
+                )
+
+                params = {
+                    "IdentityPoolId": settings.cognito_identity_pool_id,
+                    "Logins": {"a13e-azure-wif": cloud_account_id},
+                    "TokenDuration": 3600,
+                }
+                # Reuse the same identity ID for consistency
+                if jwt_result.identity_id:
+                    params["IdentityId"] = jwt_result.identity_id
+
+                response = client.get_open_id_token_for_developer_identity(**params)
+
+                logger.debug(
+                    "token_supplier_refresh",
+                    identity_id=response["IdentityId"][:20] + "...",
+                )
+
+                return response["Token"]
+
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "Unknown")
+                error_msg = e.response.get("Error", {}).get("Message", str(e))
+                logger.error(
+                    "token_supplier_error",
+                    error_code=error_code,
+                    error_message=error_msg,
+                )
+                raise AzureWIFError(f"Token refresh failed ({error_code}): {error_msg}")
+            except Exception as e:
+                logger.error("token_supplier_unexpected_error", error=str(e))
+                raise AzureWIFError(f"Token refresh failed: {e}")
+
+        # Create credential with synchronous Cognito JWT supplier
+        # Azure SDK calls func() when it needs a new token
         credential = ClientAssertionCredential(
             tenant_id=wif_config.tenant_id,
             client_id=wif_config.client_id,
-            func=token_supplier,  # Called by SDK when token needed
+            func=token_supplier,  # MUST be sync callable returning str
         )
 
         logger.info(
