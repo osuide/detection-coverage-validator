@@ -46,6 +46,37 @@ const REGIONAL_DETECTION_TYPES = new Set([
   'gcp_cloud_function',
 ])
 
+/**
+ * Determines the cloud provider from detection type.
+ * Used to display correct "Managed" badge (AWS/Azure/GCP).
+ */
+function getProviderFromDetectionType(
+  detectionType: string
+): 'AWS' | 'Azure' | 'GCP' | null {
+  if (detectionType.startsWith('gcp_')) {
+    return 'GCP'
+  }
+  if (detectionType.startsWith('azure_')) {
+    return 'Azure'
+  }
+  // AWS detection types don't have a prefix
+  const awsTypes = new Set([
+    'cloudwatch_logs_insights',
+    'cloudwatch_alarm',
+    'eventbridge_rule',
+    'guardduty_finding',
+    'config_rule',
+    'custom_lambda',
+    'security_hub',
+    'inspector_finding',
+    'macie_finding',
+  ])
+  if (awsTypes.has(detectionType)) {
+    return 'AWS'
+  }
+  return null
+}
+
 // Detection type configuration for icons and colours
 const detectionTypeConfig: Record<
   string,
@@ -130,8 +161,10 @@ export function RegionalAggregatedCard({
     return date > latest ? date : latest
   }, new Date(0))
 
-  // Check if this is an AWS-managed detection (DO-NOT-DELETE- rules)
+  // Check if this is a managed detection (AWS/Azure/GCP managed rules)
   const isManaged = detections.some((d) => d.is_managed)
+  const provider = getProviderFromDetectionType(detectionType)
+  const managedLabel = provider ? `${provider} Managed` : 'Managed'
 
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
@@ -152,7 +185,7 @@ export function RegionalAggregatedCard({
                 {isManaged && (
                   <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-sky-900/30 text-sky-400 border border-sky-700/50 shrink-0">
                     <Cloud className="h-3 w-3 mr-1" />
-                    AWS Managed
+                    {managedLabel}
                   </span>
                 )}
               </div>
