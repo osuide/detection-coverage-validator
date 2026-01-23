@@ -63,6 +63,38 @@ const detectionTypeConfig: Record<string, { label: string; icon: React.ElementTy
     icon: Eye,
     color: 'text-pink-400',
     bgColor: 'bg-pink-900/30'
+  },
+  // GCP Detection Types
+  'gcp_cloud_logging': {
+    label: 'Cloud Logging',
+    icon: Activity,
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-900/30'
+  },
+  'gcp_security_command_center': {
+    label: 'Security Command Center',
+    icon: Shield,
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-900/30'
+  },
+  'gcp_eventarc': {
+    label: 'Eventarc',
+    icon: Zap,
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-900/30'
+  },
+  // Azure Detection Types
+  'azure_defender': {
+    label: 'Defender for Cloud',
+    icon: Shield,
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-900/30'
+  },
+  'azure_policy': {
+    label: 'Azure Policy',
+    icon: CheckCircle,
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-900/30'
   }
 }
 

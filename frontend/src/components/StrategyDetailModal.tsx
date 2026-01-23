@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { X, Copy, Check, Terminal, FileCode, Cloud, AlertTriangle, Shield, BookOpen } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { recommendationsApi, StrategyDetail } from '../services/api'
 
 interface StrategyDetailModalProps {
@@ -18,6 +18,11 @@ export default function StrategyDetailModal({
 }: StrategyDetailModalProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'query' | 'cloudformation' | 'terraform' | 'gcp_query' | 'gcp_terraform' | 'response'>('overview')
   const [copiedField, setCopiedField] = useState<string | null>(null)
+
+  // Reset tab to overview when strategy changes to prevent showing blank content
+  useEffect(() => {
+    setActiveTab('overview')
+  }, [techniqueId, strategyId])
 
   const { data: details, isLoading, error } = useQuery({
     queryKey: ['strategyDetail', techniqueId, strategyId],
@@ -61,7 +66,11 @@ export default function StrategyDetailModal({
                 {techniqueId} &bull; {details?.detection_type} via {details?.gcp_service || details?.aws_service || 'n/a'}
                 {details?.cloud_provider && (
                   <span className={`ml-2 px-1.5 py-0.5 text-xs rounded ${
-                    details.cloud_provider === 'gcp' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                    details.cloud_provider === 'gcp'
+                      ? 'bg-blue-100 text-blue-700'
+                      : details.cloud_provider === 'azure'
+                        ? 'bg-cyan-100 text-cyan-700'
+                        : 'bg-orange-100 text-orange-700'
                   }`}>
                     {details.cloud_provider.toUpperCase()}
                   </span>

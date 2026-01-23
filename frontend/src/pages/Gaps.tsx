@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, ExternalLink, ChevronDown, ChevronRight, Filter, Search, Clock, Zap, Shield, Users, Check, Loader2, RotateCcw, CheckCircle, ShieldAlert } from 'lucide-react'
 import { coverageApi, gapsApi, Gap, RecommendedStrategy, AcknowledgedGap } from '../services/api'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import StrategyDetailModal from '../components/StrategyDetailModal'
 import toast from 'react-hot-toast'
 import { useSelectedAccount } from '../hooks/useSelectedAccount'
@@ -405,6 +405,16 @@ function GapCard({
   const queryClient = useQueryClient()
   const mitreUrl = `https://attack.mitre.org/techniques/${gap.technique_id.replace('.', '/')}/`
   const [isAcknowledged, setIsAcknowledged] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup timeout on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+    }
+  }, [])
 
   const acknowledgeMutation = useMutation({
     mutationFn: () => {
@@ -416,7 +426,7 @@ function GapCard({
       setIsAcknowledged(true)
       toast.success(`Gap ${gap.technique_id} acknowledged. It will not appear in future scans.`)
       // Delay the query invalidation slightly so user sees the "Acknowledged" state
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['coverage'] })
         queryClient.invalidateQueries({ queryKey: ['acknowledgedGaps'] })
       }, 1500)

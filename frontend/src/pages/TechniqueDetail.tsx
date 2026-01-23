@@ -158,7 +158,13 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
   const [activeTab, setActiveTab] = useState<'cloudformation' | 'terraform' | 'gcp'>('terraform')
   const [templatesExpanded, setTemplatesExpanded] = useState(false)
 
-  const isAWS = strategy.cloud_provider === 'aws'
+  // Provider badge styles (AWS=orange, GCP=blue, Azure=cyan)
+  const providerStyles: Record<string, { bg: string; label: string }> = {
+    aws: { bg: 'bg-orange-900/50 text-orange-300 border-orange-700', label: 'AWS' },
+    gcp: { bg: 'bg-blue-900/50 text-blue-300 border-blue-700', label: 'GCP' },
+    azure: { bg: 'bg-cyan-900/50 text-cyan-300 border-cyan-700', label: 'Azure' },
+  }
+  const providerStyle = providerStyles[strategy.cloud_provider] || providerStyles.aws
 
   const getEffortBadge = (effort: string) => {
     const styles: Record<string, string> = {
@@ -187,13 +193,9 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
       >
         <div className="flex items-center gap-4">
           <span
-            className={`px-2 py-1 text-xs font-medium rounded border ${
-              isAWS
-                ? 'bg-orange-900/50 text-orange-300 border-orange-700'
-                : 'bg-blue-900/50 text-blue-300 border-blue-700'
-            }`}
+            className={`px-2 py-1 text-xs font-medium rounded border ${providerStyle.bg}`}
           >
-            {isAWS ? 'AWS' : 'GCP'}
+            {providerStyle.label}
           </span>
           <div className="text-left">
             <h4 className="font-medium text-white">{strategy.name}</h4>
@@ -505,12 +507,10 @@ export default function TechniqueDetail() {
 
   // Sync filter when account changes (must be before early returns)
   useEffect(() => {
-    if (selectedAccount?.provider === 'gcp') {
-      setCloudFilter('gcp')
-    } else if (selectedAccount?.provider === 'aws') {
-      setCloudFilter('aws')
+    if (selectedAccount?.provider) {
+      setCloudFilter(selectedAccount.provider)
     }
-  }, [selectedAccount?.id])
+  }, [selectedAccount?.provider])
 
   // Calculate effort estimates based on current filter (must be before early returns)
   const filteredEffortEstimates = useMemo(() => {
@@ -592,6 +592,7 @@ export default function TechniqueDetail() {
 
   const awsCount = technique.detection_strategies.filter(s => s.cloud_provider === 'aws').length
   const gcpCount = technique.detection_strategies.filter(s => s.cloud_provider === 'gcp').length
+  const azureCount = technique.detection_strategies.filter(s => s.cloud_provider === 'azure').length
 
   return (
     <div className="space-y-6">
@@ -878,6 +879,16 @@ export default function TechniqueDetail() {
               }`}
             >
               GCP ({gcpCount})
+            </button>
+            <button
+              onClick={() => setCloudFilter('azure')}
+              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                cloudFilter === 'azure'
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              Azure ({azureCount})
             </button>
           </div>
         </div>

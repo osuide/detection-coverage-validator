@@ -63,6 +63,43 @@ const detectionTypeConfig: Record<string, { label: string; icon: React.ElementTy
     color: 'text-pink-900',
     bgColor: 'bg-pink-100',
     description: 'Sensitive data discovery and S3 security'
+  },
+  // GCP Detection Types
+  'gcp_cloud_logging': {
+    label: 'GCP Cloud Logging',
+    icon: Activity,
+    color: 'text-blue-900',
+    bgColor: 'bg-blue-100',
+    description: 'Query-based detection using GCP Cloud Logging'
+  },
+  'gcp_security_command_center': {
+    label: 'Security Command Center',
+    icon: Shield,
+    color: 'text-blue-900',
+    bgColor: 'bg-blue-100',
+    description: 'GCP managed security findings from Security Command Center'
+  },
+  'gcp_eventarc': {
+    label: 'GCP Eventarc',
+    icon: Zap,
+    color: 'text-blue-900',
+    bgColor: 'bg-blue-100',
+    description: 'Event-driven detection using Eventarc triggers'
+  },
+  // Azure Detection Types
+  'azure_defender': {
+    label: 'Defender for Cloud',
+    icon: Shield,
+    color: 'text-cyan-900',
+    bgColor: 'bg-cyan-100',
+    description: 'Azure managed threat detection from Microsoft Defender'
+  },
+  'azure_policy': {
+    label: 'Azure Policy',
+    icon: CheckCircle,
+    color: 'text-cyan-900',
+    bgColor: 'bg-cyan-100',
+    description: 'Compliance-based detection using Azure Policy'
   }
 }
 
