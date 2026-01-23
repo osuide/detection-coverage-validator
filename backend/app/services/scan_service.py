@@ -255,6 +255,9 @@ class ScanService:
                 await self._cache_scan_status(scan)
 
                 # Azure scans are always full (no incremental support yet)
+                # Set force_full_scan = False since Azure doesn't support incremental scans
+                # This variable is used later for cache management across all providers
+                force_full_scan = False
                 raw_detections, scanner_errors = await self._scan_azure_detections(
                     azure_credential,
                     azure_config,
