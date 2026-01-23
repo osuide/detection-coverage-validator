@@ -375,38 +375,40 @@ export default function Dashboard() {
         )
       })()}
 
-      {/* Security Posture - Detection Effectiveness from Security Hub */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-white">Security Posture</h3>
-            <p className="text-sm text-gray-400">Detection effectiveness from Security Hub standards</p>
+      {/* Security Posture - AWS Security Hub only */}
+      {selectedAccount?.provider === 'aws' && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-white">Security Posture</h3>
+              <p className="text-sm text-gray-400">Detection effectiveness from Security Hub standards</p>
+            </div>
+            {securityPostureData.length > 0 && (
+              <Link
+                to="/compliance"
+                className="text-sm text-blue-400 hover:text-blue-300"
+              >
+                View Details →
+              </Link>
+            )}
           </div>
-          {securityPostureData.length > 0 && (
-            <Link
-              to="/compliance"
-              className="text-sm text-blue-400 hover:text-blue-300"
-            >
-              View Details →
-            </Link>
+          {securityPostureData.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {securityPostureData.map((data) => (
+                <SecurityPostureCard
+                  key={data.standardId}
+                  standardId={data.standardId}
+                  standardName={data.standardName}
+                  effectiveness={data.effectiveness}
+                  region={data.region}
+                />
+              ))}
+            </div>
+          ) : (
+            <SecurityPostureEmptyState />
           )}
         </div>
-        {securityPostureData.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {securityPostureData.map((data) => (
-              <SecurityPostureCard
-                key={data.standardId}
-                standardId={data.standardId}
-                standardName={data.standardName}
-                effectiveness={data.effectiveness}
-                region={data.region}
-              />
-            ))}
-          </div>
-        ) : (
-          <SecurityPostureEmptyState />
-        )}
-      </div>
+      )}
 
       {/* Top Gaps */}
       {coverage?.top_gaps?.length ? (
