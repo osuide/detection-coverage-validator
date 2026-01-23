@@ -1256,6 +1256,180 @@ resource "google_monitoring_alert_policy" "sa_key" {
             estimated_monthly_cost="$5-10",
             prerequisites=["Cloud Audit Logs enabled"],
         ),
+        # Azure Strategy: Account Manipulation: Additional Cloud Credentials
+        DetectionStrategy(
+            strategy_id="t1098001-azure",
+            name="Azure Account Manipulation: Additional Cloud Credentials Detection",
+            description=(
+                "Monitor credential and identity changes. "
+                "Provides native Azure detection using Log Analytics and Defender for Cloud."
+            ),
+            detection_type=DetectionType.LOG_ANALYTICS_QUERY,
+            aws_service="n/a",
+            azure_service="log_analytics",
+            cloud_provider=CloudProvider.AZURE,
+            implementation=DetectionImplementation(
+                azure_kql_query="""// Account Manipulation: Additional Cloud Credentials Detection
+// Technique: T1098.001
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue contains "Microsoft.KeyVault/vaults/secrets/write" or OperationNameValue contains "Microsoft.ManagedIdentity/"
+| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| project
+    TimeGenerated,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    Caller,
+    CallerIpAddress,
+    OperationNameValue,
+    ActivityStatusValue,
+    Properties
+| order by TimeGenerated desc""",
+                azure_activity_operations=[
+                    "Microsoft.KeyVault/vaults/secrets/write",
+                    "Microsoft.ManagedIdentity/",
+                ],
+                azure_terraform_template="""# Azure Detection for Account Manipulation: Additional Cloud Credentials
+# MITRE ATT&CK: T1098.001
+
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = ">= 3.0"
+    }
+  }
+}
+
+variable "resource_group_name" {
+  type        = string
+  description = "Resource group for Log Analytics workspace"
+}
+
+variable "log_analytics_workspace_id" {
+  type        = string
+  description = "Log Analytics workspace resource ID"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+# Action Group for alerts
+resource "azurerm_monitor_action_group" "security_alerts" {
+  name                = "account-manipulation--additional-cloud-credentials-alerts"
+  resource_group_name = var.resource_group_name
+  short_name          = "SecAlerts"
+
+  email_receiver {
+    name          = "security-team"
+    email_address = var.alert_email
+  }
+}
+
+# Scheduled Query Rule for detection
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
+  name                = "account-manipulation--additional-cloud-credentials-detection"
+  resource_group_name = var.resource_group_name
+  location            = "uksouth"
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+// Account Manipulation: Additional Cloud Credentials Detection
+// Technique: T1098.001
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue contains "Microsoft.KeyVault/vaults/secrets/write" or OperationNameValue contains "Microsoft.ManagedIdentity/"
+| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| project
+    TimeGenerated,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    Caller,
+    CallerIpAddress,
+    OperationNameValue,
+    ActivityStatusValue,
+    Properties
+| order by TimeGenerated desc
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects Account Manipulation: Additional Cloud Credentials (T1098.001) activity in Azure environment"
+  display_name = "Account Manipulation: Additional Cloud Credentials Detection"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1098.001"
+    "detection-type"  = "security"
+  }
+}
+
+output "alert_rule_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.detection.id
+}""",
+                alert_severity="high",
+                alert_title="Azure: Account Manipulation: Additional Cloud Credentials Detected",
+                alert_description_template=(
+                    "Account Manipulation: Additional Cloud Credentials activity detected. "
+                    "Caller: {Caller}. Resource: {Resource}."
+                ),
+                investigation_steps=[
+                    "Review Azure Activity Log for full operation details",
+                    "Check caller identity and verify if authorised",
+                    "Review affected resources and assess impact",
+                    "Check for related activities in the same time window",
+                    "Verify against change management records",
+                ],
+                containment_actions=[
+                    "Disable compromised user/service principal if unauthorised",
+                    "Revoke active sessions using Entra ID",
+                    "Review and restrict Azure RBAC permissions",
+                    "Enable additional Defender for Cloud protections",
+                    "Implement Azure Policy to prevent recurrence",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
+            false_positive_tuning=(
+                "Allowlist known automation accounts and CI/CD service principals. "
+                "Use Azure Policy to define expected behaviour baselines."
+            ),
+            detection_coverage="70% - Azure-native detection for cloud operations",
+            evasion_considerations=(
+                "Attackers may use legitimate credentials from expected locations. "
+                "Combine with Defender for Cloud for ML-based anomaly detection."
+            ),
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="1-2 hours",
+            estimated_monthly_cost="$10-50 (Log Analytics + Defender)",
+            prerequisites=[
+                "Azure subscription with Log Analytics workspace",
+                "Defender for Cloud enabled (recommended)",
+                "Appropriate Azure RBAC permissions for deployment",
+            ],
+        ),
     ],
     recommended_order=[
         "t1098001-aws-guardduty",  # ML-based, lowest effort

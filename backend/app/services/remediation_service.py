@@ -49,8 +49,16 @@ class DetailedRecommendation:
     gcp_service: Optional[str]
     gcp_logging_query: Optional[str]
     gcp_terraform_template: Optional[str]
+    # Azure fields
+    azure_service: Optional[str]
+    azure_kql_query: Optional[str]  # KQL query for Log Analytics/Sentinel
+    azure_activity_operations: Optional[List[str]]
+    defender_alert_types: Optional[List[str]]
+    sentinel_rule_query: Optional[str]
+    azure_terraform_template: Optional[str]
+    arm_template: Optional[str]
     # Cloud provider indicator
-    cloud_provider: Optional[str]  # "aws", "gcp", or "multi"
+    cloud_provider: Optional[str]  # "aws", "gcp", "azure", or "multi"
 
     # Alert configuration
     alert_severity: str
@@ -195,6 +203,14 @@ class RemediationService:
             gcp_service=strategy.gcp_service,
             gcp_logging_query=impl.gcp_logging_query,
             gcp_terraform_template=impl.gcp_terraform_template,
+            # Azure fields
+            azure_service=strategy.azure_service,
+            azure_kql_query=impl.azure_kql_query,
+            azure_activity_operations=impl.azure_activity_operations,
+            defender_alert_types=impl.defender_alert_types,
+            sentinel_rule_query=impl.sentinel_rule_query,
+            azure_terraform_template=impl.azure_terraform_template,
+            arm_template=impl.arm_template,
             # Cloud provider
             cloud_provider=strategy.cloud_provider.value,
             # Common fields

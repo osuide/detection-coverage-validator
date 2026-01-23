@@ -500,6 +500,204 @@ resource "google_monitoring_alert_policy" "snapshot_create" {
             estimated_monthly_cost="$5-10",
             prerequisites=["Cloud Audit Logs enabled"],
         ),
+        # Azure Strategy: Modify Cloud Compute Infrastructure: Create Snapshot
+        DetectionStrategy(
+            strategy_id="t1578001-azure",
+            name="Azure Modify Cloud Compute Infrastructure: Create Snapshot Detection",
+            description=(
+                "Azure detection for Modify Cloud Compute Infrastructure: Create Snapshot. "
+                "Provides native Azure detection using Log Analytics and Defender for Cloud."
+            ),
+            detection_type=DetectionType.SENTINEL_RULE,
+            aws_service="n/a",
+            azure_service="sentinel",
+            cloud_provider=CloudProvider.AZURE,
+            implementation=DetectionImplementation(
+                sentinel_rule_query="""// Sentinel Analytics Rule: Modify Cloud Compute Infrastructure: Create Snapshot
+// MITRE ATT&CK: T1578.001
+let lookback = 24h;
+let threshold = 5;
+AzureActivity
+| where TimeGenerated > ago(lookback)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    EventCount = count(),
+    DistinctOperations = dcount(OperationNameValue),
+    Operations = make_set(OperationNameValue, 20),
+    Resources = make_set(Resource, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Caller, CallerIpAddress, SubscriptionId
+| where EventCount > threshold
+| extend
+    AccountName = tostring(split(Caller, "@")[0]),
+    AccountDomain = tostring(split(Caller, "@")[1])
+| project
+    TimeGenerated = LastSeen,
+    AccountName,
+    AccountDomain,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    EventCount,
+    DistinctOperations,
+    Operations,
+    Resources""",
+                azure_terraform_template="""# Azure Detection for Modify Cloud Compute Infrastructure: Create Snapshot
+# MITRE ATT&CK: T1578.001
+
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = ">= 3.0"
+    }
+  }
+}
+
+variable "resource_group_name" {
+  type        = string
+  description = "Resource group for Log Analytics workspace"
+}
+
+variable "log_analytics_workspace_id" {
+  type        = string
+  description = "Log Analytics workspace resource ID"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+# Action Group for alerts
+resource "azurerm_monitor_action_group" "security_alerts" {
+  name                = "modify-cloud-compute-infrastructure--create-snapsh-alerts"
+  resource_group_name = var.resource_group_name
+  short_name          = "SecAlerts"
+
+  email_receiver {
+    name          = "security-team"
+    email_address = var.alert_email
+  }
+}
+
+# Scheduled Query Rule for detection
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
+  name                = "modify-cloud-compute-infrastructure--create-snapsh-detection"
+  resource_group_name = var.resource_group_name
+  location            = "uksouth"
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+// Sentinel Analytics Rule: Modify Cloud Compute Infrastructure: Create Snapshot
+// MITRE ATT&CK: T1578.001
+let lookback = 24h;
+let threshold = 5;
+AzureActivity
+| where TimeGenerated > ago(lookback)
+| where CategoryValue == "Administrative"
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    EventCount = count(),
+    DistinctOperations = dcount(OperationNameValue),
+    Operations = make_set(OperationNameValue, 20),
+    Resources = make_set(Resource, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Caller, CallerIpAddress, SubscriptionId
+| where EventCount > threshold
+| extend
+    AccountName = tostring(split(Caller, "@")[0]),
+    AccountDomain = tostring(split(Caller, "@")[1])
+| project
+    TimeGenerated = LastSeen,
+    AccountName,
+    AccountDomain,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    EventCount,
+    DistinctOperations,
+    Operations,
+    Resources
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects Modify Cloud Compute Infrastructure: Create Snapshot (T1578.001) activity in Azure environment"
+  display_name = "Modify Cloud Compute Infrastructure: Create Snapshot Detection"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1578.001"
+    "detection-type"  = "security"
+  }
+}
+
+output "alert_rule_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.detection.id
+}""",
+                alert_severity="high",
+                alert_title="Azure: Modify Cloud Compute Infrastructure: Create Snapshot Detected",
+                alert_description_template=(
+                    "Modify Cloud Compute Infrastructure: Create Snapshot activity detected. "
+                    "Caller: {Caller}. Resource: {Resource}."
+                ),
+                investigation_steps=[
+                    "Review Azure Activity Log for full operation details",
+                    "Check caller identity and verify if authorised",
+                    "Review affected resources and assess impact",
+                    "Check for related activities in the same time window",
+                    "Verify against change management records",
+                ],
+                containment_actions=[
+                    "Disable compromised user/service principal if unauthorised",
+                    "Revoke active sessions using Entra ID",
+                    "Review and restrict Azure RBAC permissions",
+                    "Enable additional Defender for Cloud protections",
+                    "Implement Azure Policy to prevent recurrence",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
+            false_positive_tuning=(
+                "Allowlist known automation accounts and CI/CD service principals. "
+                "Use Azure Policy to define expected behaviour baselines."
+            ),
+            detection_coverage="70% - Azure-native detection for cloud operations",
+            evasion_considerations=(
+                "Attackers may use legitimate credentials from expected locations. "
+                "Combine with Defender for Cloud for ML-based anomaly detection."
+            ),
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="1-2 hours",
+            estimated_monthly_cost="$10-50 (Log Analytics + Defender)",
+            prerequisites=[
+                "Azure subscription with Log Analytics workspace",
+                "Defender for Cloud enabled (recommended)",
+                "Appropriate Azure RBAC permissions for deployment",
+            ],
+        ),
     ],
     recommended_order=["t1578001-aws-ebs", "t1578001-aws-rds", "t1578001-gcp-snapshot"],
     total_effort_hours=2.0,

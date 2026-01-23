@@ -94,8 +94,16 @@ class StrategyDetailResponse(BaseModel):
     gcp_service: Optional[str] = None
     gcp_logging_query: Optional[str] = None
     gcp_terraform_template: Optional[str] = None
+    # Azure fields
+    azure_service: Optional[str] = None
+    azure_kql_query: Optional[str] = None  # KQL query for Log Analytics/Sentinel
+    azure_activity_operations: Optional[List[str]] = None
+    defender_alert_types: Optional[List[str]] = None
+    sentinel_rule_query: Optional[str] = None
+    azure_terraform_template: Optional[str] = None
+    arm_template: Optional[str] = None
     # Cloud provider indicator
-    cloud_provider: Optional[str] = None  # "aws", "gcp", or "multi"
+    cloud_provider: Optional[str] = None  # "aws", "gcp", "azure", or "multi"
     # Common fields
     alert_severity: str
     alert_title: str
@@ -311,6 +319,14 @@ async def get_strategy_details(
         gcp_service=details.gcp_service,
         gcp_logging_query=details.gcp_logging_query,
         gcp_terraform_template=details.gcp_terraform_template,
+        # Azure fields
+        azure_service=details.azure_service,
+        azure_kql_query=details.azure_kql_query,
+        azure_activity_operations=details.azure_activity_operations,
+        defender_alert_types=details.defender_alert_types,
+        sentinel_rule_query=details.sentinel_rule_query,
+        azure_terraform_template=details.azure_terraform_template,
+        arm_template=details.arm_template,
         # Cloud provider indicator
         cloud_provider=details.cloud_provider,
         # Common fields

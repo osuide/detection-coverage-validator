@@ -20,6 +20,13 @@ class DetectionType(str, Enum):
     CLOUD_LOGGING_QUERY = "cloud_logging_query"
     EVENTARC = "eventarc"
     CLOUD_FUNCTIONS = "cloud_functions"
+    # Azure
+    DEFENDER_ALERT = "defender_alert"  # Microsoft Defender for Cloud alerts
+    DEFENDER_ASSESSMENT = "defender_assessment"  # Defender compliance assessments
+    LOG_ANALYTICS_QUERY = "log_analytics_query"  # KQL queries in Log Analytics
+    AZURE_MONITOR_ALERT = "azure_monitor_alert"  # Azure Monitor alert rules
+    AZURE_POLICY = "azure_policy"  # Azure Policy definitions
+    SENTINEL_RULE = "sentinel_rule"  # Microsoft Sentinel analytics rules
 
 
 class EffortLevel(str, Enum):
@@ -42,8 +49,9 @@ class CostTier(str, Enum):
     HIGH = "high"  # >$50/month typical
 
 
-# AWS/GCP service pricing URLs - auto-populated via __post_init__
+# AWS/GCP/Azure service pricing URLs - auto-populated via __post_init__
 PRICING_URLS = {
+    # AWS
     "guardduty": "https://aws.amazon.com/guardduty/pricing/",
     "cloudwatch": "https://aws.amazon.com/cloudwatch/pricing/",
     "cloudtrail": "https://aws.amazon.com/cloudtrail/pricing/",
@@ -51,21 +59,36 @@ PRICING_URLS = {
     "config": "https://aws.amazon.com/config/pricing/",
     "security_hub": "https://aws.amazon.com/security-hub/pricing/",
     "lambda": "https://aws.amazon.com/lambda/pricing/",
+    # GCP
     "security_command_center": "https://cloud.google.com/security-command-center/pricing",
     "cloud_logging": "https://cloud.google.com/logging/pricing",
     "cloud_functions": "https://cloud.google.com/functions/pricing",
+    # Azure
+    "defender_for_cloud": "https://azure.microsoft.com/pricing/details/defender-for-cloud/",
+    "log_analytics": "https://azure.microsoft.com/pricing/details/monitor/",
+    "azure_monitor": "https://azure.microsoft.com/pricing/details/monitor/",
+    "sentinel": "https://azure.microsoft.com/pricing/details/microsoft-sentinel/",
+    "azure_policy": "https://azure.microsoft.com/pricing/details/azure-policy/",
 }
 
 # Service cost tiers and pricing basis - used to auto-populate cost fields
 SERVICE_COSTS = {
+    # AWS
     "guardduty": (CostTier.MEDIUM, "~$4/month per million events analysed"),
     "cloudwatch": (CostTier.LOW, "$0.005 per GB scanned (Logs Insights)"),
     "eventbridge": (CostTier.LOW, "$1 per million custom events"),
     "config": (CostTier.LOW, "$0.003 per configuration item"),
     "security_hub": (CostTier.MEDIUM, "$0.0010 per finding check"),
+    # GCP
     "security_command_center": (CostTier.HIGH, "Premium tier by resource count"),
     "cloud_logging": (CostTier.LOW, "First 50GB free, $0.50/GB after"),
     "cloud_functions": (CostTier.LOW, "$0.40 per million invocations"),
+    # Azure
+    "defender_for_cloud": (CostTier.MEDIUM, "Per-resource pricing varies by workload"),
+    "log_analytics": (CostTier.LOW, "$2.30 per GB ingested"),
+    "azure_monitor": (CostTier.LOW, "Alert rules $0.10/month each"),
+    "sentinel": (CostTier.MEDIUM, "$2.46 per GB analysed"),
+    "azure_policy": (CostTier.LOW, "Free for built-in policies"),
 }
 
 
@@ -183,6 +206,15 @@ class DetectionImplementation:
     # GCP-specific
     scc_finding_categories: Optional[List[str]] = None  # Security Command Center
     gcp_terraform_template: Optional[str] = None
+    # Azure-specific
+    azure_kql_query: Optional[str] = None  # KQL query for Log Analytics/Sentinel
+    azure_activity_operations: Optional[List[str]] = None  # Activity Log operations
+    defender_alert_types: Optional[List[str]] = None  # Defender for Cloud alert types
+    defender_assessment_keys: Optional[List[str]] = None  # Defender assessment checks
+    azure_policy_definition: Optional[str] = None  # Azure Policy JSON definition
+    sentinel_rule_query: Optional[str] = None  # Sentinel analytics rule KQL
+    azure_terraform_template: Optional[str] = None  # Azure Terraform (azurerm)
+    arm_template: Optional[str] = None  # Azure ARM template JSON
     # Shared
     terraform_template: Optional[str] = None  # AWS Terraform (legacy field)
     alert_severity: str = "medium"
@@ -195,6 +227,7 @@ class DetectionImplementation:
 class CloudProvider(str, Enum):
     AWS = "aws"
     GCP = "gcp"
+    AZURE = "azure"
 
 
 @dataclass
@@ -217,6 +250,7 @@ class DetectionStrategy:
     prerequisites: List[str] = field(default_factory=list)
     cloud_provider: CloudProvider = CloudProvider.AWS  # Default to AWS
     gcp_service: Optional[str] = None
+    azure_service: Optional[str] = None  # Azure service (e.g., "defender", "sentinel")
     # Cost fields - auto-populated from service if not provided
     cost_tier: Optional[CostTier] = None
     pricing_basis: Optional[str] = None
@@ -224,7 +258,9 @@ class DetectionStrategy:
 
     def __post_init__(self) -> None:
         """Auto-populate cost fields from service if not explicitly set."""
-        service = (self.gcp_service or self.aws_service or "").lower()
+        service = (
+            self.azure_service or self.gcp_service or self.aws_service or ""
+        ).lower()
 
         # Auto-populate pricing URL
         if self.pricing_url is None and service in PRICING_URLS:

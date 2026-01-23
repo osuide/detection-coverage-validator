@@ -425,8 +425,16 @@ export interface StrategyDetail {
   gcp_service: string | null
   gcp_logging_query: string | null
   gcp_terraform_template: string | null
+  // Azure fields
+  azure_service: string | null
+  azure_kql_query: string | null  // KQL query for Log Analytics/Sentinel
+  azure_activity_operations: string[] | null
+  defender_alert_types: string[] | null
+  sentinel_rule_query: string | null
+  azure_terraform_template: string | null
+  arm_template: string | null
   // Cloud provider indicator
-  cloud_provider: string | null  // "aws", "gcp", or "multi"
+  cloud_provider: string | null  // "aws", "gcp", "azure", or "multi"
   // Common fields
   alert_severity: string
   alert_title: string

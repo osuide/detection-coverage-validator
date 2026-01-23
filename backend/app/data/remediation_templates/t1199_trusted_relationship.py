@@ -994,6 +994,172 @@ resource "google_monitoring_alert_policy" "cross_project_alert" {
                 "Data Access logs for iamcredentials.googleapis.com",
             ],
         ),
+        # Azure Strategy: Trusted Relationship
+        DetectionStrategy(
+            strategy_id="t1199-azure",
+            name="Azure Trusted Relationship Detection",
+            description=(
+                "Azure detection for Trusted Relationship. "
+                "Provides native Azure detection using Log Analytics and Defender for Cloud."
+            ),
+            detection_type=DetectionType.DEFENDER_ALERT,
+            aws_service="n/a",
+            azure_service="defender",
+            cloud_provider=CloudProvider.AZURE,
+            implementation=DetectionImplementation(
+                defender_alert_types=["Suspicious activity detected"],
+                azure_terraform_template="""# Microsoft Defender for Cloud Detection
+# Trusted Relationship (T1199)
+# Microsoft Defender detects Trusted Relationship activity
+
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = ">= 3.0"
+    }
+  }
+}
+
+variable "resource_group_name" {
+  type        = string
+  description = "Resource group name"
+}
+
+variable "log_analytics_workspace_id" {
+  type        = string
+  description = "Log Analytics workspace for Defender"
+}
+
+variable "alert_email" {
+  type        = string
+  description = "Email for security alerts"
+}
+
+# Enable Defender for Cloud plans
+resource "azurerm_security_center_subscription_pricing" "defender_servers" {
+  tier          = "Standard"
+  resource_type = "VirtualMachines"
+}
+
+resource "azurerm_security_center_subscription_pricing" "defender_storage" {
+  tier          = "Standard"
+  resource_type = "StorageAccounts"
+}
+
+resource "azurerm_security_center_subscription_pricing" "defender_keyvault" {
+  tier          = "Standard"
+  resource_type = "KeyVaults"
+}
+
+resource "azurerm_security_center_subscription_pricing" "defender_arm" {
+  tier          = "Standard"
+  resource_type = "Arm"
+}
+
+# Action Group for Defender alerts
+resource "azurerm_monitor_action_group" "defender_alerts" {
+  name                = "defender-t1199-alerts"
+  resource_group_name = var.resource_group_name
+  short_name          = "DefAlerts"
+
+  email_receiver {
+    name          = "security-team"
+    email_address = var.alert_email
+  }
+}
+
+# Log Analytics query for Defender alerts
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_detection" {
+  name                = "defender-t1199"
+  resource_group_name = var.resource_group_name
+  location            = "uksouth"
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 1
+
+  criteria {
+    query = <<-QUERY
+SecurityAlert
+| where TimeGenerated > ago(1h)
+| where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
+| where AlertName has_any (
+                    "Suspicious activity detected",
+                )
+| project
+    TimeGenerated,
+    AlertName,
+    AlertSeverity,
+    Description,
+    RemediationSteps,
+    ExtendedProperties,
+    Entities
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.defender_alerts.id]
+  }
+
+  description = "Microsoft Defender detects Trusted Relationship activity"
+  display_name = "Defender: Trusted Relationship"
+  enabled      = true
+}
+
+output "alert_rule_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.defender_detection.id
+}""",
+                alert_severity="high",
+                alert_title="Azure: Trusted Relationship Detected",
+                alert_description_template=(
+                    "Trusted Relationship activity detected. "
+                    "Caller: {Caller}. Resource: {Resource}."
+                ),
+                investigation_steps=[
+                    "Review Azure Activity Log for full operation details",
+                    "Check caller identity and verify if authorised",
+                    "Review affected resources and assess impact",
+                    "Check for related activities in the same time window",
+                    "Verify against change management records",
+                ],
+                containment_actions=[
+                    "Disable compromised user/service principal if unauthorised",
+                    "Revoke active sessions using Entra ID",
+                    "Review and restrict Azure RBAC permissions",
+                    "Enable additional Defender for Cloud protections",
+                    "Implement Azure Policy to prevent recurrence",
+                ],
+            ),
+            estimated_false_positive_rate=FalsePositiveRate.MEDIUM,
+            false_positive_tuning=(
+                "Allowlist known automation accounts and CI/CD service principals. "
+                "Use Azure Policy to define expected behaviour baselines."
+            ),
+            detection_coverage="70% - Azure-native detection for cloud operations",
+            evasion_considerations=(
+                "Attackers may use legitimate credentials from expected locations. "
+                "Combine with Defender for Cloud for ML-based anomaly detection."
+            ),
+            implementation_effort=EffortLevel.MEDIUM,
+            implementation_time="1-2 hours",
+            estimated_monthly_cost="$10-50 (Log Analytics + Defender)",
+            prerequisites=[
+                "Azure subscription with Log Analytics workspace",
+                "Defender for Cloud enabled (recommended)",
+                "Appropriate Azure RBAC permissions for deployment",
+            ],
+        ),
     ],
     recommended_order=[
         "t1199-aws-delegated-admin",

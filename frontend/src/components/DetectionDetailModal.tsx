@@ -94,12 +94,47 @@ const detectionTypeConfig: Record<string, { label: string; icon: React.ElementTy
     bgColor: 'bg-cyan-100',
     description: 'Azure managed threat detection from Microsoft Defender'
   },
+  'defender_alert': {
+    label: 'Defender Alert',
+    icon: Shield,
+    color: 'text-cyan-900',
+    bgColor: 'bg-cyan-100',
+    description: 'Microsoft Defender for Cloud security alerts'
+  },
+  'defender_assessment': {
+    label: 'Defender Assessment',
+    icon: CheckCircle,
+    color: 'text-cyan-900',
+    bgColor: 'bg-cyan-100',
+    description: 'Microsoft Defender compliance assessments'
+  },
+  'log_analytics_query': {
+    label: 'Log Analytics',
+    icon: Activity,
+    color: 'text-cyan-900',
+    bgColor: 'bg-cyan-100',
+    description: 'KQL queries in Azure Log Analytics workspace'
+  },
+  'azure_monitor_alert': {
+    label: 'Azure Monitor',
+    icon: Bell,
+    color: 'text-cyan-900',
+    bgColor: 'bg-cyan-100',
+    description: 'Azure Monitor alert rules'
+  },
   'azure_policy': {
     label: 'Azure Policy',
     icon: CheckCircle,
     color: 'text-cyan-900',
     bgColor: 'bg-cyan-100',
     description: 'Compliance-based detection using Azure Policy'
+  },
+  'sentinel_rule': {
+    label: 'Microsoft Sentinel',
+    icon: Shield,
+    color: 'text-indigo-900',
+    bgColor: 'bg-indigo-100',
+    description: 'Microsoft Sentinel analytics rules'
   }
 }
 

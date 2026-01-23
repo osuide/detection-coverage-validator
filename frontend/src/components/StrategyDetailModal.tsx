@@ -16,7 +16,7 @@ export default function StrategyDetailModal({
   strategyName,
   onClose,
 }: StrategyDetailModalProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'query' | 'cloudformation' | 'terraform' | 'gcp_query' | 'gcp_terraform' | 'response'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'query' | 'cloudformation' | 'terraform' | 'gcp_query' | 'gcp_terraform' | 'azure_query' | 'azure_terraform' | 'response'>('overview')
   const [copiedField, setCopiedField] = useState<string | null>(null)
 
   // Reset tab to overview when strategy changes to prevent showing blank content
@@ -44,6 +44,9 @@ export default function StrategyDetailModal({
     // GCP tabs
     ...(details?.gcp_logging_query ? [{ id: 'gcp_query', label: 'GCP Query', icon: Terminal }] : []),
     ...(details?.gcp_terraform_template ? [{ id: 'gcp_terraform', label: 'GCP Terraform', icon: FileCode }] : []),
+    // Azure tabs
+    ...(details?.azure_kql_query ? [{ id: 'azure_query', label: 'Azure KQL', icon: Terminal }] : []),
+    ...(details?.azure_terraform_template ? [{ id: 'azure_terraform', label: 'Azure Terraform', icon: FileCode }] : []),
     { id: 'response', label: 'Response', icon: Shield },
   ] as const
 
@@ -63,7 +66,7 @@ export default function StrategyDetailModal({
             <div>
               <h2 className="text-lg font-semibold text-gray-900">{strategyName}</h2>
               <p className="text-sm text-gray-500">
-                {techniqueId} &bull; {details?.detection_type} via {details?.gcp_service || details?.aws_service || 'n/a'}
+                {techniqueId} &bull; {details?.detection_type} via {details?.azure_service || details?.gcp_service || details?.aws_service || 'n/a'}
                 {details?.cloud_provider && (
                   <span className={`ml-2 px-1.5 py-0.5 text-xs rounded ${
                     details.cloud_provider === 'gcp'
@@ -162,6 +165,24 @@ export default function StrategyDetailModal({
                     language="hcl"
                     onCopy={() => copyToClipboard(details.gcp_terraform_template!, 'gcp_tf')}
                     copied={copiedField === 'gcp_tf'}
+                  />
+                )}
+                {activeTab === 'azure_query' && details.azure_kql_query && (
+                  <CodeTab
+                    title="Azure Log Analytics KQL Query"
+                    code={details.azure_kql_query}
+                    language="sql"
+                    onCopy={() => copyToClipboard(details.azure_kql_query!, 'azure_query')}
+                    copied={copiedField === 'azure_query'}
+                  />
+                )}
+                {activeTab === 'azure_terraform' && details.azure_terraform_template && (
+                  <CodeTab
+                    title="Azure Terraform Configuration"
+                    code={details.azure_terraform_template}
+                    language="hcl"
+                    onCopy={() => copyToClipboard(details.azure_terraform_template!, 'azure_tf')}
+                    copied={copiedField === 'azure_tf'}
                   />
                 )}
                 {activeTab === 'response' && (
