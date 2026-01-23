@@ -1342,7 +1342,7 @@ output "alert_rule_id" {
                 "Allowlist known automation accounts and CI/CD service principals. "
                 "Use Azure Policy to define expected behaviour baselines."
             ),
-            detection_coverage="70% - Azure-native detection for cloud operations",
+            detection_coverage="30% - only monitors Azure cloud operations, cannot detect endpoint process memory operations",
             evasion_considerations=(
                 "Attackers may use legitimate credentials from expected locations. "
                 "Combine with Defender for Cloud for ML-based anomaly detection."
