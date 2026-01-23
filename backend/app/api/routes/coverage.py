@@ -165,8 +165,12 @@ async def get_coverage(
             CloudAccount.organization_id == auth.organization_id,
         )
     )
-    if not account_result.scalar_one_or_none():
+    account = account_result.scalar_one_or_none()
+    if not account:
         raise HTTPException(status_code=404, detail="Cloud account not found")
+
+    # Get cloud provider for filtering strategies (defence-in-depth)
+    cloud_provider = account.provider.value if account.provider else None
 
     # Get latest snapshot
     result = await db.execute(
@@ -214,9 +218,19 @@ async def get_coverage(
         # Skip acknowledged gaps
         if gap.get("technique_id") in acknowledged_technique_ids:
             continue
-        # Build recommended strategies list
+        # Build recommended strategies list (filtered by cloud provider)
         strategies = []
         for s in gap.get("recommended_strategies", []):
+            # Filter strategies by cloud provider (defence-in-depth)
+            # Skip strategies that don't match the account's cloud provider
+            strategy_provider = s.get("cloud_provider")
+            if (
+                cloud_provider
+                and strategy_provider
+                and strategy_provider != cloud_provider
+            ):
+                continue  # Skip strategies for other cloud providers
+
             strategies.append(
                 RecommendedStrategyItem(
                     strategy_id=s.get("strategy_id", ""),
@@ -537,8 +551,12 @@ async def calculate_coverage(
             CloudAccount.organization_id == auth.organization_id,
         )
     )
-    if not account_result.scalar_one_or_none():
+    account = account_result.scalar_one_or_none()
+    if not account:
         raise HTTPException(status_code=404, detail="Cloud account not found")
+
+    # Get cloud provider for filtering strategies (defence-in-depth)
+    cloud_provider = account.provider.value if account.provider else None
 
     coverage_service = CoverageService(db)
     snapshot = await coverage_service.calculate_coverage(cloud_account_id)
@@ -561,9 +579,18 @@ async def calculate_coverage(
     # Transform gaps with enhanced remediation data
     gap_list = []
     for gap in snapshot.top_gaps:
-        # Build recommended strategies list
+        # Build recommended strategies list (filtered by cloud provider)
         strategies = []
         for s in gap.get("recommended_strategies", []):
+            # Filter strategies by cloud provider (defence-in-depth)
+            strategy_provider = s.get("cloud_provider")
+            if (
+                cloud_provider
+                and strategy_provider
+                and strategy_provider != cloud_provider
+            ):
+                continue  # Skip strategies for other cloud providers
+
             strategies.append(
                 RecommendedStrategyItem(
                     strategy_id=s.get("strategy_id", ""),
