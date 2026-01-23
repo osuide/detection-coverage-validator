@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Shield, Search, Filter, ChevronDown, Eye, Activity, Zap, CheckCircle, Lock, AlertTriangle, XCircle, HelpCircle, Bell, MapPin, Cloud } from 'lucide-react'
 import { detectionsApi, Detection, EvaluationSummary } from '../services/api'
 import { useState, useMemo } from 'react'
+import { useSelectedAccount } from '../hooks/useSelectedAccount'
 import DetectionDetailModal from '../components/DetectionDetailModal'
 import SecurityHubAggregatedCard, {
   isSecurityHubAggregated,
@@ -276,6 +277,7 @@ function DetectionCard({
 }
 
 export default function Detections() {
+  const { selectedAccount, isLoading: accountsLoading } = useSelectedAccount()
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
@@ -284,33 +286,25 @@ export default function Detections() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [selectedDetection, setSelectedDetection] = useState<Detection | null>(null)
 
-  // Fetch detections without region coverage first
+  // Fetch detections for the selected account
   const { data, isLoading } = useQuery({
-    queryKey: ['detections'],
-    queryFn: () => detectionsApi.list({ limit: 500 }),
+    queryKey: ['detections', selectedAccount?.id],
+    queryFn: () => detectionsApi.list({ cloud_account_id: selectedAccount?.id, limit: 500 }),
+    enabled: !!selectedAccount,
   })
 
   const detections = data?.items ?? []
 
-  // Get unique cloud account IDs from detections
-  const uniqueAccountIds = useMemo(() => {
-    const ids = new Set(detections.map((d) => d.cloud_account_id))
-    return Array.from(ids)
-  }, [detections])
-
-  // If there's only one account, fetch with region coverage enabled
-  const singleAccountId = uniqueAccountIds.length === 1 ? uniqueAccountIds[0] : null
+  // Fetch with region coverage enabled for the selected account
   const { data: regionCoverageData } = useQuery({
-    queryKey: ['detections-region-coverage', singleAccountId],
+    queryKey: ['detections-region-coverage', selectedAccount?.id],
     queryFn: () =>
-      singleAccountId
-        ? detectionsApi.list({
-            cloud_account_id: singleAccountId,
-            limit: 500,
-            include_region_coverage: true,
-          })
-        : null,
-    enabled: !!singleAccountId,
+      detectionsApi.list({
+        cloud_account_id: selectedAccount?.id,
+        limit: 500,
+        include_region_coverage: true,
+      }),
+    enabled: !!selectedAccount,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   })
 
@@ -411,10 +405,22 @@ export default function Detections() {
     </th>
   )
 
-  if (isLoading) {
+  if (accountsLoading || isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (!selectedAccount) {
+    return (
+      <div className="text-center py-12 card">
+        <Shield className="mx-auto h-12 w-12 text-gray-400" />
+        <h3 className="mt-2 text-lg font-medium text-white">No account selected</h3>
+        <p className="mt-1 text-sm text-gray-400">
+          Select a cloud account from the sidebar to view its detections.
+        </p>
       </div>
     )
   }
