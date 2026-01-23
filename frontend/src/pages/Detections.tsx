@@ -16,6 +16,19 @@ import {
 type SortField = 'name' | 'detection_type' | 'region' | 'status' | 'mapping_count' | 'discovered_at'
 type SortDirection = 'asc' | 'desc'
 
+/** Get display name for cloud provider */
+function getProviderDisplayName(provider?: 'aws' | 'gcp' | 'azure'): string {
+  switch (provider) {
+    case 'gcp':
+      return 'GCP'
+    case 'azure':
+      return 'Azure'
+    case 'aws':
+    default:
+      return 'AWS'
+  }
+}
+
 const detectionTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
   'cloudwatch_logs_insights': {
     label: 'CloudWatch Logs',
@@ -208,14 +221,14 @@ function ComplianceIndicator({ evaluation }: { evaluation?: EvaluationSummary })
   return <span className="text-gray-500 text-sm">-</span>
 }
 
-/** Badge indicating AWS/GCP-managed detection (vs user-created) */
-function ManagedBadge({ isManaged }: { isManaged: boolean }) {
+/** Badge indicating cloud provider-managed detection (vs user-created) */
+function ManagedBadge({ isManaged, provider }: { isManaged: boolean; provider?: 'aws' | 'gcp' | 'azure' }) {
   if (!isManaged) return null
 
   return (
     <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-sky-900/30 text-sky-400 border border-sky-700/50">
       <Cloud className="h-3 w-3 mr-1" />
-      AWS Managed
+      {getProviderDisplayName(provider)} Managed
     </span>
   )
 }
@@ -223,10 +236,12 @@ function ManagedBadge({ isManaged }: { isManaged: boolean }) {
 /** Mobile card component for detection display */
 function DetectionCard({
   detection,
-  onClick
+  onClick,
+  provider
 }: {
   detection: Detection
   onClick: () => void
+  provider?: 'aws' | 'gcp' | 'azure'
 }) {
   return (
     <div
@@ -268,7 +283,7 @@ function DetectionCard({
         </div>
         {detection.is_managed && (
           <div className="pt-2 border-t border-gray-700 mt-2">
-            <ManagedBadge isManaged={detection.is_managed} />
+            <ManagedBadge isManaged={detection.is_managed} provider={provider} />
           </div>
         )}
       </div>
@@ -492,7 +507,7 @@ export default function Detections() {
               }`}
             >
               <Cloud className="h-3 w-3" />
-              <span className="hidden sm:inline">AWS</span> Managed
+              <span className="hidden sm:inline">{getProviderDisplayName(selectedAccount?.provider)}</span> Managed
             </button>
             <button
               onClick={() => setManagedFilter('custom')}
@@ -606,6 +621,7 @@ export default function Detections() {
                 key={detection.id}
                 detection={detection}
                 onClick={() => setSelectedDetection(detection)}
+                provider={selectedAccount?.provider}
               />
             ))}
           </div>
@@ -640,7 +656,7 @@ export default function Detections() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-white">{detection.name}</span>
-                          <ManagedBadge isManaged={detection.is_managed} />
+                          <ManagedBadge isManaged={detection.is_managed} provider={selectedAccount?.provider} />
                         </div>
                       </td>
                       <td className="px-6 py-4">
