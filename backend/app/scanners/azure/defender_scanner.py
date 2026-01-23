@@ -14,6 +14,21 @@ from app.scanners.base import BaseScanner, RawDetection
 logger = structlog.get_logger()
 
 
+# Azure regulatory compliance standards mapping - CIS v2.1.0 + NIST for AWS parity
+AZURE_COMPLIANCE_STANDARDS = {
+    "CIS-Azure-v2.1.0": {
+        "standard_id": "azure_cis_v2",
+        "display_name": "CIS Microsoft Azure Foundations Benchmark v2.1.0",
+        "framework": "CIS",
+    },
+    "NIST-SP-800-53-R5": {
+        "standard_id": "azure_nist_800_53_r5",
+        "display_name": "NIST SP 800-53 Rev. 5",
+        "framework": "NIST",
+    },
+}
+
+
 class DefenderScanner(BaseScanner):
     """Scanner for Microsoft Defender for Cloud security assessments.
 
@@ -74,10 +89,17 @@ class DefenderScanner(BaseScanner):
                 assessments = await self._scan_assessments(client, subscription_id)
                 all_detections.extend(assessments)
 
+                # Scan regulatory compliance standards (CIS + NIST)
+                compliance_detections = await self._scan_regulatory_compliance(
+                    client, subscription_id
+                )
+                all_detections.extend(compliance_detections)
+
             self.logger.info(
                 "defender_scan_complete",
                 subscription_id=subscription_id,
                 assessment_count=len(assessments),
+                compliance_count=len(compliance_detections),
             )
 
         except ResourceNotFoundError as e:
@@ -213,5 +235,120 @@ class DefenderScanner(BaseScanner):
                 error=str(e),
             )
             raise
+
+        return detections
+
+    async def _scan_regulatory_compliance(
+        self, client: Any, subscription_id: str
+    ) -> list[RawDetection]:
+        """Scan Azure regulatory compliance standards (CIS + NIST).
+
+        Creates ONE detection per enabled compliance standard
+        (matching AWS Security Hub pattern).
+
+        Args:
+            client: SecurityCenter instance
+            subscription_id: Azure subscription ID
+
+        Returns:
+            List of RawDetection, one per enabled compliance standard
+        """
+        from azure.core.exceptions import HttpResponseError
+
+        detections: list[RawDetection] = []
+
+        # Collect standards with pagination handling
+        standards = []
+        async for standard in client.regulatory_compliance_standards.list():
+            standards.append(standard)
+
+        for standard in standards:
+            # Only process standards we have mappings for (CIS + NIST)
+            if standard.name not in AZURE_COMPLIANCE_STANDARDS:
+                continue  # Skip unmapped standards
+
+            # Defensive check for Azure SDK response objects
+            if not hasattr(standard, "properties") or standard.properties is None:
+                self.logger.warning(
+                    "standard_missing_properties",
+                    standard_name=standard.name,
+                )
+                continue
+
+            # Count controls (simple counter, no list accumulation)
+            control_count = 0
+            try:
+                async for control in client.regulatory_compliance_controls.list(
+                    regulatory_compliance_standard_name=standard.name
+                ):
+                    # Defensive hasattr check for Azure SDK objects
+                    if not hasattr(control, "properties") or control.properties is None:
+                        self.logger.warning(
+                            "control_missing_properties",
+                            control_name=control.name,
+                            standard_name=standard.name,
+                        )
+                        continue
+                    control_count += 1
+
+            except HttpResponseError as e:
+                self.logger.error(
+                    "regulatory_compliance_controls_error",
+                    standard_name=standard.name,
+                    status_code=e.status_code if hasattr(e, "status_code") else None,
+                    error=str(e),
+                )
+                continue
+
+            if control_count == 0:
+                self.logger.warning(
+                    "standard_no_controls",
+                    standard_name=standard.name,
+                )
+                continue
+
+            # Get metrics from standard properties (already validated above)
+            props = standard.properties
+            passed_controls = getattr(props, "passed_controls", 0) or 0
+            failed_controls = getattr(props, "failed_controls", 0) or 0
+            skipped_controls = getattr(props, "skipped_controls", 0) or 0
+            compliance_percent = round((passed_controls / control_count) * 100)
+
+            # Create detection following AWS Security Hub pattern
+            mapping = AZURE_COMPLIANCE_STANDARDS[standard.name]
+            detection = RawDetection(
+                name=f"Azure Regulatory Compliance - {mapping['display_name']}",
+                detection_type=DetectionType.AZURE_DEFENDER,  # Reuse existing type
+                source_arn=(
+                    f"/subscriptions/{subscription_id}/providers/"
+                    f"Microsoft.Security/regulatoryComplianceStandards/{standard.name}"
+                ),
+                region="global",
+                raw_config={
+                    "standard_id": mapping["standard_id"],
+                    "standard_name": mapping["display_name"],
+                    "azure_standard_name": standard.name,
+                    "framework": mapping["framework"],
+                    "total_controls_count": control_count,
+                    "enabled_controls_count": control_count,
+                    "detection_effectiveness": {
+                        "total_controls": control_count,
+                        "passed_count": passed_controls,
+                        "failed_count": failed_controls,
+                        "skipped_count": skipped_controls,
+                        "compliance_percent": compliance_percent,
+                    },
+                },
+                is_managed=True,  # Azure-managed compliance standard
+            )
+            detections.append(detection)
+
+            self.logger.info(
+                "regulatory_compliance_scanned",
+                standard_name=standard.name,
+                compliance_percent=compliance_percent,
+                passed_controls=passed_controls,
+                total_controls=control_count,
+            )
 
         return detections
