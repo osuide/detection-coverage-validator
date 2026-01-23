@@ -124,6 +124,47 @@ DEFENDER_MITRE_MAPPINGS: dict[str, list[tuple[str, float]]] = {
         ("T1078.004", 0.9),
         ("T1098", 0.85),
     ],
+    "Service Principals should not be assigned with administrative roles": [
+        ("T1078.004", 0.95),  # Valid Accounts: Cloud Accounts
+        ("T1098", 0.9),  # Account Manipulation
+        ("T1098.003", 0.9),  # Account Manipulation: Additional Cloud Roles
+    ],
+    "Accounts with owner permissions should have MFA enabled": [
+        ("T1078.004", 0.95),
+        ("T1110", 0.9),  # Brute Force
+    ],
+    "Accounts with write permissions should have MFA enabled": [
+        ("T1078.004", 0.95),
+        ("T1110", 0.85),
+    ],
+    "External accounts with write permissions should be removed": [
+        ("T1078.004", 0.95),
+        ("T1199", 0.9),  # Trusted Relationship
+    ],
+    "External accounts with read permissions should be removed": [
+        ("T1078.004", 0.9),
+        ("T1199", 0.85),
+    ],
+    "Blocked accounts with owner permissions should be removed": [
+        ("T1078.004", 0.95),
+        ("T1098", 0.9),
+    ],
+    "Blocked accounts with write permissions should be removed": [
+        ("T1078.004", 0.9),
+        ("T1098", 0.85),
+    ],
+    "There should be more than one owner assigned to your subscription": [
+        ("T1078.004", 0.85),
+        ("T1098", 0.8),
+    ],
+    "A maximum of 3 owners should be designated for your subscription": [
+        ("T1078.004", 0.9),
+        ("T1098", 0.85),
+    ],
+    "Managed identity should be used": [
+        ("T1552.001", 0.9),  # Unsecured Credentials: Credentials In Files
+        ("T1078.004", 0.85),
+    ],
     # === Data & Storage Security ===
     "Storage accounts should restrict network access": [
         ("T1530", 0.95),  # Data from Cloud Storage
