@@ -77,6 +77,14 @@ export default function Accounts() {
     mutationFn: accountsApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      setScanFeedback({ type: 'success', message: 'Account deleted successfully.' })
+      setTimeout(() => setScanFeedback(null), 3000)
+    },
+    onError: (error: unknown) => {
+      const err = error as { message?: string; response?: { data?: { detail?: string } } }
+      const detail = err.response?.data?.detail || err.message || 'Failed to delete account.'
+      setScanFeedback({ type: 'error', message: detail })
+      setTimeout(() => setScanFeedback(null), 8000)
     },
   })
 
@@ -130,6 +138,8 @@ export default function Accounts() {
         queryClient.invalidateQueries({ queryKey: ['scanStatus'] })
         queryClient.invalidateQueries({ queryKey: ['coverage'] })
         queryClient.invalidateQueries({ queryKey: ['accounts'] })
+        // Refresh credential status after successful scan
+        queryClient.invalidateQueries({ queryKey: ['credentials', accountId] })
         setScanFeedback({
           type: 'success',
           message: `Scan completed! Found ${scan.detections_found} detections.`
