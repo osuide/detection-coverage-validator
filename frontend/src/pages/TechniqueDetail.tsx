@@ -68,6 +68,11 @@ interface DetectionImplementation {
   cloudformation_template?: string
   terraform_template?: string
   gcp_terraform_template?: string
+  // Azure fields
+  azure_kql_query?: string
+  sentinel_rule_query?: string
+  azure_terraform_template?: string
+  arm_template?: string
   alert_severity: string
   alert_title: string
   alert_description_template: string
@@ -82,6 +87,7 @@ interface DetectionStrategy {
   detection_type: string
   aws_service?: string
   gcp_service?: string
+  azure_service?: string
   cloud_provider: string
   implementation: DetectionImplementation
   estimated_false_positive_rate: string
@@ -155,7 +161,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
 // Detection strategy card component
 function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; defaultOpen: boolean }) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
-  const [activeTab, setActiveTab] = useState<'cloudformation' | 'terraform' | 'gcp'>('terraform')
+  const [activeTab, setActiveTab] = useState<'cloudformation' | 'terraform' | 'gcp' | 'azure' | 'arm'>('terraform')
   const [templatesExpanded, setTemplatesExpanded] = useState(false)
 
   // Provider badge styles (AWS=orange, GCP=blue, Azure=cyan)
@@ -269,16 +275,22 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
                 <div className="font-medium text-white text-sm">{strategy.detection_coverage}</div>
               </div>
             )}
-            {strategy.aws_service && (
+            {strategy.aws_service && strategy.aws_service !== 'n/a' && (
               <div className="bg-gray-700/30 rounded-lg p-3">
                 <div className="text-xs text-gray-400 mb-1">AWS Service</div>
                 <div className="font-medium text-orange-400">{strategy.aws_service}</div>
               </div>
             )}
-            {strategy.gcp_service && (
+            {strategy.gcp_service && strategy.gcp_service !== 'n/a' && (
               <div className="bg-gray-700/30 rounded-lg p-3">
                 <div className="text-xs text-gray-400 mb-1">GCP Service</div>
                 <div className="font-medium text-blue-400">{strategy.gcp_service}</div>
+              </div>
+            )}
+            {strategy.azure_service && strategy.azure_service !== 'n/a' && (
+              <div className="bg-gray-700/30 rounded-lg p-3">
+                <div className="text-xs text-gray-400 mb-1">Azure Service</div>
+                <div className="font-medium text-cyan-400">{strategy.azure_service}</div>
               </div>
             )}
           </div>
@@ -309,6 +321,8 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
                     strategy.implementation.terraform_template && 'Terraform',
                     strategy.implementation.cloudformation_template && 'CloudFormation',
                     strategy.implementation.gcp_terraform_template && 'GCP Terraform',
+                    strategy.implementation.azure_terraform_template && 'Azure Terraform',
+                    strategy.implementation.arm_template && 'ARM',
                   ].filter(Boolean).join(', ')})
                 </span>
               </h5>
@@ -359,6 +373,30 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
                       Terraform (GCP)
                     </button>
                   )}
+                  {strategy.implementation.azure_terraform_template && (
+                    <button
+                      onClick={() => setActiveTab('azure')}
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                        activeTab === 'azure'
+                          ? 'bg-cyan-600 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      Terraform (Azure)
+                    </button>
+                  )}
+                  {strategy.implementation.arm_template && (
+                    <button
+                      onClick={() => setActiveTab('arm')}
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                        activeTab === 'arm'
+                          ? 'bg-cyan-600 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      ARM Template
+                    </button>
+                  )}
                 </div>
 
                 {/* Template content */}
@@ -370,6 +408,12 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
                 )}
                 {activeTab === 'gcp' && strategy.implementation.gcp_terraform_template && (
                   <CodeBlock code={strategy.implementation.gcp_terraform_template} language="Terraform (GCP)" />
+                )}
+                {activeTab === 'azure' && strategy.implementation.azure_terraform_template && (
+                  <CodeBlock code={strategy.implementation.azure_terraform_template} language="Terraform (Azure)" />
+                )}
+                {activeTab === 'arm' && strategy.implementation.arm_template && (
+                  <CodeBlock code={strategy.implementation.arm_template} language="ARM Template (JSON)" />
                 )}
               </div>
             )}
@@ -393,6 +437,26 @@ function StrategyCard({ strategy, defaultOpen }: { strategy: DetectionStrategy; 
                 Cloud Logging Query
               </h5>
               <CodeBlock code={strategy.implementation.gcp_logging_query} language="Cloud Logging" />
+            </div>
+          )}
+
+          {strategy.implementation.azure_kql_query && (
+            <div>
+              <h5 className="text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Azure Log Analytics / Sentinel Query (KQL)
+              </h5>
+              <CodeBlock code={strategy.implementation.azure_kql_query} language="Kusto (KQL)" />
+            </div>
+          )}
+
+          {strategy.implementation.sentinel_rule_query && strategy.implementation.sentinel_rule_query !== strategy.implementation.azure_kql_query && (
+            <div>
+              <h5 className="text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Microsoft Sentinel Analytics Rule
+              </h5>
+              <CodeBlock code={strategy.implementation.sentinel_rule_query} language="Kusto (KQL)" />
             </div>
           )}
 
