@@ -17,7 +17,10 @@ import TacticHeatmap from '../components/TacticHeatmap'
 import { SecurityPostureCard, SecurityPostureEmptyState } from '../components/SecurityPostureCard'
 import { useSelectedAccount } from '../hooks/useSelectedAccount'
 
-const detectionSourceConfig: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
+type DetectionSourceConfig = Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }>
+
+// AWS Detection Sources (6 cards)
+const awsDetectionSourceConfig: DetectionSourceConfig = {
   'cloudwatch_logs_insights': {
     label: 'CloudWatch Logs',
     icon: Activity,
@@ -54,6 +57,51 @@ const detectionSourceConfig: Record<string, { label: string; icon: React.Element
     color: 'text-blue-400',
     bgColor: 'bg-blue-900/30'
   }
+}
+
+// GCP Detection Sources (3 cards - only implemented scanners)
+const gcpDetectionSourceConfig: DetectionSourceConfig = {
+  'gcp_cloud_logging': {
+    label: 'Cloud Logging',
+    icon: Activity,
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-900/30'
+  },
+  'gcp_security_command_center': {
+    label: 'Security Command Center',
+    icon: Shield,
+    color: 'text-red-400',
+    bgColor: 'bg-red-900/30'
+  },
+  'gcp_eventarc': {
+    label: 'Eventarc',
+    icon: Zap,
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-900/30'
+  }
+}
+
+// Azure Detection Sources (2 cards - all implemented scanners)
+const azureDetectionSourceConfig: DetectionSourceConfig = {
+  'azure_defender': {
+    label: 'Defender for Cloud',
+    icon: Shield,
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-900/30'
+  },
+  'azure_policy': {
+    label: 'Azure Policy',
+    icon: CheckCircle,
+    color: 'text-green-400',
+    bgColor: 'bg-green-900/30'
+  }
+}
+
+// Provider to config mapping
+const detectionSourceConfigs: Record<string, DetectionSourceConfig> = {
+  aws: awsDetectionSourceConfig,
+  gcp: gcpDetectionSourceConfig,
+  azure: azureDetectionSourceConfig,
 }
 
 export default function Dashboard() {
@@ -285,11 +333,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Detection Sources */}
+      {/* Detection Sources - provider-specific cards */}
       <div className="card mb-8">
         <h3 className="text-lg font-semibold text-white mb-4">Detection Sources</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
-          {Object.entries(detectionSourceConfig).map(([type, config]) => {
+          {Object.entries(detectionSourceConfigs[selectedAccount?.provider ?? 'aws'] ?? awsDetectionSourceConfig).map(([type, config]) => {
             const count = sourceCounts[type] || 0
             const Icon = config.icon
             return (
