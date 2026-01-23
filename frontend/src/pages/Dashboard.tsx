@@ -334,10 +334,20 @@ export default function Dashboard() {
       </div>
 
       {/* Detection Sources - provider-specific cards */}
-      <div className="card mb-8">
-        <h3 className="text-lg font-semibold text-white mb-4">Detection Sources</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
-          {Object.entries(detectionSourceConfigs[selectedAccount?.provider ?? 'aws'] ?? awsDetectionSourceConfig).map(([type, config]) => {
+      {(() => {
+        const currentConfig = detectionSourceConfigs[selectedAccount?.provider ?? 'aws'] ?? awsDetectionSourceConfig
+        const cardCount = Object.keys(currentConfig).length
+        // Adaptive grid: 6 cards = 5 cols, 3 cards = 3 cols, 2 cards = 2 cols
+        const gridClass = cardCount >= 5
+          ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6'
+          : cardCount >= 3
+            ? 'grid-cols-2 sm:grid-cols-3'
+            : 'grid-cols-2'
+        return (
+          <div className="card mb-8">
+            <h3 className="text-lg font-semibold text-white mb-4">Detection Sources</h3>
+            <div className={`grid ${gridClass} gap-3 sm:gap-4`}>
+              {Object.entries(currentConfig).map(([type, config]) => {
             const count = sourceCounts[type] || 0
             const Icon = config.icon
             return (
@@ -360,8 +370,10 @@ export default function Dashboard() {
               </div>
             )
           })}
-        </div>
-      </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Security Posture - Detection Effectiveness from Security Hub */}
       <div className="mb-8">
