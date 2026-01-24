@@ -858,6 +858,11 @@ SecurityAlert
   description = "Microsoft Defender detects Unsecured Credentials: Credentials in Files activity"
   display_name = "Defender: Unsecured Credentials: Credentials in Files"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1552.001"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

@@ -589,6 +589,11 @@ SecurityAlert
   description = "Microsoft Defender detects Resource Hijacking: Compute Hijacking activity"
   display_name = "Defender: Resource Hijacking: Compute Hijacking"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1496.001"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

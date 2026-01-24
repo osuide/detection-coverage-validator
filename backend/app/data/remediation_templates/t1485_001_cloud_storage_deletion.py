@@ -872,6 +872,11 @@ SecurityAlert
   description = "Microsoft Defender detects Data Destruction: Cloud Storage Object Deletion activity"
   display_name = "Defender: Data Destruction: Cloud Storage Object Deletion"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1485.001"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

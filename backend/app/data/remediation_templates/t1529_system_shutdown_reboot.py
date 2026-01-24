@@ -1085,6 +1085,11 @@ SecurityAlert
   description = "Microsoft Defender detects System Shutdown/Reboot activity"
   display_name = "Defender: System Shutdown/Reboot"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1529"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

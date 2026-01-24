@@ -1064,6 +1064,11 @@ SecurityAlert
   description = "Microsoft Defender detects Input Capture activity"
   display_name = "Defender: Input Capture"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1056"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

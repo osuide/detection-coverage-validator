@@ -853,6 +853,11 @@ SecurityAlert
   description = "Microsoft Defender detects Compromise Accounts activity"
   display_name = "Defender: Compromise Accounts"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1586"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

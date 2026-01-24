@@ -710,6 +710,11 @@ SecurityAlert
   description = "Microsoft Defender detects Defacement: Internal Defacement activity"
   display_name = "Defender: Defacement: Internal Defacement"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1491.001"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

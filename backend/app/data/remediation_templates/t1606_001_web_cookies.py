@@ -835,6 +835,11 @@ SecurityAlert
   description = "Microsoft Defender detects Forge Web Credentials: Web Cookies activity"
   display_name = "Defender: Forge Web Credentials: Web Cookies"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1606.001"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

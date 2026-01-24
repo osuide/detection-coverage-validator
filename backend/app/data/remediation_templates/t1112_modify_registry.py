@@ -1252,6 +1252,11 @@ SecurityAlert
   description = "Microsoft Defender detects Modify Registry activity"
   display_name = "Defender: Modify Registry"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1112"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

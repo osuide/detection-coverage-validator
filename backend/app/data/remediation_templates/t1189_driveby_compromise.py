@@ -1025,6 +1025,11 @@ SecurityAlert
   description = "Microsoft Defender detects Drive-by Compromise activity"
   display_name = "Defender: Drive-by Compromise"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1189"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

@@ -975,6 +975,11 @@ SecurityAlert
   description = "Microsoft Defender detects Steal or Forge Kerberos Tickets activity"
   display_name = "Defender: Steal or Forge Kerberos Tickets"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1558"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

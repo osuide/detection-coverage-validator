@@ -788,6 +788,11 @@ SecurityAlert
   description = "Microsoft Defender detects Supply Chain Compromise: Compromise Hardware Supply Chain activity"
   display_name = "Defender: Supply Chain Compromise: Compromise Hardware Supply Chain"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1195.003"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

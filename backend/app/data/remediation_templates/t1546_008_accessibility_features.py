@@ -712,6 +712,11 @@ SecurityAlert
   description = "Microsoft Defender detects Event Triggered Execution: Accessibility Features activity"
   display_name = "Defender: Event Triggered Execution: Accessibility Features"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1546.008"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

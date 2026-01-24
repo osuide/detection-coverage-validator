@@ -706,6 +706,11 @@ SecurityAlert
   description = "Microsoft Defender detects Brute Force: Credential Stuffing activity"
   display_name = "Defender: Brute Force: Credential Stuffing"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1110.004"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

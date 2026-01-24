@@ -765,6 +765,11 @@ SecurityAlert
   description = "Microsoft Defender detects Steal Web Session Cookie activity"
   display_name = "Defender: Steal Web Session Cookie"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1539"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

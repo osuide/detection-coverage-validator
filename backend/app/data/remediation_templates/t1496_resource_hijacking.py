@@ -1173,6 +1173,11 @@ SecurityAlert
   description = "Defender detects resource hijacking for mining"
   display_name = "Defender: Resource Hijacking"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1496"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

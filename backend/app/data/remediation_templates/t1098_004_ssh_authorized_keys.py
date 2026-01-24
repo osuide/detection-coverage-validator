@@ -1154,6 +1154,11 @@ SecurityAlert
   description = "Microsoft Defender detects Account Manipulation: SSH Authorized Keys activity"
   display_name = "Defender: Account Manipulation: SSH Authorized Keys"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1098.004"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

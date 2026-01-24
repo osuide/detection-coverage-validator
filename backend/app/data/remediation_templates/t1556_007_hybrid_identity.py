@@ -932,6 +932,11 @@ SecurityAlert
   description = "Microsoft Defender detects Modify Authentication Process: Hybrid Identity activity"
   display_name = "Defender: Modify Authentication Process: Hybrid Identity"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1556.007"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

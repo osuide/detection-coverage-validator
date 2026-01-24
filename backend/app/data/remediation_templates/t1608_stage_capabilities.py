@@ -731,6 +731,11 @@ SecurityAlert
   description = "Microsoft Defender detects Stage Capabilities activity"
   display_name = "Defender: Stage Capabilities"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1608"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

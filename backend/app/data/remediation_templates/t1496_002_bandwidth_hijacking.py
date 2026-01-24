@@ -815,6 +815,11 @@ SecurityAlert
   description = "Microsoft Defender detects Resource Hijacking: Bandwidth Hijacking activity"
   display_name = "Defender: Resource Hijacking: Bandwidth Hijacking"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1496.002"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

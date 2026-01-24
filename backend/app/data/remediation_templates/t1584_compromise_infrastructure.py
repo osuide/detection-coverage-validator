@@ -680,6 +680,11 @@ SecurityAlert
   description = "Microsoft Defender detects Compromise Infrastructure activity"
   display_name = "Defender: Compromise Infrastructure"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1584"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

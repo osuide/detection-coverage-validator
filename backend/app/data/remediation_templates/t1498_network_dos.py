@@ -1023,6 +1023,11 @@ SecurityAlert
   description = "Microsoft Defender detects Network Denial of Service activity"
   display_name = "Defender: Network Denial of Service"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1498"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

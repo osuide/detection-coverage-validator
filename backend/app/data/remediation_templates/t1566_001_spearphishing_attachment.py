@@ -798,6 +798,11 @@ SecurityAlert
   description = "Microsoft Defender detects Phishing: Spearphishing Attachment activity"
   display_name = "Defender: Phishing: Spearphishing Attachment"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1566.001"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

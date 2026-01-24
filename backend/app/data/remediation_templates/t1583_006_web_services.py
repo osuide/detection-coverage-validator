@@ -636,6 +636,11 @@ SecurityAlert
   description = "Microsoft Defender detects Acquire Infrastructure: Web Services activity"
   display_name = "Defender: Acquire Infrastructure: Web Services"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1583.006"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

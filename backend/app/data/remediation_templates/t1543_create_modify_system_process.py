@@ -1265,6 +1265,11 @@ SecurityAlert
   description = "Microsoft Defender detects Create or Modify System Process activity"
   display_name = "Defender: Create or Modify System Process"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1543"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

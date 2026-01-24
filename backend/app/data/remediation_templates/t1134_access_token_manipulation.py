@@ -1091,6 +1091,11 @@ SecurityAlert
   description = "Microsoft Defender detects Access Token Manipulation activity"
   display_name = "Defender: Access Token Manipulation"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1134"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

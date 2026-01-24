@@ -700,6 +700,11 @@ SecurityAlert
   description = "Microsoft Defender detects Establish Accounts activity"
   display_name = "Defender: Establish Accounts"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1585"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

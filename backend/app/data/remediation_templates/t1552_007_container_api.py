@@ -802,6 +802,11 @@ SecurityAlert
   description = "Microsoft Defender detects Unsecured Credentials: Container API activity"
   display_name = "Defender: Unsecured Credentials: Container API"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1552.007"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

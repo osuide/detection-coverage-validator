@@ -1109,6 +1109,11 @@ SecurityAlert
   description = "Microsoft Defender detects Endpoint Denial of Service: Service Exhaustion Flood activity"
   display_name = "Defender: Endpoint Denial of Service: Service Exhaustion Flood"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1499.002"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

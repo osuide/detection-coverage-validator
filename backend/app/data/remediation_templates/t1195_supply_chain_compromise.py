@@ -1274,6 +1274,11 @@ SecurityAlert
   description = "Microsoft Defender detects Supply Chain Compromise activity"
   display_name = "Defender: Supply Chain Compromise"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1195"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

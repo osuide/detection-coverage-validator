@@ -1170,6 +1170,11 @@ SecurityAlert
   description = "Microsoft Defender detects Adversary-in-the-Middle: DHCP Spoofing activity"
   display_name = "Defender: Adversary-in-the-Middle: DHCP Spoofing"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1557.003"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

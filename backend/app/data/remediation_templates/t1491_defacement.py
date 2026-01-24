@@ -641,6 +641,11 @@ SecurityAlert
   description = "Microsoft Defender detects Defacement activity"
   display_name = "Defender: Defacement"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1491"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

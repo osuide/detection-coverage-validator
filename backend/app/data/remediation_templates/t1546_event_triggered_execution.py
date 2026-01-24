@@ -1326,6 +1326,11 @@ SecurityAlert
   description = "Microsoft Defender detects Event Triggered Execution activity"
   display_name = "Defender: Event Triggered Execution"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1546"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

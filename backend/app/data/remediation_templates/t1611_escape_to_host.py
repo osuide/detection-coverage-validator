@@ -797,6 +797,11 @@ SecurityAlert
   description = "Microsoft Defender detects Escape to Host activity"
   display_name = "Defender: Escape to Host"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1611"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

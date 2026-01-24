@@ -1291,6 +1291,11 @@ SecurityAlert
   description = "Microsoft Defender detects Replication Through Removable Media activity"
   display_name = "Defender: Replication Through Removable Media"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1091"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

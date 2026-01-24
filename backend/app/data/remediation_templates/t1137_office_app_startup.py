@@ -749,6 +749,11 @@ SecurityAlert
   description = "Microsoft Defender detects Office Application Startup activity"
   display_name = "Defender: Office Application Startup"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1137"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

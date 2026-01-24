@@ -1253,6 +1253,11 @@ SecurityAlert
   description = "Microsoft Defender detects Modify Authentication Process activity"
   display_name = "Defender: Modify Authentication Process"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1556"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

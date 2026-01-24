@@ -970,6 +970,11 @@ SecurityAlert
   description = "Defender for DevOps detects exposed credentials"
   display_name = "Defender: Unsecured Credentials"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1552"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

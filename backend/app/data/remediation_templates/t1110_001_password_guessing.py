@@ -1384,6 +1384,11 @@ SecurityAlert
   description = "Microsoft Defender detects Brute Force: Password Guessing activity"
   display_name = "Defender: Brute Force: Password Guessing"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1110.001"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

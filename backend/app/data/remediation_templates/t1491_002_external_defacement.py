@@ -956,6 +956,11 @@ SecurityAlert
   description = "Microsoft Defender detects Defacement: External Defacement activity"
   display_name = "Defender: Defacement: External Defacement"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1491.002"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

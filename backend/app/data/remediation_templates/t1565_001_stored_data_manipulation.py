@@ -1267,6 +1267,11 @@ SecurityAlert
   description = "Microsoft Defender detects Data Manipulation: Stored Data Manipulation activity"
   display_name = "Defender: Data Manipulation: Stored Data Manipulation"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1565.001"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

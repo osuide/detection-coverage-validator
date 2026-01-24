@@ -809,6 +809,11 @@ SecurityAlert
   description = "Microsoft Defender detects Email Bombing activity"
   display_name = "Defender: Email Bombing"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1667"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

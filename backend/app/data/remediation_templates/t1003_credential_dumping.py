@@ -1065,6 +1065,11 @@ SecurityAlert
   description = "Microsoft Defender detects OS Credential Dumping activity"
   display_name = "Defender: OS Credential Dumping"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1003"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

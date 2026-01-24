@@ -1128,6 +1128,11 @@ SecurityAlert
   description = "Microsoft Defender detects Adversary-in-the-Middle: ARP Cache Poisoning activity"
   display_name = "Defender: Adversary-in-the-Middle: ARP Cache Poisoning"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1557.002"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

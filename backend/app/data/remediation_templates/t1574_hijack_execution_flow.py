@@ -990,6 +990,11 @@ SecurityAlert
   description = "Microsoft Defender detects Hijack Execution Flow activity"
   display_name = "Defender: Hijack Execution Flow"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1574"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

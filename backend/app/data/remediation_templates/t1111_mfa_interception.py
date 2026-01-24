@@ -1446,6 +1446,11 @@ SecurityAlert
   description = "Microsoft Defender detects Multi-Factor Authentication Interception activity"
   display_name = "Defender: Multi-Factor Authentication Interception"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1111"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

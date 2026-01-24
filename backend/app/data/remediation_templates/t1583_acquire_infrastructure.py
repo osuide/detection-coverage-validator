@@ -715,6 +715,11 @@ SecurityAlert
   description = "Microsoft Defender detects Acquire Infrastructure activity"
   display_name = "Defender: Acquire Infrastructure"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1583"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

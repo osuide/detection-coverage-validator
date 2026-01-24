@@ -719,6 +719,11 @@ SecurityAlert
   description = "Microsoft Defender detects Network Denial of Service: Direct Network Flood activity"
   display_name = "Defender: Network Denial of Service: Direct Network Flood"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1498.001"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

@@ -1205,6 +1205,11 @@ SecurityAlert
   description = "Microsoft Defender detects Trusted Relationship activity"
   display_name = "Defender: Trusted Relationship"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1199"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

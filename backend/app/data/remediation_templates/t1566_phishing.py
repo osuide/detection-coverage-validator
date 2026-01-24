@@ -908,6 +908,11 @@ SecurityAlert
   description = "Microsoft Defender detects Phishing activity"
   display_name = "Defender: Phishing"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1566"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

@@ -770,6 +770,11 @@ SecurityAlert
   description = "Microsoft Defender detects Financial Theft activity"
   display_name = "Defender: Financial Theft"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1657"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

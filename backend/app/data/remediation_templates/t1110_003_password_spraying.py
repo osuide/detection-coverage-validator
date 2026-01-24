@@ -686,6 +686,11 @@ SecurityAlert
   description = "Entra ID Protection detects password spraying"
   display_name = "Defender: Brute Force: Password Spraying"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1110.003"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

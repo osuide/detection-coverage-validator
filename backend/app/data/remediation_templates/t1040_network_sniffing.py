@@ -1124,6 +1124,11 @@ SecurityAlert
   description = "Microsoft Defender detects Network Sniffing activity"
   display_name = "Defender: Network Sniffing"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1040"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

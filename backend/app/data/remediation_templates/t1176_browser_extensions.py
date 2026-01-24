@@ -1076,6 +1076,11 @@ SecurityAlert
   description = "Microsoft Defender detects Software Extensions activity"
   display_name = "Defender: Software Extensions"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1176"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

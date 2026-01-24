@@ -1733,6 +1733,11 @@ SecurityAlert
   description = "Microsoft Defender detects Hardware Additions activity"
   display_name = "Defender: Hardware Additions"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1200"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

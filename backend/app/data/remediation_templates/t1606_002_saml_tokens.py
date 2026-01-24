@@ -668,6 +668,11 @@ SecurityAlert
   description = "Microsoft Defender detects Forge Web Credentials: SAML Tokens activity"
   display_name = "Defender: Forge Web Credentials: SAML Tokens"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1606.002"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

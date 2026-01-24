@@ -1148,6 +1148,11 @@ SecurityAlert
   description = "Microsoft Defender detects Adversary-in-the-Middle: LLMNR/NBT-NS Poisoning and SMB Relay activity"
   display_name = "Defender: Adversary-in-the-Middle: LLMNR/NBT-NS Poisoning and SMB Relay"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1557.001"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

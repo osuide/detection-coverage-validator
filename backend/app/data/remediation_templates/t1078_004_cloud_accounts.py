@@ -1515,6 +1515,11 @@ SecurityAlert
   description = "Defender for Cloud and Entra ID Protection detect cloud credential abuse"
   display_name = "Defender: Valid Accounts: Cloud Accounts"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1078.004"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

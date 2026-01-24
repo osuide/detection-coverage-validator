@@ -3188,6 +3188,11 @@ SecurityAlert
   description = "Microsoft Defender for Identity and Entra ID Protection detect anomalous sign-ins"
   display_name = "Defender: Valid Accounts"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1078"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

@@ -968,6 +968,11 @@ SecurityAlert
   description = "Microsoft Defender detects Credentials from Password Stores activity"
   display_name = "Defender: Credentials from Password Stores"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1555"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

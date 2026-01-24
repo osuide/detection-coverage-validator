@@ -714,6 +714,11 @@ SecurityAlert
   description = "Microsoft Defender detects Obtain Capabilities activity"
   display_name = "Defender: Obtain Capabilities"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1588"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

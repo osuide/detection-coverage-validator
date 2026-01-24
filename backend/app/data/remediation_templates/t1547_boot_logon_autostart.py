@@ -1148,6 +1148,11 @@ SecurityAlert
   description = "Microsoft Defender detects Boot or Logon Autostart Execution activity"
   display_name = "Defender: Boot or Logon Autostart Execution"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1547"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

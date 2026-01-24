@@ -674,6 +674,11 @@ SecurityAlert
   description = "Microsoft Defender detects Account Manipulation: Additional Container Cluster Roles activity"
   display_name = "Defender: Account Manipulation: Additional Container Cluster Roles"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1098.006"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

@@ -681,6 +681,11 @@ SecurityAlert
   description = "Microsoft Defender detects Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access activity"
   display_name = "Defender: Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1548.005"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

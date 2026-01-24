@@ -1312,6 +1312,11 @@ SecurityAlert
   description = "Microsoft Defender detects Credentials from Password Stores: Cloud Secrets Management Stores activity"
   display_name = "Defender: Credentials from Password Stores: Cloud Secrets Management Stores"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1555.006"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

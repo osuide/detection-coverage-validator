@@ -715,6 +715,11 @@ SecurityAlert
   description = "Microsoft Defender detects Develop Capabilities activity"
   display_name = "Defender: Develop Capabilities"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1587"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

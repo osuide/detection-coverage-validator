@@ -999,6 +999,11 @@ SecurityAlert
   description = "Microsoft Defender detects Account Manipulation: Device Registration activity"
   display_name = "Defender: Account Manipulation: Device Registration"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1098.005"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

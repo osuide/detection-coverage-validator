@@ -1024,6 +1024,11 @@ SecurityAlert
   description = "Microsoft Defender detects Forced Authentication activity"
   display_name = "Defender: Forced Authentication"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1187"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

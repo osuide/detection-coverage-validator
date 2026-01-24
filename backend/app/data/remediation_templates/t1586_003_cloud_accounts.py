@@ -958,6 +958,11 @@ SecurityAlert
   description = "Microsoft Defender detects Compromise Accounts: Cloud Accounts activity"
   display_name = "Defender: Compromise Accounts: Cloud Accounts"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1586.003"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

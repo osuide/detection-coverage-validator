@@ -1027,6 +1027,11 @@ SecurityAlert
   description = "Defender for Identity detects credential attacks"
   display_name = "Defender: Brute Force"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1110"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

@@ -896,6 +896,11 @@ SecurityAlert
   description = "Microsoft Defender detects Disk Wipe activity"
   display_name = "Defender: Disk Wipe"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1561"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

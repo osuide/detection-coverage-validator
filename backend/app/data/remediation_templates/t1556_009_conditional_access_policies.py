@@ -744,6 +744,11 @@ SecurityAlert
   description = "Microsoft Defender detects Modify Authentication Process: Conditional Access Policies activity"
   display_name = "Defender: Modify Authentication Process: Conditional Access Policies"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1556.009"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

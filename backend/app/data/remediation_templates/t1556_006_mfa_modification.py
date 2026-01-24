@@ -974,6 +974,11 @@ SecurityAlert
   description = "Microsoft Defender detects Modify Authentication Process: Multi-Factor Authentication activity"
   display_name = "Defender: Modify Authentication Process: Multi-Factor Authentication"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1556.006"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

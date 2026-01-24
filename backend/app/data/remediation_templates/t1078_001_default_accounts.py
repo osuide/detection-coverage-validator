@@ -1030,6 +1030,11 @@ SecurityAlert
   description = "Microsoft Defender detects Valid Accounts: Default Accounts activity"
   display_name = "Defender: Valid Accounts: Default Accounts"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1078.001"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

@@ -859,6 +859,11 @@ SecurityAlert
   description = "Microsoft Defender detects Network Denial of Service: Reflection Amplification activity"
   display_name = "Defender: Network Denial of Service: Reflection Amplification"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1498.002"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

@@ -815,6 +815,11 @@ SecurityAlert
   description = "Microsoft Defender detects Phishing: Spearphishing Link activity"
   display_name = "Defender: Phishing: Spearphishing Link"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1566.002"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

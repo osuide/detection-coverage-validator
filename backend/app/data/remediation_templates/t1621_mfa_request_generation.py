@@ -420,6 +420,11 @@ SecurityAlert
   description = "Microsoft Defender detects Multi-Factor Authentication Request Generation activity"
   display_name = "Defender: Multi-Factor Authentication Request Generation"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1621"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

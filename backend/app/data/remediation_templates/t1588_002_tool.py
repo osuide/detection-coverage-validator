@@ -792,6 +792,11 @@ SecurityAlert
   description = "Microsoft Defender detects Obtain Capabilities: Tool activity"
   display_name = "Defender: Obtain Capabilities: Tool"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1588.002"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

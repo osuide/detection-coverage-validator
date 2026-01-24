@@ -962,6 +962,11 @@ SecurityAlert
   description = "Microsoft Defender detects Implant Internal Image activity"
   display_name = "Defender: Implant Internal Image"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1525"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

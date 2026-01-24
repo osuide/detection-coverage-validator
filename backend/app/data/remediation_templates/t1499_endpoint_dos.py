@@ -982,6 +982,11 @@ SecurityAlert
   description = "Microsoft Defender detects Endpoint Denial of Service activity"
   display_name = "Defender: Endpoint Denial of Service"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1499"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

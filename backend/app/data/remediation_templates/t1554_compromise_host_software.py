@@ -781,6 +781,11 @@ SecurityAlert
   description = "Microsoft Defender detects Compromise Host Software Binary activity"
   display_name = "Defender: Compromise Host Software Binary"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1554"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

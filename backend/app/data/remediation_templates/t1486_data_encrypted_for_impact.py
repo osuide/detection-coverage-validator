@@ -2143,6 +2143,11 @@ SecurityAlert
   description = "Defender detects ransomware and encryption attacks"
   display_name = "Defender: Data Encrypted for Impact"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1486"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {

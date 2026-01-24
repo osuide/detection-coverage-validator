@@ -970,6 +970,11 @@ SecurityAlert
   description = "Microsoft Defender detects Unsecured Credentials: Cloud Instance Metadata API activity"
   display_name = "Defender: Unsecured Credentials: Cloud Instance Metadata API"
   enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1552.005"
+    "detection-type"  = "security"
+  }
 }
 
 output "alert_rule_id" {
