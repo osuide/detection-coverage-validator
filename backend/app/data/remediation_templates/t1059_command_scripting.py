@@ -1446,6 +1446,74 @@ resource "aws_sqs_queue_policy" "dlq" {
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Azure Log Analytics KQL Query: Command and Scripting Interpreter
+// MITRE ATT&CK: T1059
+// Detects Azure VM Run Command, Azure Automation, Cloud Shell, and script execution
+let lookback = 24h;
+// VM Run Command execution
+let vmRunCommand = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "MICROSOFT.COMPUTE/VIRTUALMACHINES/RUNCOMMAND/ACTION",
+    "MICROSOFT.COMPUTE/VIRTUALMACHINES/RUNCOMMAND/WRITE",
+    "Microsoft.Compute/virtualMachines/runCommand/action"
+)
+| where ActivityStatusValue in ("Success", "Succeeded", "Started")
+| extend TechniqueDetail = "VM Run Command execution"
+| project TimeGenerated, Caller, CallerIpAddress, SubscriptionId, ResourceGroup,
+    Resource, OperationNameValue, TechniqueDetail, ActivityStatusValue;
+// Azure Automation Runbook execution
+let automationRunbook = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/RUNBOOKS/DRAFT/PUBLISH/ACTION",
+    "MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/JOBS/WRITE",
+    "MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/RUNBOOKS/WRITE",
+    "Microsoft.Automation/automationAccounts/jobs/write"
+)
+| where ActivityStatusValue in ("Success", "Succeeded", "Started")
+| extend TechniqueDetail = "Automation Runbook execution"
+| project TimeGenerated, Caller, CallerIpAddress, SubscriptionId, ResourceGroup,
+    Resource, OperationNameValue, TechniqueDetail, ActivityStatusValue;
+// Cloud Shell usage
+let cloudShell = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "MICROSOFT.PORTAL/CONSOLES/WRITE",
+    "Microsoft.Portal/consoles/write"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| extend TechniqueDetail = "Cloud Shell session"
+| project TimeGenerated, Caller, CallerIpAddress, SubscriptionId, ResourceGroup,
+    Resource, OperationNameValue, TechniqueDetail, ActivityStatusValue;
+// Azure Functions execution (potential script execution)
+let functionExecution = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "MICROSOFT.WEB/SITES/FUNCTIONS/WRITE",
+    "MICROSOFT.WEB/SITES/HOST/SYNC/ACTION"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| extend TechniqueDetail = "Azure Functions execution"
+| project TimeGenerated, Caller, CallerIpAddress, SubscriptionId, ResourceGroup,
+    Resource, OperationNameValue, TechniqueDetail, ActivityStatusValue;
+// Union all results
+union vmRunCommand, automationRunbook, cloudShell, functionExecution
+| summarize
+    EventCount = count(),
+    TechniquesUsed = make_set(TechniqueDetail),
+    Operations = make_set(OperationNameValue, 10),
+    Resources = make_set(Resource, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Caller, CallerIpAddress, SubscriptionId
+| extend
+    AccountName = tostring(split(Caller, "@")[0]),
+    AccountDomain = tostring(split(Caller, "@")[1])
+| project
+    TimeGenerated = LastSeen,
+    AccountName, AccountDomain, Caller, CallerIpAddress,
+    SubscriptionId, EventCount, TechniquesUsed, Operations, Resources""",
                 sentinel_rule_query="""// Sentinel Analytics Rule: Command and Scripting Interpreter
 // MITRE ATT&CK: T1059
 let lookback = 24h;

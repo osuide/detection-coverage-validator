@@ -996,7 +996,76 @@ resource "google_logging_metric" "suspicious_container_processes" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Cryptocurrency mining activity"],
+                azure_kql_query="""// Azure Log Analytics KQL Query: Resource Hijacking
+// MITRE ATT&CK: T1496
+// Detects cryptocurrency mining and resource hijacking in Azure
+let lookback = 24h;
+// Defender for Cloud mining alerts
+let miningAlerts = SecurityAlert
+| where TimeGenerated > ago(lookback)
+| where ProductName in ("Azure Security Center", "Microsoft Defender for Cloud")
+| where AlertName has_any (
+    "Cryptocurrency", "mining", "cryptominer",
+    "Digital currency", "Bitcoin", "Monero",
+    "coin miner", "crypto miner"
+)
+| project TimeGenerated, AlertName, AlertSeverity, Description,
+    CompromisedEntity, RemediationSteps, ExtendedProperties
+| extend TechniqueDetail = "Cryptomining alert";
+// High CPU/compute usage anomalies (potential mining)
+let computeAnomalies = AzureMetrics
+| where TimeGenerated > ago(lookback)
+| where ResourceProvider == "MICROSOFT.COMPUTE"
+| where MetricName == "Percentage CPU"
+| where Average > 90
+| summarize
+    AvgCPU = avg(Average),
+    MaxCPU = max(Maximum),
+    SampleCount = count()
+    by bin(TimeGenerated, 1h), Resource, ResourceGroup
+| where SampleCount > 6 and AvgCPU > 85
+| extend TechniqueDetail = "Sustained high CPU usage";
+// Suspicious VM creation (potential mining rigs)
+let suspiciousVMs = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "MICROSOFT.COMPUTE/VIRTUALMACHINES/WRITE",
+    "Microsoft.Compute/virtualMachines/write"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| where Properties has_any ("GPU", "NC", "ND", "NV", "Standard_NC", "Standard_ND")
+| project TimeGenerated, Caller, CallerIpAddress, Resource,
+    ResourceGroup, SubscriptionId, Properties
+| extend TechniqueDetail = "GPU VM creation";
+// Azure Container Instances - potential mining containers
+let containerMining = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has "MICROSOFT.CONTAINERINSTANCE"
+| where ActivityStatusValue in ("Success", "Succeeded")
+| project TimeGenerated, Caller, CallerIpAddress, Resource,
+    ResourceGroup, SubscriptionId, OperationNameValue
+| extend TechniqueDetail = "Container instance creation";
+// Network traffic to mining pools
+let miningNetwork = AzureDiagnostics
+| where TimeGenerated > ago(lookback)
+| where Category == "NetworkSecurityGroupFlowEvent" or Category == "AzureFirewallNetworkRule"
+| where DestinationPort_d in (3333, 4444, 5555, 7777, 8888, 9999, 14444)
+| project TimeGenerated, SourceIP_s, DestinationIP_s, DestinationPort_d,
+    Action_s, Resource
+| extend TechniqueDetail = "Mining pool port connection";
+// Union results
+union miningAlerts, suspiciousVMs, containerMining
+| summarize
+    EventCount = count(),
+    TechniquesUsed = make_set(TechniqueDetail),
+    Resources = make_set(Resource, 10)
+    by bin(TimeGenerated, 1h)""",
+                defender_alert_types=[
+                    "Cryptocurrency mining activity",
+                    "Digital currency mining activity",
+                    "Suspicious process execution",
+                    "Unusual Azure resource deployment",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Resource Hijacking (T1496)
 # Defender detects resource hijacking for mining

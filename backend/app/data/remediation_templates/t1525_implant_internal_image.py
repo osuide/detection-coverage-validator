@@ -786,7 +786,75 @@ resource "google_monitoring_alert_policy" "gce_image_sharing_alert" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                azure_kql_query="""// Azure Log Analytics KQL Query: Implant Internal Image
+// MITRE ATT&CK: T1525
+// Detects malicious container image modifications in Azure Container Registry
+let lookback = 24h;
+// Azure Container Registry image push events
+let acrPush = ContainerRegistryLoginEvents
+| where TimeGenerated > ago(lookback)
+| where OperationName == "Push"
+| project TimeGenerated, LoginServer, Repository, Tag,
+    CallerIpAddress, Identity, CorrelationId
+| extend TechniqueDetail = "ACR image push";
+// ACR repository events from Azure Activity
+let acrActivity = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where ResourceProvider == "MICROSOFT.CONTAINERREGISTRY"
+| where OperationNameValue has_any (
+    "MICROSOFT.CONTAINERREGISTRY/REGISTRIES/PUSH/WRITE",
+    "MICROSOFT.CONTAINERREGISTRY/REGISTRIES/MANIFESTS/WRITE",
+    "Microsoft.ContainerRegistry/registries/push/write"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| project TimeGenerated, Caller, CallerIpAddress, Resource,
+    ResourceGroup, SubscriptionId, OperationNameValue
+| extend TechniqueDetail = "ACR push via Azure Activity";
+// Defender for Container Registry alerts
+let acrAlerts = SecurityAlert
+| where TimeGenerated > ago(lookback)
+| where ProductName in ("Azure Security Center", "Microsoft Defender for Cloud", "Microsoft Defender for Container Registries")
+| where AlertName has_any (
+    "Suspicious image", "Malicious image",
+    "Vulnerable image", "Container registry",
+    "Image vulnerability"
+)
+| project TimeGenerated, AlertName, AlertSeverity, Description,
+    CompromisedEntity, RemediationSteps
+| extend TechniqueDetail = "Defender ACR alert";
+// Image build events (potential backdooring)
+let imageBuild = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "MICROSOFT.CONTAINERREGISTRY/REGISTRIES/BUILDS/WRITE",
+    "MICROSOFT.CONTAINERREGISTRY/REGISTRIES/TASKS/WRITE",
+    "Microsoft.ContainerRegistry/registries/scheduleRun/action"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| project TimeGenerated, Caller, CallerIpAddress, Resource,
+    ResourceGroup, SubscriptionId, OperationNameValue
+| extend TechniqueDetail = "ACR build task";
+// Unusual image tags (e.g., overwriting latest)
+let suspiciousTags = ContainerRegistryRepositoryEvents
+| where TimeGenerated > ago(lookback)
+| where OperationName == "Push"
+| where Tag in ("latest", "stable", "production", "main")
+| project TimeGenerated, Repository, Tag, Digest,
+    LoginServer, CallerIpAddress
+| extend TechniqueDetail = "Critical tag modification";
+// Union results
+union acrPush, acrActivity, acrAlerts, imageBuild
+| summarize
+    EventCount = count(),
+    TechniquesUsed = make_set(TechniqueDetail),
+    Resources = make_set(Resource, 10)
+    by bin(TimeGenerated, 1h)""",
+                defender_alert_types=[
+                    "Suspicious activity detected",
+                    "Malicious container image detected",
+                    "Container image vulnerability",
+                    "Anomalous container registry access",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Implant Internal Image (T1525)
 # Microsoft Defender detects Implant Internal Image activity

@@ -1007,6 +1007,100 @@ resource "google_monitoring_alert_policy" "flow_anomaly" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Direct KQL Query: Detect Adversary-in-the-Middle Activity
+// MITRE ATT&CK: T1557 - Adversary-in-the-Middle
+// Data Sources: SigninLogs, AzureDiagnostics, SecurityAlert
+
+// Part 1: Detect suspicious sign-in patterns indicative of AITM
+let SuspiciousSignins = SigninLogs
+| where TimeGenerated > ago(24h)
+| where ResultType == 0  // Successful sign-in
+| where RiskLevelDuringSignIn in ("high", "medium")
+| where RiskEventTypes has_any ("tokenIssuerAnomaly", "unfamiliarFeatures", "anonymizedIPAddress")
+| extend
+    Country = tostring(LocationDetails.countryOrRegion),
+    DeviceDetail = tostring(DeviceDetail.displayName)
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    IPAddress,
+    Country,
+    RiskLevelDuringSignIn,
+    RiskEventTypes,
+    AppDisplayName,
+    DeviceDetail;
+// Part 2: Detect OAuth token theft patterns
+let TokenTheftPatterns = SigninLogs
+| where TimeGenerated > ago(24h)
+| where ConditionalAccessStatus == "notApplied" or ConditionalAccessStatus == "failure"
+| where ResultType == 0
+| summarize
+    SignInCount = count(),
+    IPs = make_set(IPAddress, 10),
+    Countries = make_set(tostring(LocationDetails.countryOrRegion), 5),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by UserPrincipalName, AppDisplayName
+| where SignInCount > 5;
+// Part 3: Detect certificate manipulation
+let CertificateChanges = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue has_any ("certificates", "publicCertificates")
+| where OperationNameValue has_any ("write", "delete")
+| summarize
+    CertOps = count(),
+    Operations = make_set(OperationNameValue, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Caller, CallerIpAddress;
+// Combine results
+SuspiciousSignins
+| project
+    TimeGenerated,
+    Caller = UserPrincipalName,
+    CallerIpAddress = IPAddress,
+    Country,
+    RiskLevel = RiskLevelDuringSignIn,
+    RiskEvents = RiskEventTypes,
+    App = AppDisplayName,
+    TechniqueId = "T1557",
+    TechniqueName = "Adversary-in-the-Middle",
+    Severity = "High" """,
+                sentinel_rule_query="""// Sentinel Analytics Rule: Adversary-in-the-Middle Detection
+// MITRE ATT&CK: T1557
+// Detects AITM patterns from risky sign-ins and token anomalies
+
+SigninLogs
+| where TimeGenerated > ago(24h)
+| where ResultType == 0
+| where RiskLevelDuringSignIn in ("high", "medium")
+| where RiskEventTypes has_any ("tokenIssuerAnomaly", "unfamiliarFeatures", "anonymizedIPAddress", "suspiciousIPAddress")
+| extend
+    Country = tostring(LocationDetails.countryOrRegion),
+    City = tostring(LocationDetails.city)
+| summarize
+    SignInCount = count(),
+    RiskEvents = make_set(RiskEventTypes, 10),
+    Countries = make_set(Country, 5),
+    IPs = make_set(IPAddress, 10),
+    Apps = make_set(AppDisplayName, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by UserPrincipalName
+| extend
+    AccountName = tostring(split(UserPrincipalName, "@")[0]),
+    AccountDomain = tostring(split(UserPrincipalName, "@")[1])
+| project
+    TimeGenerated = LastSeen,
+    AccountName,
+    AccountDomain,
+    Caller = UserPrincipalName,
+    SignInCount,
+    RiskEvents,
+    Countries,
+    IPs,
+    Apps,
+    FirstSeen""",
                 defender_alert_types=["Suspicious activity detected"],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Adversary-in-the-Middle (T1557)

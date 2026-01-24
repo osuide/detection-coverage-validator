@@ -594,7 +594,102 @@ resource "google_scc_notification_config" "container_escape" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                azure_kql_query="""// Azure Log Analytics KQL Query: Escape to Host
+// MITRE ATT&CK: T1611
+// Detects container escape attempts in Azure Kubernetes Service
+let lookback = 24h;
+// Privileged container creation in AKS
+let privilegedContainers = AzureDiagnostics
+| where TimeGenerated > ago(lookback)
+| where ResourceType == "MANAGEDCLUSTERS"
+| where Category in ("kube-audit", "kube-audit-admin")
+| where log_s has "securityContext" and log_s has "privileged"
+| extend AuditLog = parse_json(log_s)
+| where AuditLog.verb == "create"
+| project TimeGenerated, Resource, ResourceGroup,
+    User = AuditLog.user.username,
+    Namespace = AuditLog.objectRef.namespace,
+    PodName = AuditLog.objectRef.name,
+    RequestObject = AuditLog.requestObject
+| extend TechniqueDetail = "Privileged container creation";
+// Host path volume mounts (potential escape vector)
+let hostPathMounts = AzureDiagnostics
+| where TimeGenerated > ago(lookback)
+| where ResourceType == "MANAGEDCLUSTERS"
+| where Category in ("kube-audit", "kube-audit-admin")
+| where log_s has "hostPath"
+| extend AuditLog = parse_json(log_s)
+| where AuditLog.verb in ("create", "update", "patch")
+| project TimeGenerated, Resource, ResourceGroup,
+    User = AuditLog.user.username,
+    Namespace = AuditLog.objectRef.namespace,
+    PodName = AuditLog.objectRef.name
+| extend TechniqueDetail = "HostPath volume mount";
+// Host network/PID namespace access
+let hostNamespace = AzureDiagnostics
+| where TimeGenerated > ago(lookback)
+| where ResourceType == "MANAGEDCLUSTERS"
+| where Category in ("kube-audit", "kube-audit-admin")
+| where log_s has_any ("hostNetwork", "hostPID", "hostIPC")
+| extend AuditLog = parse_json(log_s)
+| where AuditLog.verb in ("create", "update")
+| project TimeGenerated, Resource, ResourceGroup,
+    User = AuditLog.user.username,
+    Namespace = AuditLog.objectRef.namespace
+| extend TechniqueDetail = "Host namespace access";
+// Defender for Containers escape alerts
+let escapeAlerts = SecurityAlert
+| where TimeGenerated > ago(lookback)
+| where ProductName in ("Azure Security Center", "Microsoft Defender for Cloud", "Microsoft Defender for Containers")
+| where AlertName has_any (
+    "container escape", "Privileged container",
+    "Host volume mount", "Container with sensitive mount",
+    "Suspicious container", "Container breakout"
+)
+| project TimeGenerated, AlertName, AlertSeverity, Description,
+    CompromisedEntity, RemediationSteps
+| extend TechniqueDetail = "Defender escape alert";
+// Suspicious exec into container
+let containerExec = AzureDiagnostics
+| where TimeGenerated > ago(lookback)
+| where ResourceType == "MANAGEDCLUSTERS"
+| where Category in ("kube-audit", "kube-audit-admin")
+| where log_s has "exec" and log_s has "pods"
+| extend AuditLog = parse_json(log_s)
+| where AuditLog.verb == "create"
+| project TimeGenerated, Resource, ResourceGroup,
+    User = AuditLog.user.username,
+    Namespace = AuditLog.objectRef.namespace,
+    PodName = AuditLog.objectRef.name,
+    Command = AuditLog.requestObject
+| extend TechniqueDetail = "Container exec";
+// CAP_SYS_ADMIN or other dangerous capabilities
+let dangerousCaps = AzureDiagnostics
+| where TimeGenerated > ago(lookback)
+| where ResourceType == "MANAGEDCLUSTERS"
+| where Category in ("kube-audit", "kube-audit-admin")
+| where log_s has_any ("CAP_SYS_ADMIN", "CAP_NET_ADMIN", "CAP_SYS_PTRACE")
+| extend AuditLog = parse_json(log_s)
+| where AuditLog.verb in ("create", "update")
+| project TimeGenerated, Resource, ResourceGroup,
+    User = AuditLog.user.username,
+    Namespace = AuditLog.objectRef.namespace
+| extend TechniqueDetail = "Dangerous capability requested";
+// Union results
+union privilegedContainers, hostPathMounts, hostNamespace, escapeAlerts, containerExec, dangerousCaps
+| summarize
+    EventCount = count(),
+    TechniquesUsed = make_set(TechniqueDetail),
+    Users = make_set(User, 10),
+    Namespaces = make_set(Namespace, 10)
+    by bin(TimeGenerated, 1h)""",
+                defender_alert_types=[
+                    "Suspicious activity detected",
+                    "Privileged container detected",
+                    "Container with sensitive mount detected",
+                    "Container escape attempt",
+                    "Suspicious container behavior",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Escape to Host (T1611)
 # Microsoft Defender detects Escape to Host activity

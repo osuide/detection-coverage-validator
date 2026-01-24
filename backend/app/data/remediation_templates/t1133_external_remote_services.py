@@ -698,37 +698,105 @@ resource "google_monitoring_alert_policy" "ssh_rdp_external" {
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                sentinel_rule_query="""// Sentinel Analytics Rule: External Remote Services
-// MITRE ATT&CK: T1133
-let lookback = 24h;
-let threshold = 5;
-AzureActivity
-| where TimeGenerated > ago(lookback)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue in ("Success", "Succeeded")
+                azure_kql_query="""// Direct KQL Query: Detect External Remote Service Access
+// MITRE ATT&CK: T1133 - External Remote Services
+// Data Sources: SigninLogs, AzureActivity, AzureDiagnostics
+
+// Part 1: Detect VPN/External access sign-ins
+let VPNSignins = SigninLogs
+| where TimeGenerated > ago(24h)
+| where AppDisplayName in ("VPN", "Azure Virtual Desktop", "Windows Virtual Desktop", "Microsoft Remote Desktop")
+| where ResultType == 0  // Successful sign-in
+| extend
+    City = tostring(LocationDetails.city),
+    Country = tostring(LocationDetails.countryOrRegion),
+    IsRisky = RiskLevelDuringSignIn in ("high", "medium")
 | summarize
-    EventCount = count(),
-    DistinctOperations = dcount(OperationNameValue),
-    Operations = make_set(OperationNameValue, 20),
-    Resources = make_set(Resource, 10),
+    LoginCount = count(),
+    Countries = make_set(Country, 5),
+    Cities = make_set(City, 10),
+    IPs = make_set(IPAddress, 10),
+    RiskyLogins = countif(IsRisky),
     FirstSeen = min(TimeGenerated),
     LastSeen = max(TimeGenerated)
-    by Caller, CallerIpAddress, SubscriptionId
-| where EventCount > threshold
+    by UserPrincipalName, AppDisplayName;
+// Part 2: Detect VPN Gateway connections
+let VPNConnections = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue has_any ("Microsoft.Network/vpnGateways", "Microsoft.Network/virtualNetworkGateways")
+| where OperationNameValue has_any ("connect", "startPacketCapture", "generateVpnProfile")
+| summarize
+    ConnectionCount = count(),
+    Operations = make_set(OperationNameValue, 10),
+    Gateways = make_set(Resource, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Caller, CallerIpAddress;
+// Part 3: Detect exposed container APIs
+let ContainerAPIAccess = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue has_any (
+    "Microsoft.ContainerService/managedClusters/listClusterAdminCredential",
+    "Microsoft.ContainerRegistry/registries/listCredentials"
+)
+| summarize
+    AccessCount = count(),
+    Clusters = make_set(Resource, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Caller, CallerIpAddress;
+// Combine results
+VPNSignins
+| project
+    TimeGenerated = LastSeen,
+    ServiceType = "VPN/Remote Desktop",
+    Caller = UserPrincipalName,
+    App = AppDisplayName,
+    LoginCount,
+    Countries,
+    RiskyLogins,
+    TechniqueId = "T1133",
+    TechniqueName = "External Remote Services",
+    Severity = case(
+        RiskyLogins > 0, "High",
+        LoginCount > 10, "Medium",
+        "Low"
+    )""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: External Remote Services Detection
+// MITRE ATT&CK: T1133
+// Detects VPN access, remote desktop, and container API exposure
+
+// VPN and Remote Desktop sign-ins
+SigninLogs
+| where TimeGenerated > ago(24h)
+| where AppDisplayName in ("VPN", "Azure Virtual Desktop", "Windows Virtual Desktop", "Microsoft Remote Desktop")
+| where ResultType == 0
 | extend
-    AccountName = tostring(split(Caller, "@")[0]),
-    AccountDomain = tostring(split(Caller, "@")[1])
+    Country = tostring(LocationDetails.countryOrRegion),
+    IsRisky = RiskLevelDuringSignIn in ("high", "medium")
+| summarize
+    LoginCount = count(),
+    Countries = make_set(Country, 5),
+    IPs = make_set(IPAddress, 10),
+    RiskyLogins = countif(IsRisky),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by UserPrincipalName, AppDisplayName
+| where LoginCount > 5 or RiskyLogins > 0
+| extend
+    AccountName = tostring(split(UserPrincipalName, "@")[0]),
+    AccountDomain = tostring(split(UserPrincipalName, "@")[1])
 | project
     TimeGenerated = LastSeen,
     AccountName,
     AccountDomain,
-    Caller,
-    CallerIpAddress,
-    SubscriptionId,
-    EventCount,
-    DistinctOperations,
-    Operations,
-    Resources""",
+    Caller = UserPrincipalName,
+    AppDisplayName,
+    LoginCount,
+    Countries,
+    IPs,
+    RiskyLogins,
+    FirstSeen""",
                 azure_terraform_template="""# Azure Detection for External Remote Services
 # MITRE ATT&CK: T1133
 

@@ -1007,6 +1007,96 @@ resource "google_monitoring_alert_policy" "cross_project_alert" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Direct KQL Query: Detect Trusted Relationship Abuse
+// MITRE ATT&CK: T1199 - Trusted Relationship
+// Data Sources: AuditLogs, ServicePrincipalSignInLogs, AzureActivity
+
+// Part 1: Detect service principal sign-ins from unusual sources
+let SPSignins = ServicePrincipalSignInLogs
+| where TimeGenerated > ago(24h)
+| where ResultType == 0  // Successful sign-in
+| extend
+    Country = tostring(LocationDetails.countryOrRegion),
+    City = tostring(LocationDetails.city)
+| summarize
+    SignInCount = count(),
+    Countries = make_set(Country, 5),
+    IPs = make_set(IPAddress, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by ServicePrincipalId, ServicePrincipalName, AppId;
+// Part 2: Detect OAuth app permissions changes
+let AppPermissionChanges = AuditLogs
+| where TimeGenerated > ago(24h)
+| where OperationName in ("Add app role assignment to service principal", "Add delegated permission grant", "Add OAuth2PermissionGrant")
+| extend
+    TargetApp = tostring(TargetResources[0].displayName),
+    Permission = tostring(TargetResources[0].modifiedProperties[0].newValue),
+    InitiatedBy = tostring(InitiatedBy.user.userPrincipalName)
+| summarize
+    PermissionCount = count(),
+    Permissions = make_set(Permission, 10),
+    Apps = make_set(TargetApp, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by InitiatedBy;
+// Part 3: Detect cross-tenant access
+let CrossTenantAccess = AuditLogs
+| where TimeGenerated > ago(24h)
+| where OperationName has_any ("cross-tenant", "B2B", "guest")
+| summarize
+    AccessCount = count(),
+    Operations = make_set(OperationName, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by InitiatedBy = tostring(InitiatedBy.user.userPrincipalName);
+// Combine results
+SPSignins
+| where SignInCount > 10
+| project
+    TimeGenerated = LastSeen,
+    TrustType = "Service Principal",
+    Caller = ServicePrincipalName,
+    SignInCount,
+    Countries,
+    IPs,
+    TechniqueId = "T1199",
+    TechniqueName = "Trusted Relationship",
+    Severity = "Medium" """,
+                sentinel_rule_query="""// Sentinel Analytics Rule: Trusted Relationship Detection
+// MITRE ATT&CK: T1199
+// Detects service principal abuse and OAuth permission changes
+
+// Service principal sign-ins
+let SPActivity = ServicePrincipalSignInLogs
+| where TimeGenerated > ago(24h)
+| where ResultType == 0
+| summarize
+    SignInCount = count(),
+    IPs = make_set(IPAddress, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by ServicePrincipalId, ServicePrincipalName, AppId
+| where SignInCount > 20;  // High volume may indicate abuse
+// OAuth permission changes
+let PermissionChanges = AuditLogs
+| where TimeGenerated > ago(24h)
+| where OperationName in ("Add app role assignment to service principal", "Add delegated permission grant")
+| extend InitiatedBy = tostring(InitiatedBy.user.userPrincipalName)
+| summarize
+    ChangeCount = count(),
+    Operations = make_set(OperationName, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by InitiatedBy;
+SPActivity
+| project
+    TimeGenerated = LastSeen,
+    ServicePrincipalName,
+    ServicePrincipalId,
+    SignInCount,
+    IPs,
+    FirstSeen""",
                 defender_alert_types=["Suspicious activity detected"],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Trusted Relationship (T1199)

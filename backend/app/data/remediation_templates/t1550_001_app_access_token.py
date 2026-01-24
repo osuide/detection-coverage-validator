@@ -1981,14 +1981,70 @@ resource "google_monitoring_alert_policy" "oauth_consent_attack" {
             strategy_id="t1550001-azure",
             name="Azure Use Alternate Authentication Material: Application Access Token Detection",
             description=(
-                "Sentinel detects token manipulation attacks. "
-                "Provides native Azure detection using Log Analytics and Defender for Cloud."
+                "Detect stolen or forged application access tokens used to bypass authentication. "
+                "Monitors for OAuth token reuse, service principal token abuse, managed identity "
+                "misuse, and anomalous token-based access patterns in Entra ID and Azure."
             ),
             detection_type=DetectionType.SENTINEL_RULE,
             aws_service="n/a",
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Azure Application Access Token Abuse Detection
+// MITRE ATT&CK: T1550.001 - Use Alternate Authentication Material: Application Access Token
+// Detects stolen or forged tokens used to bypass authentication
+
+// OAuth token used from multiple locations (possible token theft)
+SigninLogs
+| where TimeGenerated > ago(24h)
+| where AuthenticationDetails has "OAuth"
+| where ResultType == 0  // Successful sign-ins
+| summarize
+    DistinctIPs = dcount(IPAddress),
+    IPs = make_set(IPAddress, 10),
+    Locations = make_set(Location, 10),
+    AppNames = make_set(AppDisplayName, 5),
+    SignInCount = count()
+    by UserPrincipalName, AppId, bin(TimeGenerated, 4h)
+| where DistinctIPs > 3
+| project TimeGenerated, UserPrincipalName, AppId, DistinctIPs, IPs, Locations, SignInCount
+
+// Service principal token abuse - unusual activity patterns
+AADServicePrincipalSignInLogs
+| where TimeGenerated > ago(24h)
+| where ResultType == 0
+| summarize
+    DistinctIPs = dcount(IPAddress),
+    DistinctResources = dcount(ResourceDisplayName),
+    SignInCount = count()
+    by ServicePrincipalId, ServicePrincipalName, bin(TimeGenerated, 1h)
+| where SignInCount > 100 or DistinctIPs > 5 or DistinctResources > 10
+| project TimeGenerated, ServicePrincipalId, ServicePrincipalName, SignInCount, DistinctIPs, DistinctResources
+
+// Managed identity used from unexpected locations
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where Authorization has "managedIdentity"
+| where ActivityStatusValue == "Success"
+| summarize
+    DistinctCallerIPs = dcount(CallerIpAddress),
+    Operations = make_set(OperationNameValue, 20),
+    OperationCount = count()
+    by Caller, SubscriptionId, bin(TimeGenerated, 1h)
+| where DistinctCallerIPs > 3 or OperationCount > 50
+| project TimeGenerated, Caller, SubscriptionId, DistinctCallerIPs, OperationCount, Operations
+
+// Token replay detection - same token from different user agents
+SigninLogs
+| where TimeGenerated > ago(24h)
+| where ResultType == 0
+| summarize
+    DistinctUserAgents = dcount(UserAgent),
+    UserAgents = make_set(UserAgent, 10),
+    DistinctIPs = dcount(IPAddress)
+    by UserPrincipalName, CorrelationId, bin(TimeGenerated, 1h)
+| where DistinctUserAgents > 3 or DistinctIPs > 3
+| project TimeGenerated, UserPrincipalName, CorrelationId, DistinctUserAgents, DistinctIPs, UserAgents""",
                 sentinel_rule_query="""// Sentinel Analytics Rule: Use Alternate Authentication Material: Application Access Token
 // MITRE ATT&CK: T1550.001
 let lookback = 24h;

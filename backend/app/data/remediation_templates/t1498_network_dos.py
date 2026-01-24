@@ -784,15 +784,138 @@ resource "google_monitoring_alert_policy" "network_flood" {
             strategy_id="t1498-azure",
             name="Azure Network Denial of Service Detection",
             description=(
-                "Azure detection for Network Denial of Service. "
-                "Provides native Azure detection using Log Analytics and Defender for Cloud."
+                "Detect network DDoS attacks using Azure DDoS Protection, Network Watcher, "
+                "and Defender for Cloud. Monitors for volumetric attacks, protocol attacks, "
+                "and application-layer floods targeting Azure resources."
             ),
-            detection_type=DetectionType.DEFENDER_ALERT,
+            detection_type=DetectionType.SENTINEL_RULE,
             aws_service="n/a",
-            azure_service="defender",
+            azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "DDOS Attack detected",
+                    "DDOS Attack mitigated",
+                    "Network flood attack detected",
+                ],
+                azure_kql_query="""// Azure DDoS Protection - Network Denial of Service Detection
+// MITRE ATT&CK: T1498 - Network Denial of Service
+// Detects DDoS attacks against Azure resources
+
+// DDoS Protection alerts and mitigation events
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where Category == "DDoSProtectionNotifications" or Category == "DDoSMitigationFlowLogs"
+| where Message has_any ("attack", "mitigation", "DDoS", "flood")
+| project
+    TimeGenerated,
+    ResourceId,
+    Category,
+    Message,
+    publicIpAddress_s,
+    attackType_s,
+    mitigationStatus_s,
+    bytesDropped_d,
+    packetsDropped_d
+| order by TimeGenerated desc
+
+// Alternative: Network Watcher flow logs for traffic anomalies
+// AzureNetworkAnalytics_CL
+// | where TimeGenerated > ago(1h)
+// | where FlowType_s == "ExternalPublic"
+// | summarize TotalBytes = sum(BytesSent_d + BytesReceived_d),
+//             TotalPackets = sum(PacketsSent_d + PacketsReceived_d)
+//     by bin(TimeGenerated, 5m), DestinationIP_s
+// | where TotalBytes > 1000000000 or TotalPackets > 1000000
+// | project TimeGenerated, DestinationIP_s, TotalBytes, TotalPackets""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: Network Denial of Service Detection
+// MITRE ATT&CK: T1498 - Network Denial of Service
+let lookback = 1h;
+let traffic_threshold = 500000000;  // 500MB in 5 minutes
+let packet_threshold = 500000;       // 500K packets in 5 minutes
+
+// Detection 1: DDoS Protection alerts
+let ddos_alerts = AzureDiagnostics
+| where TimeGenerated > ago(lookback)
+| where Category == "DDoSProtectionNotifications"
+| where Message has_any ("attack", "mitigation", "DDoS")
+| extend AttackType = coalesce(attackType_s, "Unknown")
+| project
+    TimeGenerated,
+    DetectionSource = "DDoS Protection",
+    ResourceId,
+    AttackType,
+    MitigationStatus = mitigationStatus_s,
+    PublicIP = publicIpAddress_s,
+    BytesDropped = bytesDropped_d,
+    PacketsDropped = packetsDropped_d,
+    Severity = "High";
+
+// Detection 2: Network traffic anomalies from flow logs
+let traffic_anomalies = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(lookback)
+| where FlowType_s == "ExternalPublic"
+| summarize
+    TotalBytes = sum(BytesSent_d + BytesReceived_d),
+    TotalPackets = sum(PacketsSent_d + PacketsReceived_d),
+    DistinctSources = dcount(SourceIP_s)
+    by bin(TimeGenerated, 5m), DestinationIP_s
+| where TotalBytes > traffic_threshold or TotalPackets > packet_threshold
+| extend AttackType = case(
+    TotalPackets > packet_threshold and TotalBytes < traffic_threshold, "Packet Flood",
+    TotalBytes > traffic_threshold and TotalPackets < packet_threshold, "Volumetric",
+    "Mixed Attack")
+| project
+    TimeGenerated,
+    DetectionSource = "Network Analytics",
+    ResourceId = "",
+    AttackType,
+    MitigationStatus = "Detected",
+    PublicIP = DestinationIP_s,
+    BytesDropped = TotalBytes,
+    PacketsDropped = TotalPackets,
+    Severity = "Medium";
+
+// Detection 3: Security alerts from Defender
+let security_alerts = SecurityAlert
+| where TimeGenerated > ago(lookback)
+| where ProductName has_any ("Azure Defender", "Microsoft Defender")
+| where AlertName has_any ("DDoS", "flood", "denial of service", "network attack")
+| project
+    TimeGenerated,
+    DetectionSource = "Defender for Cloud",
+    ResourceId = tostring(parse_json(ExtendedProperties)["ResourceId"]),
+    AttackType = AlertName,
+    MitigationStatus = Status,
+    PublicIP = tostring(parse_json(ExtendedProperties)["DestinationIp"]),
+    BytesDropped = 0.0,
+    PacketsDropped = 0.0,
+    Severity = AlertSeverity;
+
+// Combine all detection sources
+ddos_alerts
+| union traffic_anomalies
+| union security_alerts
+| summarize
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated),
+    EventCount = count(),
+    DetectionSources = make_set(DetectionSource),
+    AttackTypes = make_set(AttackType),
+    TotalBytesDropped = sum(BytesDropped),
+    TotalPacketsDropped = sum(PacketsDropped)
+    by PublicIP, Severity
+| project
+    TimeGenerated = LastSeen,
+    PublicIP,
+    Severity,
+    EventCount,
+    FirstSeen,
+    AttackTypes,
+    DetectionSources,
+    TotalBytesDropped,
+    TotalPacketsDropped
+| order by Severity asc, EventCount desc""",
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Network Denial of Service (T1498)
 # Microsoft Defender detects Network Denial of Service activity

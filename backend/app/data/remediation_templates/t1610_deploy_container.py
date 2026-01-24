@@ -723,6 +723,85 @@ resource "google_monitoring_alert_policy" "cloud_run_deploy" {
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Azure Log Analytics KQL Query: Deploy Container
+// MITRE ATT&CK: T1610
+// Detects container deployment in Azure Container Instances and AKS
+let lookback = 24h;
+// Azure Container Instances creation
+let aciDeployment = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "MICROSOFT.CONTAINERINSTANCE/CONTAINERGROUPS/WRITE",
+    "Microsoft.ContainerInstance/containerGroups/write",
+    "MICROSOFT.CONTAINERINSTANCE/CONTAINERGROUPS/START/ACTION"
+)
+| where ActivityStatusValue in ("Success", "Succeeded", "Started")
+| project TimeGenerated, Caller, CallerIpAddress, Resource,
+    ResourceGroup, SubscriptionId, OperationNameValue, Properties
+| extend TechniqueDetail = "ACI container deployment";
+// AKS pod deployment events
+let aksPodEvents = AzureDiagnostics
+| where TimeGenerated > ago(lookback)
+| where ResourceType == "MANAGEDCLUSTERS"
+| where Category == "kube-audit" or Category == "kube-audit-admin"
+| where log_s has "pods" and log_s has "create"
+| extend AuditLog = parse_json(log_s)
+| project TimeGenerated, Resource, ResourceGroup,
+    User = AuditLog.user.username,
+    Namespace = AuditLog.objectRef.namespace,
+    PodName = AuditLog.objectRef.name,
+    Verb = AuditLog.verb
+| extend TechniqueDetail = "AKS pod creation";
+// AKS cluster operations
+let aksOperations = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "MICROSOFT.CONTAINERSERVICE/MANAGEDCLUSTERS/WRITE",
+    "MICROSOFT.CONTAINERSERVICE/MANAGEDCLUSTERS/AGENTPOOLS/WRITE",
+    "Microsoft.ContainerService/managedClusters/write"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| project TimeGenerated, Caller, CallerIpAddress, Resource,
+    ResourceGroup, SubscriptionId, OperationNameValue
+| extend TechniqueDetail = "AKS cluster modification";
+// Defender for Containers alerts
+let containerAlerts = SecurityAlert
+| where TimeGenerated > ago(lookback)
+| where ProductName in ("Azure Security Center", "Microsoft Defender for Cloud", "Microsoft Defender for Containers")
+| where AlertName has_any (
+    "Container", "Kubernetes", "pod",
+    "Suspicious container", "Privileged container"
+)
+| project TimeGenerated, AlertName, AlertSeverity, Description,
+    CompromisedEntity, RemediationSteps
+| extend TechniqueDetail = "Defender container alert";
+// Container Registry pull for deployment
+let acrPull = ContainerRegistryLoginEvents
+| where TimeGenerated > ago(lookback)
+| where OperationName == "Pull"
+| project TimeGenerated, LoginServer, Repository, Tag,
+    CallerIpAddress, Identity
+| extend TechniqueDetail = "ACR image pull";
+// Azure Web App container deployment
+let webAppContainer = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "MICROSOFT.WEB/SITES/CONFIG/WRITE",
+    "MICROSOFT.WEB/SITES/WRITE"
+)
+| where Properties has "linuxFxVersion" or Properties has "windowsFxVersion"
+| where ActivityStatusValue in ("Success", "Succeeded")
+| project TimeGenerated, Caller, CallerIpAddress, Resource,
+    ResourceGroup, SubscriptionId
+| extend TechniqueDetail = "Web App container config";
+// Union results
+union aciDeployment, aksOperations, containerAlerts, webAppContainer
+| summarize
+    EventCount = count(),
+    TechniquesUsed = make_set(TechniqueDetail),
+    Callers = make_set(Caller, 10),
+    Resources = make_set(Resource, 10)
+    by bin(TimeGenerated, 1h)""",
                 sentinel_rule_query="""// Sentinel Analytics Rule: Deploy Container
 // MITRE ATT&CK: T1610
 let lookback = 24h;

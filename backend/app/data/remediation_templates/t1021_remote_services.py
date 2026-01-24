@@ -755,23 +755,96 @@ resource "google_monitoring_alert_policy" "gke_exec" {
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                sentinel_rule_query="""// Sentinel Analytics Rule: Remote Services
-// MITRE ATT&CK: T1021
-let lookback = 24h;
-let threshold = 5;
+                azure_kql_query="""// Direct KQL Query: Detect Remote Service Usage
+// MITRE ATT&CK: T1021 - Remote Services
+// Data Sources: AzureActivity, SigninLogs, AzureDiagnostics
+
+// Define remote service operations
+let BastionOps = dynamic([
+    "Microsoft.Network/bastionHosts/createShareableLinks/action",
+    "Microsoft.Network/bastionHosts/getShareableLinks/action",
+    "Microsoft.Compute/virtualMachines/runCommand/action"
+]);
+let SerialConsoleOps = dynamic([
+    "Microsoft.SerialConsole/serialPorts/connect/action",
+    "Microsoft.Compute/virtualMachines/retrieveBootDiagnosticsData/action"
+]);
+let RemoteAccessOps = dynamic([
+    "Microsoft.Compute/virtualMachines/login/action",
+    "Microsoft.Compute/virtualMachines/loginAsAdmin/action",
+    "Microsoft.HybridCompute/machines/login/action",
+    "Microsoft.HybridCompute/machines/loginAsAdmin/action"
+]);
 AzureActivity
-| where TimeGenerated > ago(lookback)
-| where CategoryValue == "Administrative"
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (BastionOps)
+    or OperationNameValue in (SerialConsoleOps)
+    or OperationNameValue in (RemoteAccessOps)
+| where ActivityStatusValue in ("Success", "Succeeded", "Start")
+| extend
+    ServiceType = case(
+        OperationNameValue has "bastionHosts", "Azure Bastion",
+        OperationNameValue has "SerialConsole", "Serial Console",
+        OperationNameValue has "runCommand", "Run Command",
+        OperationNameValue has "login", "VM Login",
+        "Other"
+    )
+| project
+    TimeGenerated,
+    ServiceType,
+    OperationNameValue,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    ActivityStatusValue
+| extend
+    TechniqueId = "T1021",
+    TechniqueName = "Remote Services",
+    Severity = case(
+        ServiceType == "Serial Console", "High",
+        ServiceType == "Run Command", "High",
+        "Medium"
+    )""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: Remote Services Detection
+// MITRE ATT&CK: T1021
+// Detects Azure Bastion, Serial Console, and VM remote access
+
+let BastionOps = dynamic([
+    "Microsoft.Network/bastionHosts/createShareableLinks/action",
+    "Microsoft.Network/bastionHosts/getShareableLinks/action",
+    "Microsoft.Compute/virtualMachines/runCommand/action"
+]);
+let SerialConsoleOps = dynamic([
+    "Microsoft.SerialConsole/serialPorts/connect/action"
+]);
+let RemoteAccessOps = dynamic([
+    "Microsoft.Compute/virtualMachines/login/action",
+    "Microsoft.Compute/virtualMachines/loginAsAdmin/action"
+]);
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (BastionOps)
+    or OperationNameValue in (SerialConsoleOps)
+    or OperationNameValue in (RemoteAccessOps)
 | where ActivityStatusValue in ("Success", "Succeeded")
+| extend
+    ServiceType = case(
+        OperationNameValue has "bastionHosts", "Azure Bastion",
+        OperationNameValue has "SerialConsole", "Serial Console",
+        OperationNameValue has "runCommand", "Run Command",
+        OperationNameValue has "login", "VM Login",
+        "Other"
+    )
 | summarize
-    EventCount = count(),
-    DistinctOperations = dcount(OperationNameValue),
-    Operations = make_set(OperationNameValue, 20),
-    Resources = make_set(Resource, 10),
+    AccessCount = count(),
+    Services = make_set(ServiceType, 5),
+    Operations = make_set(OperationNameValue, 10),
+    VMs = make_set(Resource, 10),
     FirstSeen = min(TimeGenerated),
     LastSeen = max(TimeGenerated)
     by Caller, CallerIpAddress, SubscriptionId
-| where EventCount > threshold
 | extend
     AccountName = tostring(split(Caller, "@")[0]),
     AccountDomain = tostring(split(Caller, "@")[1])
@@ -782,10 +855,11 @@ AzureActivity
     Caller,
     CallerIpAddress,
     SubscriptionId,
-    EventCount,
-    DistinctOperations,
+    AccessCount,
+    Services,
     Operations,
-    Resources""",
+    VMs,
+    FirstSeen""",
                 azure_terraform_template="""# Azure Detection for Remote Services
 # MITRE ATT&CK: T1021
 

@@ -701,15 +701,180 @@ resource "google_monitoring_alert_policy" "quota_alert" {
             strategy_id="t1499-azure",
             name="Azure Endpoint Denial of Service Detection",
             description=(
-                "Azure detection for Endpoint Denial of Service. "
-                "Provides native Azure detection using Log Analytics and Defender for Cloud."
+                "Detect endpoint resource exhaustion attacks targeting Azure VMs, App Services, "
+                "Azure Functions, and AKS containers. Monitors CPU/memory exhaustion, API throttling, "
+                "and application-layer DoS patterns."
             ),
-            detection_type=DetectionType.DEFENDER_ALERT,
+            detection_type=DetectionType.SENTINEL_RULE,
             aws_service="n/a",
-            azure_service="defender",
+            azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Resource exhaustion detected",
+                    "CPU exhaustion attack",
+                    "Memory exhaustion attack",
+                    "Application DoS detected",
+                ],
+                azure_kql_query="""// Azure Endpoint Denial of Service Detection
+// MITRE ATT&CK: T1499 - Endpoint Denial of Service
+// Detects resource exhaustion attacks on Azure endpoints
+
+// VM CPU/Memory exhaustion
+Perf
+| where TimeGenerated > ago(1h)
+| where ObjectName == "Processor" and CounterName == "% Processor Time"
+| where CounterValue > 95
+| summarize AvgCPU = avg(CounterValue), MaxCPU = max(CounterValue)
+    by Computer, bin(TimeGenerated, 5m)
+| where AvgCPU > 90
+| project TimeGenerated, Computer, AvgCPU, MaxCPU, ExhaustionType = "CPU"
+
+// App Service performance degradation
+AppServiceHTTPLogs
+| where TimeGenerated > ago(1h)
+| where ScStatus >= 500 or TimeTaken > 30000
+| summarize
+    ErrorCount = countif(ScStatus >= 500),
+    SlowRequests = countif(TimeTaken > 30000),
+    TotalRequests = count()
+    by _ResourceId, bin(TimeGenerated, 5m)
+| where ErrorCount > 100 or SlowRequests > 50
+| extend ErrorRate = round(100.0 * ErrorCount / TotalRequests, 2)
+| project TimeGenerated, _ResourceId, ErrorCount, SlowRequests, ErrorRate
+
+// Azure Functions throttling
+FunctionAppLogs
+| where TimeGenerated > ago(1h)
+| where Level == "Error" or Message has_any ("throttl", "timeout", "exhausted")
+| summarize EventCount = count() by _ResourceId, bin(TimeGenerated, 5m)
+| where EventCount > 50
+| project TimeGenerated, _ResourceId, EventCount, ExhaustionType = "Function Throttling"
+
+// AKS container resource exhaustion
+ContainerLog
+| where TimeGenerated > ago(1h)
+| where LogEntry has_any ("OOMKilled", "memory exhausted", "resource limit")
+| summarize OOMCount = count() by ContainerID, bin(TimeGenerated, 5m)
+| project TimeGenerated, ContainerID, OOMCount, ExhaustionType = "Container OOM\"""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: Endpoint Denial of Service Detection
+// MITRE ATT&CK: T1499 - Endpoint Denial of Service
+let lookback = 1h;
+let cpu_threshold = 95;
+let error_rate_threshold = 10;  // 10% error rate
+
+// Detection 1: VM CPU exhaustion
+let vm_cpu_exhaustion = Perf
+| where TimeGenerated > ago(lookback)
+| where ObjectName == "Processor" and CounterName == "% Processor Time"
+| where CounterValue > cpu_threshold
+| summarize
+    AvgCPU = avg(CounterValue),
+    MaxCPU = max(CounterValue),
+    SampleCount = count()
+    by Computer, _ResourceId, bin(TimeGenerated, 5m)
+| where AvgCPU > 90 and SampleCount > 5
+| project
+    TimeGenerated,
+    ResourceType = "VirtualMachine",
+    ResourceId = _ResourceId,
+    ResourceName = Computer,
+    ExhaustionType = "CPU Exhaustion",
+    Metric = AvgCPU,
+    Severity = "High";
+
+// Detection 2: VM Memory exhaustion
+let vm_memory_exhaustion = Perf
+| where TimeGenerated > ago(lookback)
+| where ObjectName == "Memory" and CounterName == "% Used Memory"
+| where CounterValue > 95
+| summarize AvgMemory = avg(CounterValue) by Computer, _ResourceId, bin(TimeGenerated, 5m)
+| where AvgMemory > 90
+| project
+    TimeGenerated,
+    ResourceType = "VirtualMachine",
+    ResourceId = _ResourceId,
+    ResourceName = Computer,
+    ExhaustionType = "Memory Exhaustion",
+    Metric = AvgMemory,
+    Severity = "High";
+
+// Detection 3: App Service DoS patterns
+let app_service_dos = AppServiceHTTPLogs
+| where TimeGenerated > ago(lookback)
+| summarize
+    TotalRequests = count(),
+    ErrorCount = countif(ScStatus >= 500),
+    SlowCount = countif(TimeTaken > 30000)
+    by _ResourceId, CsHost, bin(TimeGenerated, 5m)
+| where TotalRequests > 100
+| extend ErrorRate = round(100.0 * ErrorCount / TotalRequests, 2)
+| where ErrorRate > error_rate_threshold or SlowCount > 50
+| project
+    TimeGenerated,
+    ResourceType = "AppService",
+    ResourceId = _ResourceId,
+    ResourceName = CsHost,
+    ExhaustionType = "Application Layer DoS",
+    Metric = ErrorRate,
+    Severity = "Medium";
+
+// Detection 4: Azure Function throttling
+let function_throttling = FunctionAppLogs
+| where TimeGenerated > ago(lookback)
+| where Level in ("Error", "Warning")
+| where Message has_any ("throttl", "timeout", "exhausted", "limit exceeded")
+| summarize ThrottleCount = count() by _ResourceId, bin(TimeGenerated, 5m)
+| where ThrottleCount > 100
+| project
+    TimeGenerated,
+    ResourceType = "FunctionApp",
+    ResourceId = _ResourceId,
+    ResourceName = "",
+    ExhaustionType = "Function Throttling",
+    Metric = toreal(ThrottleCount),
+    Severity = "Medium";
+
+// Detection 5: AKS container OOM kills
+let container_oom = KubePodInventory
+| where TimeGenerated > ago(lookback)
+| where PodStatus == "Failed"
+| where ContainerStatusReason has_any ("OOMKilled", "Error")
+| summarize OOMCount = count() by ClusterName, Namespace, Name, bin(TimeGenerated, 5m)
+| where OOMCount > 3
+| project
+    TimeGenerated,
+    ResourceType = "AKS",
+    ResourceId = "",
+    ResourceName = strcat(ClusterName, "/", Namespace, "/", Name),
+    ExhaustionType = "Container OOM",
+    Metric = toreal(OOMCount),
+    Severity = "High";
+
+// Combine all detections
+vm_cpu_exhaustion
+| union vm_memory_exhaustion
+| union app_service_dos
+| union function_throttling
+| union container_oom
+| summarize
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated),
+    EventCount = count(),
+    ExhaustionTypes = make_set(ExhaustionType),
+    AvgMetric = avg(Metric)
+    by ResourceType, ResourceId, ResourceName, Severity
+| project
+    TimeGenerated = LastSeen,
+    ResourceType,
+    ResourceId,
+    ResourceName,
+    Severity,
+    EventCount,
+    FirstSeen,
+    ExhaustionTypes,
+    AvgMetric
+| order by Severity asc, EventCount desc""",
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Endpoint Denial of Service (T1499)
 # Microsoft Defender detects Endpoint Denial of Service activity

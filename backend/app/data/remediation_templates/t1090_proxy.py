@@ -899,23 +899,100 @@ resource "aws_sns_topic_subscription" "email" {
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                sentinel_rule_query="""// Sentinel Analytics Rule: Proxy
-// MITRE ATT&CK: T1090
-let lookback = 24h;
-let threshold = 5;
+                azure_kql_query="""// Direct KQL Query: Detect Proxy Infrastructure Usage
+// MITRE ATT&CK: T1090 - Proxy
+// Data Sources: AzureActivity, AzureNetworkAnalytics, AzureDiagnostics
+
+// Define proxy-related operations
+let AppGatewayOps = dynamic([
+    "Microsoft.Network/applicationGateways/write",
+    "Microsoft.Network/applicationGateways/backendHttpSettingsCollection/write"
+]);
+let FrontDoorOps = dynamic([
+    "Microsoft.Cdn/profiles/write",
+    "Microsoft.Network/frontDoors/write",
+    "Microsoft.Network/frontDoors/routingRules/write"
+]);
+let VPNGatewayOps = dynamic([
+    "Microsoft.Network/vpnGateways/write",
+    "Microsoft.Network/virtualNetworkGateways/write",
+    "Microsoft.Network/connections/write"
+]);
+let APIManagementOps = dynamic([
+    "Microsoft.ApiManagement/service/write",
+    "Microsoft.ApiManagement/service/backends/write"
+]);
 AzureActivity
-| where TimeGenerated > ago(lookback)
-| where CategoryValue == "Administrative"
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (AppGatewayOps)
+    or OperationNameValue in (FrontDoorOps)
+    or OperationNameValue in (VPNGatewayOps)
+    or OperationNameValue in (APIManagementOps)
+| where ActivityStatusValue in ("Success", "Succeeded", "Start")
+| extend
+    ProxyType = case(
+        OperationNameValue has "applicationGateways", "Application Gateway",
+        OperationNameValue has "frontDoors" or OperationNameValue has "Cdn", "Front Door/CDN",
+        OperationNameValue has "vpnGateways" or OperationNameValue has "virtualNetworkGateways", "VPN Gateway",
+        OperationNameValue has "ApiManagement", "API Management",
+        "Other"
+    )
+| project
+    TimeGenerated,
+    ProxyType,
+    OperationNameValue,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    ActivityStatusValue
+| extend
+    TechniqueId = "T1090",
+    TechniqueName = "Proxy",
+    Severity = case(
+        ProxyType == "VPN Gateway", "High",
+        ProxyType == "Front Door/CDN", "Medium",
+        "Medium"
+    )""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: Proxy Infrastructure Detection
+// MITRE ATT&CK: T1090
+// Detects deployment/modification of proxy infrastructure
+
+let AppGatewayOps = dynamic([
+    "Microsoft.Network/applicationGateways/write",
+    "Microsoft.Network/applicationGateways/backendHttpSettingsCollection/write"
+]);
+let FrontDoorOps = dynamic([
+    "Microsoft.Cdn/profiles/write",
+    "Microsoft.Network/frontDoors/write"
+]);
+let VPNGatewayOps = dynamic([
+    "Microsoft.Network/vpnGateways/write",
+    "Microsoft.Network/virtualNetworkGateways/write",
+    "Microsoft.Network/connections/write"
+]);
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (AppGatewayOps)
+    or OperationNameValue in (FrontDoorOps)
+    or OperationNameValue in (VPNGatewayOps)
 | where ActivityStatusValue in ("Success", "Succeeded")
+| extend
+    ProxyType = case(
+        OperationNameValue has "applicationGateways", "Application Gateway",
+        OperationNameValue has "frontDoors" or OperationNameValue has "Cdn", "Front Door/CDN",
+        OperationNameValue has "vpnGateways" or OperationNameValue has "virtualNetworkGateways", "VPN Gateway",
+        "Other"
+    )
 | summarize
-    EventCount = count(),
-    DistinctOperations = dcount(OperationNameValue),
-    Operations = make_set(OperationNameValue, 20),
+    ConfigChanges = count(),
+    ProxyTypes = make_set(ProxyType, 5),
+    Operations = make_set(OperationNameValue, 10),
     Resources = make_set(Resource, 10),
     FirstSeen = min(TimeGenerated),
     LastSeen = max(TimeGenerated)
     by Caller, CallerIpAddress, SubscriptionId
-| where EventCount > threshold
 | extend
     AccountName = tostring(split(Caller, "@")[0]),
     AccountDomain = tostring(split(Caller, "@")[1])
@@ -926,10 +1003,11 @@ AzureActivity
     Caller,
     CallerIpAddress,
     SubscriptionId,
-    EventCount,
-    DistinctOperations,
+    ConfigChanges,
+    ProxyTypes,
     Operations,
-    Resources""",
+    Resources,
+    FirstSeen""",
                 azure_terraform_template="""# Azure Detection for Proxy
 # MITRE ATT&CK: T1090
 
