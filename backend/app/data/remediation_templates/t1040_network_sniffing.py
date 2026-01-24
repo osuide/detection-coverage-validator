@@ -915,6 +915,107 @@ resource "google_monitoring_alert_policy" "flow_anomaly" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Direct KQL Query: Detect Network Sniffing Activities
+// MITRE ATT&CK: T1040 - Network Sniffing
+// Data Sources: AzureActivity, AzureDiagnostics
+
+// Define network monitoring operations
+let NetworkWatcherOps = dynamic([
+    "Microsoft.Network/networkWatchers/packetCaptures/write",
+    "Microsoft.Network/networkWatchers/packetCaptures/queryStatus/action",
+    "Microsoft.Network/networkWatchers/queryFlowLogStatus/action",
+    "Microsoft.Network/networkWatchers/configureFlowLog/action"
+]);
+let TrafficAnalyticsOps = dynamic([
+    "Microsoft.Network/networkWatchers/trafficAnalyticsSolution/write",
+    "Microsoft.Network/networkWatchers/connectionMonitors/write"
+]);
+let VNetTapOps = dynamic([
+    "Microsoft.Network/virtualNetworkTaps/write",
+    "Microsoft.Network/virtualNetworkTaps/read"
+]);
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (NetworkWatcherOps)
+    or OperationNameValue in (TrafficAnalyticsOps)
+    or OperationNameValue in (VNetTapOps)
+| where ActivityStatusValue in ("Success", "Succeeded", "Start")
+| extend
+    ParsedProperties = parse_json(Properties),
+    CaptureType = case(
+        OperationNameValue has "packetCaptures", "Packet Capture",
+        OperationNameValue has "flowLog", "Flow Log",
+        OperationNameValue has "trafficAnalytics", "Traffic Analytics",
+        OperationNameValue has "connectionMonitors", "Connection Monitor",
+        OperationNameValue has "virtualNetworkTaps", "VNet TAP",
+        "Unknown"
+    )
+| project
+    TimeGenerated,
+    OperationNameValue,
+    CaptureType,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    ActivityStatusValue,
+    CorrelationId
+| extend
+    TechniqueId = "T1040",
+    TechniqueName = "Network Sniffing",
+    Severity = case(
+        CaptureType == "Packet Capture", "High",
+        CaptureType == "VNet TAP", "High",
+        "Medium"
+    )""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: Network Sniffing Detection
+// MITRE ATT&CK: T1040
+// Detects Network Watcher packet captures and traffic monitoring
+
+let NetworkWatcherOps = dynamic([
+    "Microsoft.Network/networkWatchers/packetCaptures/write",
+    "Microsoft.Network/networkWatchers/packetCaptures/queryStatus/action",
+    "Microsoft.Network/networkWatchers/queryFlowLogStatus/action",
+    "Microsoft.Network/networkWatchers/configureFlowLog/action"
+]);
+let VNetTapOps = dynamic([
+    "Microsoft.Network/virtualNetworkTaps/write",
+    "Microsoft.Network/virtualNetworkTaps/read"
+]);
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (NetworkWatcherOps) or OperationNameValue in (VNetTapOps)
+| where ActivityStatusValue in ("Success", "Succeeded", "Start")
+| extend
+    CaptureType = case(
+        OperationNameValue has "packetCaptures", "Packet Capture",
+        OperationNameValue has "flowLog", "Flow Log",
+        OperationNameValue has "virtualNetworkTaps", "VNet TAP",
+        "Other"
+    )
+| summarize
+    EventCount = count(),
+    Operations = make_set(OperationNameValue, 10),
+    CaptureTypes = make_set(CaptureType, 5),
+    Resources = make_set(Resource, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Caller, CallerIpAddress, SubscriptionId
+| extend
+    AccountName = tostring(split(Caller, "@")[0]),
+    AccountDomain = tostring(split(Caller, "@")[1])
+| project
+    TimeGenerated = LastSeen,
+    AccountName,
+    AccountDomain,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    EventCount,
+    Operations,
+    CaptureTypes,
+    Resources""",
                 defender_alert_types=["Suspicious activity detected"],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Network Sniffing (T1040)

@@ -655,6 +655,101 @@ resource "aws_cloudwatch_metric_alarm" "secrets_access" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Direct KQL Query: Detect Credentials in Files Access
+// MITRE ATT&CK: T1552.001 - Unsecured Credentials: Credentials in Files
+// Data Sources: AzureDiagnostics, StorageBlobLogs, AzureActivity
+
+// Part 1: Detect Key Vault secret access patterns
+let KeyVaultSecretAccess = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in ("SecretGet", "SecretList")
+| summarize
+    SecretAccessCount = count(),
+    SecretsAccessed = make_set(id_s, 20),
+    FirstAccess = min(TimeGenerated),
+    LastAccess = max(TimeGenerated)
+    by CallerIPAddress, identity_claim_upn_s, Resource
+| extend AccessType = "Key Vault Secrets";
+// Part 2: Detect storage blob downloads of credential-like files
+let StorageCredentialFiles = StorageBlobLogs
+| where TimeGenerated > ago(24h)
+| where OperationType == "GetBlob"
+| where Uri has_any (".env", ".pem", ".key", ".pfx", "credentials", "secret", "password", "config.json", "appsettings")
+| summarize
+    FileDownloadCount = count(),
+    FilesDownloaded = make_set(Uri, 20),
+    FirstDownload = min(TimeGenerated),
+    LastDownload = max(TimeGenerated)
+    by CallerIpAddress, RequesterUpn, AccountName
+| extend AccessType = "Storage Credential Files";
+// Part 3: Detect file share access for credential files
+let FileShareAccess = StorageFileLogs
+| where TimeGenerated > ago(24h)
+| where OperationType in ("GetFile", "ListFiles")
+| where Uri has_any (".env", ".pem", ".key", ".pfx", "credentials", "secret", "password")
+| summarize
+    FileAccessCount = count(),
+    Files = make_set(Uri, 20),
+    FirstAccess = min(TimeGenerated),
+    LastAccess = max(TimeGenerated)
+    by CallerIpAddress, RequesterUpn, AccountName
+| extend AccessType = "File Share Credentials";
+// Combine results
+KeyVaultSecretAccess
+| project
+    TimeGenerated = LastAccess,
+    AccessType,
+    Caller = identity_claim_upn_s,
+    CallerIpAddress,
+    Resource,
+    AccessCount = SecretAccessCount,
+    ItemsAccessed = SecretsAccessed,
+    TechniqueId = "T1552.001",
+    TechniqueName = "Credentials in Files",
+    Severity = "High" """,
+                sentinel_rule_query="""// Sentinel Analytics Rule: Credentials in Files Detection
+// MITRE ATT&CK: T1552.001
+// Detects Key Vault secret access and storage credential file downloads
+
+// Key Vault secrets
+let KeyVaultAccess = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in ("SecretGet", "SecretList")
+| summarize
+    SecretCount = count(),
+    Secrets = make_set(id_s, 10),
+    Vaults = make_set(Resource, 5),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by CallerIPAddress, identity_claim_upn_s
+| where SecretCount > 5;
+// Storage credential files
+let StorageAccess = StorageBlobLogs
+| where TimeGenerated > ago(24h)
+| where OperationType == "GetBlob"
+| where Uri has_any (".env", ".pem", ".key", ".pfx", "credentials", "secret", "password", "config.json")
+| summarize
+    FileCount = count(),
+    Files = make_set(Uri, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by CallerIpAddress, RequesterUpn;
+KeyVaultAccess
+| extend
+    AccountName = tostring(split(identity_claim_upn_s, "@")[0]),
+    AccountDomain = tostring(split(identity_claim_upn_s, "@")[1])
+| project
+    TimeGenerated = LastSeen,
+    AccountName,
+    AccountDomain,
+    Caller = identity_claim_upn_s,
+    CallerIpAddress = CallerIPAddress,
+    SecretCount,
+    Secrets,
+    Vaults,
+    FirstSeen""",
                 defender_alert_types=["Suspicious activity detected"],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Unsecured Credentials: Credentials in Files (T1552.001)

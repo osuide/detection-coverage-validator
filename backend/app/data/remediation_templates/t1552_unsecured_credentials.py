@@ -767,6 +767,97 @@ resource "aws_cloudwatch_metric_alarm" "metadata_abuse" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Direct KQL Query: Detect Unsecured Credential Access
+// MITRE ATT&CK: T1552 - Unsecured Credentials
+// Data Sources: AzureActivity, AzureDiagnostics, AuditLogs
+
+// Part 1: Detect bulk Key Vault secret/key access
+let KeyVaultBulkAccess = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in ("SecretGet", "SecretList", "KeyGet", "KeyList", "CertificateGet", "CertificateList")
+| summarize
+    SecretAccessCount = countif(OperationName has "Secret"),
+    KeyAccessCount = countif(OperationName has "Key"),
+    CertAccessCount = countif(OperationName has "Certificate"),
+    TotalAccessCount = count(),
+    Operations = make_set(OperationName, 10),
+    FirstAccess = min(TimeGenerated),
+    LastAccess = max(TimeGenerated)
+    by CallerIPAddress, identity_claim_upn_s, Resource
+| where TotalAccessCount > 10  // Threshold for bulk access
+| extend AccessType = "Key Vault Bulk Access";
+// Part 2: Detect App Configuration access
+let AppConfigAccess = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue has "Microsoft.AppConfiguration"
+| where OperationNameValue has "keyValues/read" or OperationNameValue has "keyValues/write"
+| summarize
+    AccessCount = count(),
+    Operations = make_set(OperationNameValue, 10),
+    FirstAccess = min(TimeGenerated),
+    LastAccess = max(TimeGenerated)
+    by CallerIpAddress, Caller, Resource
+| extend AccessType = "App Configuration Access";
+// Part 3: Detect Managed Identity token requests from unusual sources
+let ManagedIdentityAccess = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue has "Microsoft.ManagedIdentity"
+| summarize
+    TokenRequests = count(),
+    Resources = make_set(Resource, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by CallerIpAddress, Caller
+| extend AccessType = "Managed Identity Token";
+// Combine results
+KeyVaultBulkAccess
+| project
+    TimeGenerated = LastAccess,
+    AccessType,
+    Caller = identity_claim_upn_s,
+    CallerIpAddress,
+    Resource,
+    TotalAccessCount,
+    Operations,
+    TechniqueId = "T1552",
+    TechniqueName = "Unsecured Credentials",
+    Severity = "High" """,
+                sentinel_rule_query="""// Sentinel Analytics Rule: Unsecured Credentials Detection
+// MITRE ATT&CK: T1552
+// Detects bulk Key Vault access and credential harvesting
+
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in ("SecretGet", "SecretList", "KeyGet", "KeyList", "CertificateGet", "CertificateList")
+| summarize
+    SecretAccessCount = countif(OperationName has "Secret"),
+    KeyAccessCount = countif(OperationName has "Key"),
+    CertAccessCount = countif(OperationName has "Certificate"),
+    TotalAccessCount = count(),
+    Operations = make_set(OperationName, 10),
+    Vaults = make_set(Resource, 10),
+    FirstAccess = min(TimeGenerated),
+    LastAccess = max(TimeGenerated)
+    by CallerIPAddress, identity_claim_upn_s
+| where TotalAccessCount > 10  // Alert on bulk access
+| extend
+    AccountName = tostring(split(identity_claim_upn_s, "@")[0]),
+    AccountDomain = tostring(split(identity_claim_upn_s, "@")[1])
+| project
+    TimeGenerated = LastAccess,
+    AccountName,
+    AccountDomain,
+    Caller = identity_claim_upn_s,
+    CallerIpAddress = CallerIPAddress,
+    TotalAccessCount,
+    SecretAccessCount,
+    KeyAccessCount,
+    CertAccessCount,
+    Operations,
+    Vaults,
+    FirstAccess""",
                 defender_alert_types=[
                     "Exposed credentials in code",
                     "Secrets in configuration",

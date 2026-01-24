@@ -1507,23 +1507,128 @@ output "scp_policy_id" {
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Direct KQL Query: Detect Cloud Logging Modifications
+// MITRE ATT&CK: T1562.008 - Impair Defences: Disable or Modify Cloud Logs
+// Data Sources: AzureActivity, AzureDiagnostics
+
+// Define logging-related operations
+let DiagnosticSettingsOps = dynamic([
+    "Microsoft.Insights/diagnosticSettings/write",
+    "Microsoft.Insights/diagnosticSettings/delete"
+]);
+let ActivityLogOps = dynamic([
+    "Microsoft.Insights/logProfiles/write",
+    "Microsoft.Insights/logProfiles/delete",
+    "Microsoft.Insights/activityLogAlerts/write",
+    "Microsoft.Insights/activityLogAlerts/delete"
+]);
+let LogAnalyticsOps = dynamic([
+    "Microsoft.OperationalInsights/workspaces/write",
+    "Microsoft.OperationalInsights/workspaces/delete",
+    "Microsoft.OperationalInsights/workspaces/linkedServices/delete",
+    "Microsoft.OperationalInsights/workspaces/dataSources/delete"
+]);
+let MonitorOps = dynamic([
+    "Microsoft.Insights/components/delete",
+    "Microsoft.Insights/metricalerts/delete",
+    "Microsoft.Insights/scheduledqueryrules/delete"
+]);
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (DiagnosticSettingsOps)
+    or OperationNameValue in (ActivityLogOps)
+    or OperationNameValue in (LogAnalyticsOps)
+    or OperationNameValue in (MonitorOps)
+| where ActivityStatusValue in ("Success", "Succeeded", "Start")
+| extend
+    ParsedProperties = parse_json(Properties),
+    LoggingType = case(
+        OperationNameValue has "diagnosticSettings", "Diagnostic Settings",
+        OperationNameValue has "logProfiles" or OperationNameValue has "activityLogAlerts", "Activity Log",
+        OperationNameValue has "OperationalInsights", "Log Analytics",
+        OperationNameValue has "Insights", "Azure Monitor",
+        "Unknown"
+    ),
+    ActionType = case(
+        OperationNameValue has "delete", "Delete",
+        OperationNameValue has "write", "Modify",
+        "Unknown"
+    )
+| project
+    TimeGenerated,
+    OperationNameValue,
+    LoggingType,
+    ActionType,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    ActivityStatusValue,
+    CorrelationId
+| extend
+    TechniqueId = "T1562.008",
+    TechniqueName = "Impair Defences: Disable or Modify Cloud Logs",
+    Severity = case(
+        ActionType == "Delete", "Critical",
+        LoggingType == "Log Analytics", "High",
+        LoggingType == "Activity Log", "High",
+        "Medium"
+    )""",
                 sentinel_rule_query="""// Sentinel Analytics Rule: Impair Defences: Disable or Modify Cloud Logs
 // MITRE ATT&CK: T1562.008
-let lookback = 24h;
-let threshold = 5;
+// Detects modifications to diagnostic settings, Activity Log, and Azure Monitor
+
+let DiagnosticSettingsOps = dynamic([
+    "Microsoft.Insights/diagnosticSettings/write",
+    "Microsoft.Insights/diagnosticSettings/delete"
+]);
+let ActivityLogOps = dynamic([
+    "Microsoft.Insights/logProfiles/write",
+    "Microsoft.Insights/logProfiles/delete",
+    "Microsoft.Insights/activityLogAlerts/write",
+    "Microsoft.Insights/activityLogAlerts/delete"
+]);
+let LogAnalyticsOps = dynamic([
+    "Microsoft.OperationalInsights/workspaces/write",
+    "Microsoft.OperationalInsights/workspaces/delete",
+    "Microsoft.OperationalInsights/workspaces/linkedServices/delete",
+    "Microsoft.OperationalInsights/workspaces/dataSources/delete"
+]);
+let MonitorOps = dynamic([
+    "Microsoft.Insights/components/delete",
+    "Microsoft.Insights/metricalerts/delete",
+    "Microsoft.Insights/scheduledqueryrules/delete"
+]);
 AzureActivity
-| where TimeGenerated > ago(lookback)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue in ("Success", "Succeeded")
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (DiagnosticSettingsOps)
+    or OperationNameValue in (ActivityLogOps)
+    or OperationNameValue in (LogAnalyticsOps)
+    or OperationNameValue in (MonitorOps)
+| where ActivityStatusValue in ("Success", "Succeeded", "Start")
+| extend
+    LoggingType = case(
+        OperationNameValue has "diagnosticSettings", "Diagnostic Settings",
+        OperationNameValue has "logProfiles" or OperationNameValue has "activityLogAlerts", "Activity Log",
+        OperationNameValue has "OperationalInsights", "Log Analytics",
+        OperationNameValue has "Insights", "Azure Monitor",
+        "Unknown"
+    ),
+    ActionType = case(
+        OperationNameValue has "delete", "Delete",
+        OperationNameValue has "write", "Modify",
+        "Unknown"
+    )
+| where ActionType == "Delete"  // Focus on deletions as high-risk
 | summarize
     EventCount = count(),
-    DistinctOperations = dcount(OperationNameValue),
     Operations = make_set(OperationNameValue, 20),
+    LoggingTypes = make_set(LoggingType, 5),
     Resources = make_set(Resource, 10),
     FirstSeen = min(TimeGenerated),
     LastSeen = max(TimeGenerated)
     by Caller, CallerIpAddress, SubscriptionId
-| where EventCount > threshold
 | extend
     AccountName = tostring(split(Caller, "@")[0]),
     AccountDomain = tostring(split(Caller, "@")[1])
@@ -1535,9 +1640,10 @@ AzureActivity
     CallerIpAddress,
     SubscriptionId,
     EventCount,
-    DistinctOperations,
     Operations,
-    Resources""",
+    LoggingTypes,
+    Resources,
+    FirstSeen""",
                 azure_terraform_template="""# Azure Detection for Impair Defences: Disable or Modify Cloud Logs
 # MITRE ATT&CK: T1562.008
 

@@ -1086,6 +1086,124 @@ output "notification_channel_id" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Direct KQL Query: Detect Cloud Secrets Store Access
+// MITRE ATT&CK: T1555.006 - Credentials from Password Stores: Cloud Secrets
+// Data Sources: AzureDiagnostics (Key Vault), AzureActivity
+
+// Part 1: Detect suspicious Key Vault secret operations
+let KeyVaultSecretOps = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in ("SecretGet", "SecretList", "SecretBackup", "SecretRestore", "SecretPurge")
+| extend
+    IsHighRisk = OperationName in ("SecretBackup", "SecretPurge"),
+    SecretId = id_s
+| summarize
+    TotalOperations = count(),
+    GetCount = countif(OperationName == "SecretGet"),
+    ListCount = countif(OperationName == "SecretList"),
+    BackupCount = countif(OperationName == "SecretBackup"),
+    PurgeCount = countif(OperationName == "SecretPurge"),
+    HighRiskOps = countif(IsHighRisk),
+    Secrets = make_set(SecretId, 20),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by CallerIPAddress, identity_claim_upn_s, Resource
+| where TotalOperations > 5 or HighRiskOps > 0;
+// Part 2: Detect Key Vault access from new/unusual IPs
+let KeyVaultNewIPs = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName has "Secret"
+| summarize
+    FirstAccess = min(TimeGenerated),
+    AccessCount = count()
+    by CallerIPAddress, identity_claim_upn_s, Resource
+| join kind=leftanti (
+    AzureDiagnostics
+    | where TimeGenerated between (ago(30d) .. ago(24h))
+    | where ResourceProvider == "MICROSOFT.KEYVAULT"
+    | summarize by CallerIPAddress, identity_claim_upn_s
+) on CallerIPAddress, identity_claim_upn_s
+| extend IsNewIP = true;
+// Part 3: Detect access to multiple Key Vaults
+let MultiVaultAccess = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName has "Secret"
+| summarize
+    VaultCount = dcount(Resource),
+    Vaults = make_set(Resource, 10),
+    TotalOps = count(),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by CallerIPAddress, identity_claim_upn_s
+| where VaultCount > 3;  // Accessing many vaults is suspicious
+// Combine results
+KeyVaultSecretOps
+| project
+    TimeGenerated = LastSeen,
+    Caller = identity_claim_upn_s,
+    CallerIpAddress = CallerIPAddress,
+    Resource,
+    TotalOperations,
+    GetCount,
+    ListCount,
+    BackupCount,
+    PurgeCount,
+    Secrets,
+    TechniqueId = "T1555.006",
+    TechniqueName = "Cloud Secrets Management Stores",
+    Severity = case(
+        BackupCount > 0 or PurgeCount > 0, "Critical",
+        TotalOperations > 20, "High",
+        "Medium"
+    )""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: Cloud Secrets Management Store Access
+// MITRE ATT&CK: T1555.006
+// Detects suspicious Key Vault secret operations
+
+AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in ("SecretGet", "SecretList", "SecretBackup", "SecretRestore", "SecretPurge")
+| extend
+    IsHighRisk = OperationName in ("SecretBackup", "SecretPurge")
+| summarize
+    TotalOperations = count(),
+    GetCount = countif(OperationName == "SecretGet"),
+    ListCount = countif(OperationName == "SecretList"),
+    BackupCount = countif(OperationName == "SecretBackup"),
+    PurgeCount = countif(OperationName == "SecretPurge"),
+    HighRiskOps = countif(IsHighRisk),
+    Vaults = make_set(Resource, 10),
+    Secrets = make_set(id_s, 20),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by CallerIPAddress, identity_claim_upn_s
+| where TotalOperations > 10 or HighRiskOps > 0
+| extend
+    AccountName = tostring(split(identity_claim_upn_s, "@")[0]),
+    AccountDomain = tostring(split(identity_claim_upn_s, "@")[1])
+| project
+    TimeGenerated = LastSeen,
+    AccountName,
+    AccountDomain,
+    Caller = identity_claim_upn_s,
+    CallerIpAddress = CallerIPAddress,
+    TotalOperations,
+    GetCount,
+    ListCount,
+    BackupCount,
+    PurgeCount,
+    Vaults,
+    Secrets,
+    FirstSeen,
+    AlertSeverity = case(
+        BackupCount > 0 or PurgeCount > 0, "High",
+        TotalOperations > 20, "Medium",
+        "Low"
+    )""",
                 defender_alert_types=["Suspicious activity detected"],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Credentials from Password Stores: Cloud Secrets Management Stores (T1555.006)

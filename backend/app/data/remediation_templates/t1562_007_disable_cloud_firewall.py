@@ -705,23 +705,133 @@ resource "aws_cloudwatch_metric_alarm" "guardduty_suppression_alert" {
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Direct KQL Query: Detect Cloud Firewall Modifications
+// MITRE ATT&CK: T1562.007 - Impair Defenses: Disable or Modify Cloud Firewall
+// Data Sources: AzureActivity, AzureDiagnostics
+
+// Define firewall-related operations
+let NSGOperations = dynamic([
+    "Microsoft.Network/networkSecurityGroups/write",
+    "Microsoft.Network/networkSecurityGroups/delete",
+    "Microsoft.Network/networkSecurityGroups/securityRules/write",
+    "Microsoft.Network/networkSecurityGroups/securityRules/delete"
+]);
+let AzureFirewallOperations = dynamic([
+    "Microsoft.Network/azureFirewalls/write",
+    "Microsoft.Network/azureFirewalls/delete",
+    "Microsoft.Network/firewallPolicies/write",
+    "Microsoft.Network/firewallPolicies/delete",
+    "Microsoft.Network/firewallPolicies/ruleCollectionGroups/write",
+    "Microsoft.Network/firewallPolicies/ruleCollectionGroups/delete"
+]);
+let WAFOperations = dynamic([
+    "Microsoft.Network/applicationGatewayWebApplicationFirewallPolicies/write",
+    "Microsoft.Network/applicationGatewayWebApplicationFirewallPolicies/delete",
+    "Microsoft.Network/frontDoorWebApplicationFirewallPolicies/write",
+    "Microsoft.Network/frontDoorWebApplicationFirewallPolicies/delete",
+    "Microsoft.Cdn/CdnWebApplicationFirewallPolicies/write",
+    "Microsoft.Cdn/CdnWebApplicationFirewallPolicies/delete"
+]);
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (NSGOperations)
+    or OperationNameValue in (AzureFirewallOperations)
+    or OperationNameValue in (WAFOperations)
+| where ActivityStatusValue in ("Success", "Succeeded", "Start")
+| extend
+    ParsedProperties = parse_json(Properties),
+    ResourceType = case(
+        OperationNameValue has "networkSecurityGroups", "NSG",
+        OperationNameValue has "azureFirewalls" or OperationNameValue has "firewallPolicies", "Azure Firewall",
+        OperationNameValue has "WebApplicationFirewall", "WAF",
+        "Unknown"
+    ),
+    ActionType = case(
+        OperationNameValue has "delete", "Delete",
+        OperationNameValue has "write", "Create/Modify",
+        "Unknown"
+    )
+// Check for permissive rules (0.0.0.0/0 or any source)
+| extend
+    RequestBody = tostring(ParsedProperties.requestbody),
+    IsPermissive = RequestBody has "0.0.0.0/0" or RequestBody has "*" or RequestBody has "Any"
+| project
+    TimeGenerated,
+    OperationNameValue,
+    ResourceType,
+    ActionType,
+    IsPermissive,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    ActivityStatusValue,
+    CorrelationId
+| extend
+    TechniqueId = "T1562.007",
+    TechniqueName = "Impair Defenses: Disable or Modify Cloud Firewall",
+    Severity = case(
+        ActionType == "Delete", "High",
+        IsPermissive == true, "High",
+        ResourceType == "WAF", "High",
+        "Medium"
+    )""",
                 sentinel_rule_query="""// Sentinel Analytics Rule: Impair Defenses: Disable or Modify Cloud Firewall
 // MITRE ATT&CK: T1562.007
-let lookback = 24h;
-let threshold = 5;
+// Detects NSG, Azure Firewall, and WAF modifications
+
+let NSGOperations = dynamic([
+    "Microsoft.Network/networkSecurityGroups/write",
+    "Microsoft.Network/networkSecurityGroups/delete",
+    "Microsoft.Network/networkSecurityGroups/securityRules/write",
+    "Microsoft.Network/networkSecurityGroups/securityRules/delete"
+]);
+let AzureFirewallOperations = dynamic([
+    "Microsoft.Network/azureFirewalls/write",
+    "Microsoft.Network/azureFirewalls/delete",
+    "Microsoft.Network/firewallPolicies/write",
+    "Microsoft.Network/firewallPolicies/delete",
+    "Microsoft.Network/firewallPolicies/ruleCollectionGroups/write",
+    "Microsoft.Network/firewallPolicies/ruleCollectionGroups/delete"
+]);
+let WAFOperations = dynamic([
+    "Microsoft.Network/applicationGatewayWebApplicationFirewallPolicies/write",
+    "Microsoft.Network/applicationGatewayWebApplicationFirewallPolicies/delete",
+    "Microsoft.Network/frontDoorWebApplicationFirewallPolicies/write",
+    "Microsoft.Network/frontDoorWebApplicationFirewallPolicies/delete"
+]);
 AzureActivity
-| where TimeGenerated > ago(lookback)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue in ("Success", "Succeeded")
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (NSGOperations)
+    or OperationNameValue in (AzureFirewallOperations)
+    or OperationNameValue in (WAFOperations)
+| where ActivityStatusValue in ("Success", "Succeeded", "Start")
+| extend
+    ParsedProperties = parse_json(Properties),
+    ResourceType = case(
+        OperationNameValue has "networkSecurityGroups", "NSG",
+        OperationNameValue has "azureFirewalls" or OperationNameValue has "firewallPolicies", "Azure Firewall",
+        OperationNameValue has "WebApplicationFirewall", "WAF",
+        "Unknown"
+    ),
+    ActionType = case(
+        OperationNameValue has "delete", "Delete",
+        OperationNameValue has "write", "Create/Modify",
+        "Unknown"
+    )
+| extend
+    RequestBody = tostring(ParsedProperties.requestbody),
+    IsPermissive = RequestBody has "0.0.0.0/0" or RequestBody has "*"
+| where ActionType == "Delete" or IsPermissive == true or ResourceType == "WAF"
 | summarize
     EventCount = count(),
-    DistinctOperations = dcount(OperationNameValue),
     Operations = make_set(OperationNameValue, 20),
+    ResourceTypes = make_set(ResourceType, 5),
     Resources = make_set(Resource, 10),
     FirstSeen = min(TimeGenerated),
     LastSeen = max(TimeGenerated)
     by Caller, CallerIpAddress, SubscriptionId
-| where EventCount > threshold
 | extend
     AccountName = tostring(split(Caller, "@")[0]),
     AccountDomain = tostring(split(Caller, "@")[1])
@@ -733,9 +843,10 @@ AzureActivity
     CallerIpAddress,
     SubscriptionId,
     EventCount,
-    DistinctOperations,
     Operations,
-    Resources""",
+    ResourceTypes,
+    Resources,
+    FirstSeen""",
                 azure_terraform_template="""# Azure Detection for Impair Defenses: Disable or Modify Cloud Firewall
 # MITRE ATT&CK: T1562.007
 

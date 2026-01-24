@@ -588,6 +588,112 @@ resource "google_monitoring_alert_policy" "registry_access" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Direct KQL Query: Detect Container API Credential Access
+// MITRE ATT&CK: T1552.007 - Unsecured Credentials: Container API
+// Data Sources: AKSAuditLogs, AzureActivity, ContainerRegistryLoginEvents
+
+// Part 1: Detect AKS secrets access
+let AKSSecretAccess = AKSAuditLogs
+| where TimeGenerated > ago(24h)
+| where log_s has "secrets"
+| extend LogData = parse_json(log_s)
+| where LogData.verb in ("get", "list", "watch")
+| where LogData.objectRef.resource == "secrets"
+| extend
+    Namespace = tostring(LogData.objectRef.namespace),
+    SecretName = tostring(LogData.objectRef.name),
+    Username = tostring(LogData.user.username),
+    SourceIP = tostring(LogData.sourceIPs[0])
+| summarize
+    SecretAccessCount = count(),
+    Secrets = make_set(SecretName, 20),
+    Namespaces = make_set(Namespace, 10),
+    FirstAccess = min(TimeGenerated),
+    LastAccess = max(TimeGenerated)
+    by Username, SourceIP, _ResourceId
+| extend AccessType = "AKS Secrets";
+// Part 2: Detect Container Registry access
+let ACRAccess = ContainerRegistryLoginEvents
+| where TimeGenerated > ago(24h)
+| summarize
+    LoginCount = count(),
+    Registries = make_set(Registry, 10),
+    FirstLogin = min(TimeGenerated),
+    LastLogin = max(TimeGenerated)
+    by Identity, ClientIP, LoginResult
+| extend AccessType = "Container Registry";
+// Part 3: Detect AKS cluster operations that could expose secrets
+let AKSConfigAccess = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue has "Microsoft.ContainerService/managedClusters"
+| where OperationNameValue has_any ("listClusterAdminCredential", "listClusterUserCredential", "accessProfiles/read")
+| summarize
+    CredentialAccessCount = count(),
+    Operations = make_set(OperationNameValue, 10),
+    Clusters = make_set(Resource, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Caller, CallerIpAddress, SubscriptionId
+| extend AccessType = "AKS Credentials";
+// Combine results
+AKSSecretAccess
+| project
+    TimeGenerated = LastAccess,
+    AccessType,
+    Caller = Username,
+    CallerIpAddress = SourceIP,
+    Resource = _ResourceId,
+    AccessCount = SecretAccessCount,
+    ItemsAccessed = Secrets,
+    TechniqueId = "T1552.007",
+    TechniqueName = "Container API Credentials",
+    Severity = "High" """,
+                sentinel_rule_query="""// Sentinel Analytics Rule: Container API Credential Access
+// MITRE ATT&CK: T1552.007
+// Detects AKS secrets access and Container Registry operations
+
+// AKS secrets access
+let AKSSecrets = AKSAuditLogs
+| where TimeGenerated > ago(24h)
+| where log_s has "secrets"
+| extend LogData = parse_json(log_s)
+| where LogData.verb in ("get", "list", "watch")
+| where LogData.objectRef.resource == "secrets"
+| extend
+    Namespace = tostring(LogData.objectRef.namespace),
+    SecretName = tostring(LogData.objectRef.name),
+    Username = tostring(LogData.user.username),
+    SourceIP = tostring(LogData.sourceIPs[0])
+| summarize
+    SecretCount = count(),
+    Secrets = make_set(SecretName, 10),
+    Namespaces = make_set(Namespace, 5),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Username, SourceIP, _ResourceId
+| where SecretCount > 5;  // Alert on bulk access
+// AKS credential listing
+let AKSCreds = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue has "Microsoft.ContainerService/managedClusters"
+| where OperationNameValue has_any ("listClusterAdminCredential", "listClusterUserCredential")
+| summarize
+    CredCount = count(),
+    Clusters = make_set(Resource, 5),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Caller, CallerIpAddress;
+AKSSecrets
+| project
+    TimeGenerated = LastSeen,
+    AccessType = "AKS Secrets",
+    Caller = Username,
+    CallerIpAddress = SourceIP,
+    Cluster = _ResourceId,
+    SecretCount,
+    Secrets,
+    Namespaces,
+    FirstSeen""",
                 defender_alert_types=["Suspicious activity detected"],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Unsecured Credentials: Container API (T1552.007)

@@ -597,23 +597,116 @@ Resources:
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
+                azure_kql_query="""// Direct KQL Query: Detect Disabling/Modifying Security Tools
+// MITRE ATT&CK: T1562.001 - Impair Defences: Disable or Modify Tools
+// Data Sources: AzureActivity, SecurityAlert, AzureDiagnostics
+
+// Part 1: Detect Defender for Cloud/Security Center modifications
+let DefenderOperations = dynamic([
+    "Microsoft.Security/pricings/write",
+    "Microsoft.Security/policies/write",
+    "Microsoft.Security/securityContacts/delete",
+    "Microsoft.Security/autoProvisioningSettings/write",
+    "Microsoft.Security/assessments/dismiss/action",
+    "Microsoft.Security/workspaceSettings/delete",
+    "Microsoft.Security/advancedThreatProtectionSettings/write"
+]);
+// Part 2: Detect Defender for Endpoint/Azure Defender disabling
+let DefenderAlertOperations = dynamic([
+    "Microsoft.SecurityInsights/alertRules/delete",
+    "Microsoft.SecurityInsights/alertRules/actions/delete",
+    "Microsoft.OperationalInsights/workspaces/delete",
+    "Microsoft.Insights/diagnosticSettings/delete"
+]);
+AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (DefenderOperations) or OperationNameValue in (DefenderAlertOperations)
+| where ActivityStatusValue in ("Success", "Succeeded", "Start")
+| extend
+    ParsedProperties = parse_json(Properties),
+    ResourceDetails = parse_json(tostring(parse_json(Properties).entity))
+| extend
+    OldPricingTier = tostring(ParsedProperties.previousResourceState.pricingTier),
+    NewPricingTier = tostring(ParsedProperties.newResourceState.pricingTier)
+| where (OldPricingTier == "Standard" and NewPricingTier == "Free")
+    or OperationNameValue has "delete"
+    or OperationNameValue has "dismiss"
+    or (OperationNameValue has "autoProvisioningSettings" and tostring(ParsedProperties.newResourceState.autoProvision) == "Off")
+| project
+    TimeGenerated,
+    OperationNameValue,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    OldPricingTier,
+    NewPricingTier,
+    ActivityStatusValue,
+    Level,
+    CorrelationId
+| extend
+    TechniqueId = "T1562.001",
+    TechniqueName = "Impair Defences: Disable or Modify Tools",
+    Severity = case(
+        OperationNameValue has "delete", "High",
+        OperationNameValue has "dismiss", "Medium",
+        NewPricingTier == "Free", "High",
+        "Medium"
+    )""",
                 sentinel_rule_query="""// Sentinel Analytics Rule: Impair Defences: Disable or Modify Tools
 // MITRE ATT&CK: T1562.001
-let lookback = 24h;
-let threshold = 5;
+// Detects disabling of Defender for Cloud, Sentinel rules, and security monitoring
+
+let DefenderOperations = dynamic([
+    "Microsoft.Security/pricings/write",
+    "Microsoft.Security/policies/write",
+    "Microsoft.Security/securityContacts/delete",
+    "Microsoft.Security/autoProvisioningSettings/write",
+    "Microsoft.Security/assessments/dismiss/action",
+    "Microsoft.Security/workspaceSettings/delete",
+    "Microsoft.Security/advancedThreatProtectionSettings/write"
+]);
+let SentinelOperations = dynamic([
+    "Microsoft.SecurityInsights/alertRules/delete",
+    "Microsoft.SecurityInsights/alertRules/actions/delete",
+    "Microsoft.SecurityInsights/incidents/delete",
+    "Microsoft.SecurityInsights/dataConnectors/delete",
+    "Microsoft.OperationalInsights/workspaces/delete"
+]);
+let DiagnosticOperations = dynamic([
+    "Microsoft.Insights/diagnosticSettings/delete",
+    "Microsoft.Insights/activityLogAlerts/delete",
+    "Microsoft.Insights/logProfiles/delete"
+]);
 AzureActivity
-| where TimeGenerated > ago(lookback)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue in ("Success", "Succeeded")
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (DefenderOperations)
+    or OperationNameValue in (SentinelOperations)
+    or OperationNameValue in (DiagnosticOperations)
+| where ActivityStatusValue in ("Success", "Succeeded", "Start")
+| extend
+    ParsedProperties = parse_json(Properties)
+| extend
+    IsPricingDowngrade = (
+        tostring(parse_json(tostring(ParsedProperties.previousResourceState)).pricingTier) == "Standard"
+        and tostring(parse_json(tostring(ParsedProperties.newResourceState)).pricingTier) == "Free"
+    ),
+    IsAutoProvisionDisabled = (
+        OperationNameValue has "autoProvisioningSettings"
+        and tostring(parse_json(tostring(ParsedProperties.newResourceState)).autoProvision) == "Off"
+    )
+| where OperationNameValue has "delete"
+    or OperationNameValue has "dismiss"
+    or IsPricingDowngrade
+    or IsAutoProvisionDisabled
 | summarize
     EventCount = count(),
-    DistinctOperations = dcount(OperationNameValue),
     Operations = make_set(OperationNameValue, 20),
     Resources = make_set(Resource, 10),
     FirstSeen = min(TimeGenerated),
     LastSeen = max(TimeGenerated)
     by Caller, CallerIpAddress, SubscriptionId
-| where EventCount > threshold
 | extend
     AccountName = tostring(split(Caller, "@")[0]),
     AccountDomain = tostring(split(Caller, "@")[1])
@@ -625,9 +718,9 @@ AzureActivity
     CallerIpAddress,
     SubscriptionId,
     EventCount,
-    DistinctOperations,
     Operations,
-    Resources""",
+    Resources,
+    FirstSeen""",
                 azure_terraform_template="""# Azure Detection for Impair Defences: Disable or Modify Tools
 # MITRE ATT&CK: T1562.001
 

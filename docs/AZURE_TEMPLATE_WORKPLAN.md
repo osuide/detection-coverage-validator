@@ -3,17 +3,32 @@
 **Document Version:** 1.1
 **Created:** 2026-01-24
 **Updated:** 2026-01-24
-**Status:** Week 2 Complete - Week 3 Pending
+**Status:** Week 3 Complete - Week 4 Pending
 
 ## Progress Summary
 
 | Week | Focus | Status | Commit |
 |------|-------|--------|--------|
 | Week 1 | Create 5 missing templates | ✅ Complete | 33e66fc |
-| Week 2 | Identity/Access KQL (7 techniques) | ✅ Complete | 694bda7 |
-| Week 3 | Defence Evasion/Credential Access KQL | ⏳ Pending | - |
+| Week 2 | Identity/Access KQL (7 techniques) | ✅ Complete | 7875647 |
+| Week 3 | Defence Evasion/Credential Access KQL (8 techniques) | ✅ Complete | 53459c4 |
 | Week 4 | Remaining KQL (15 techniques) | ⏳ Pending | - |
 | Week 5 | Validation and testing | ⏳ Pending | - |
+
+### Week 3 Details (Completed)
+All 8 Defence Evasion and Credential Access templates updated with Azure KQL queries:
+
+**Defence Evasion (T1562.x):**
+- **T1562.001** - Impair Defences: Disable/Modify Tools (Defender for Cloud disable, Sentinel rules delete)
+- **T1562.007** - Disable/Modify Cloud Firewall (NSG, Azure Firewall, WAF modifications)
+- **T1562.008** - Disable Cloud Logs (Diagnostic settings, Activity Log, Log Analytics)
+
+**Network/Credential Access:**
+- **T1040** - Network Sniffing (Network Watcher, packet captures, VNet TAP)
+- **T1552** - Unsecured Credentials (Key Vault bulk access, App Configuration)
+- **T1552.001** - Credentials in Files (Key Vault secrets, storage credential files)
+- **T1552.007** - Container API (AKS secrets access, Container Registry)
+- **T1555.006** - Cloud Secrets (Key Vault operations, multi-vault access patterns)
 
 ### Week 2 Details (Completed)
 All 7 Identity/Access templates updated with Azure KQL queries:
