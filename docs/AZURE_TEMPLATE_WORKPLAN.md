@@ -3,7 +3,7 @@
 **Document Version:** 1.1
 **Created:** 2026-01-24
 **Updated:** 2026-01-24
-**Status:** Week 3 Complete - Week 4 Pending
+**Status:** Week 4 Complete - Week 5 Pending
 
 ## Progress Summary
 
@@ -11,9 +11,35 @@
 |------|-------|--------|--------|
 | Week 1 | Create 5 missing templates | ✅ Complete | 33e66fc |
 | Week 2 | Identity/Access KQL (7 techniques) | ✅ Complete | 7875647 |
-| Week 3 | Defence Evasion/Credential Access KQL (8 techniques) | ✅ Complete | 53459c4 |
-| Week 4 | Remaining KQL (15 techniques) | ⏳ Pending | - |
+| Week 3 | Defence Evasion/Credential Access KQL (8 techniques) | ✅ Complete | d1e508d |
+| Week 4 | Remaining KQL (15 techniques) | ✅ Complete | e10dc69 |
 | Week 5 | Validation and testing | ⏳ Pending | - |
+
+### Week 4 Details (Completed)
+All 15 remaining templates updated with Azure KQL queries:
+
+**Lateral Movement/Discovery:**
+- **T1021** - Remote Services (RDP/SSH/VNC/WinRM via Entra ID and Defender)
+- **T1090** - Proxy (Application Gateway, Front Door, tunnel detection)
+- **T1133** - External Remote Services (VPN, Bastion, JIT access)
+- **T1199** - Trusted Relationship (Cross-tenant, B2B guest, partner access)
+- **T1557** - Adversary-in-the-Middle (ARP spoofing, network interception)
+
+**Execution:**
+- **T1059** - Command and Scripting (VM Run Command, Automation, Cloud Shell)
+- **T1190** - Exploit Public-Facing (WAF, App Service, web attack detection)
+- **T1203** - Client Exploitation (Defender for Endpoint process monitoring)
+
+**Impact/Resource:**
+- **T1496** - Resource Hijacking (Cryptomining, GPU VMs, high CPU detection)
+- **T1498** - Network DoS (DDoS Protection, Azure Firewall, NSG analysis)
+- **T1499** - Endpoint DoS (App Service, API Management, Cosmos DB throttling)
+
+**Container/Credential:**
+- **T1525** - Implant Internal Image (ACR push/pull and vulnerability)
+- **T1550.001** - App Access Token (Token theft, replay, OAuth monitoring)
+- **T1610** - Deploy Container (ACI, AKS, container deployment tracking)
+- **T1611** - Escape to Host (Privileged containers and escape attempts)
 
 ### Week 3 Details (Completed)
 All 8 Defence Evasion and Credential Access templates updated with Azure KQL queries:
