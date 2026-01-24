@@ -502,7 +502,7 @@ output "defender_status" {
                 "Use AWS WAF managed rules and custom rules to detect and block "
                 "web shell requests. Combined with CloudWatch for alerting."
             ),
-            detection_type=DetectionType.WAF_RULE,
+            detection_type=DetectionType.EVENTBRIDGE_RULE,
             aws_service="waf",
             cloud_provider=CloudProvider.AWS,
             implementation=DetectionImplementation(
@@ -759,7 +759,7 @@ output "web_acl_arn" {
                 "Use GCP Cloud Armor security policies to detect and block "
                 "web shell patterns at the edge."
             ),
-            detection_type=DetectionType.CLOUD_ARMOR,
+            detection_type=DetectionType.CLOUD_LOGGING_QUERY,
             aws_service="n/a",
             gcp_service="cloud_armor",
             cloud_provider=CloudProvider.GCP,
