@@ -1294,6 +1294,119 @@ resource "google_monitoring_alert_policy" "sa_abuse" {
                     "Suspicious cloud resource access",
                     "Azure AD sign-in risk",
                 ],
+                azure_kql_query="""// Azure Entra ID Suspicious Sign-In Detection
+// MITRE ATT&CK: T1078.004 - Valid Accounts: Cloud Accounts
+// Detects risky sign-ins, impossible travel, and anomalous authentication patterns
+
+let lookback = 24h;
+let riskThreshold = 50;  // Risk score threshold
+
+// Detect risky sign-ins with risk signals
+SigninLogs
+| where TimeGenerated > ago(lookback)
+| where ResultType == 0  // Successful sign-in
+| where RiskLevelDuringSignIn in ("high", "medium")
+    or RiskState != "none"
+    or isnotempty(RiskDetail)
+| extend
+    City = tostring(LocationDetails.city),
+    Country = tostring(LocationDetails.countryOrRegion),
+    DeviceDetail = tostring(DeviceDetail.displayName),
+    AuthMethod = tostring(AuthenticationDetails[0].authenticationMethod),
+    MfaUsed = AuthenticationRequirement == "multiFactorAuthentication"
+| summarize
+    RiskySignIns = count(),
+    UniqueIPs = dcount(IPAddress),
+    UniqueLocations = dcount(strcat(City, "-", Country)),
+    Countries = make_set(Country, 10),
+    IPs = make_set(IPAddress, 10),
+    Apps = make_set(AppDisplayName, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by UserPrincipalName, RiskLevelDuringSignIn, RiskState
+| where RiskySignIns > 1 or UniqueLocations > 2
+| project
+    TimeGenerated = LastSeen,
+    UserPrincipalName,
+    RiskLevelDuringSignIn,
+    RiskState,
+    RiskySignIns,
+    UniqueIPs,
+    UniqueLocations,
+    Countries,
+    IPs,
+    Apps,
+    FirstSeen""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: Suspicious Cloud Account Usage
+// MITRE ATT&CK: T1078.004
+let lookback = 24h;
+
+// Combine risky sign-ins with impossible travel detection
+let RiskySignIns = SigninLogs
+| where TimeGenerated > ago(lookback)
+| where ResultType == 0
+| where RiskLevelDuringSignIn in ("high", "medium")
+    or RiskEventTypes has_any ("unfamiliarFeatures", "impossibleTravel", "maliciousIPAddress")
+| extend
+    City = tostring(LocationDetails.city),
+    Country = tostring(LocationDetails.countryOrRegion),
+    Latitude = toreal(LocationDetails.geoCoordinates.latitude),
+    Longitude = toreal(LocationDetails.geoCoordinates.longitude)
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    IPAddress,
+    City,
+    Country,
+    Latitude,
+    Longitude,
+    AppDisplayName,
+    RiskLevelDuringSignIn,
+    RiskEventTypes;
+
+// Impossible travel detection
+let ImpossibleTravel = SigninLogs
+| where TimeGenerated > ago(lookback)
+| where ResultType == 0
+| extend
+    Latitude = toreal(LocationDetails.geoCoordinates.latitude),
+    Longitude = toreal(LocationDetails.geoCoordinates.longitude)
+| where isnotempty(Latitude) and isnotempty(Longitude)
+| order by UserPrincipalName, TimeGenerated asc
+| serialize
+| extend
+    PrevTime = prev(TimeGenerated, 1),
+    PrevLat = prev(Latitude, 1),
+    PrevLong = prev(Longitude, 1),
+    PrevUser = prev(UserPrincipalName, 1)
+| where UserPrincipalName == PrevUser
+| extend
+    TimeDiffHours = datetime_diff('hour', TimeGenerated, PrevTime),
+    DistanceKm = geo_distance_2points(Longitude, Latitude, PrevLong, PrevLat) / 1000
+| where TimeDiffHours > 0 and TimeDiffHours < 24
+| extend SpeedKmH = DistanceKm / TimeDiffHours
+| where SpeedKmH > 1000  // Faster than commercial flight
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    IPAddress,
+    TimeDiffHours,
+    DistanceKm,
+    SpeedKmH;
+
+RiskySignIns
+| union ImpossibleTravel
+| summarize
+    EventCount = count(),
+    AlertTypes = make_set(RiskLevelDuringSignIn, 10),
+    IPs = make_set(IPAddress, 10)
+    by UserPrincipalName, bin(TimeGenerated, 1h)
+| project
+    TimeGenerated,
+    UserPrincipalName,
+    EventCount,
+    AlertTypes,
+    IPs""",
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Valid Accounts: Cloud Accounts (T1078.004)
 # Defender for Cloud and Entra ID Protection detect cloud credential abuse

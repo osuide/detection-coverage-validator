@@ -816,6 +816,94 @@ resource "google_monitoring_alert_policy" "sa_impersonation" {
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
                 defender_alert_types=["Suspicious activity detected"],
+                azure_kql_query="""// Azure Entra ID Privileged Role Assignment Detection
+// MITRE ATT&CK: T1098.003 - Account Manipulation: Additional Cloud Roles
+let lookback = 24h;
+let privilegedRoles = dynamic([
+    "Global Administrator",
+    "Privileged Role Administrator",
+    "Security Administrator",
+    "Exchange Administrator",
+    "SharePoint Administrator",
+    "User Administrator",
+    "Application Administrator",
+    "Cloud Application Administrator",
+    "Authentication Administrator",
+    "Privileged Authentication Administrator",
+    "Azure AD Joined Device Local Administrator"
+]);
+AuditLogs
+| where TimeGenerated > ago(lookback)
+| where OperationName has_any ("Add member to role", "Add eligible member to role", "Add scoped member to role")
+| extend
+    TargetUser = tostring(TargetResources[0].userPrincipalName),
+    RoleName = tostring(TargetResources[0].displayName),
+    InitiatedBy = tostring(InitiatedBy.user.userPrincipalName),
+    InitiatedByApp = tostring(InitiatedBy.app.displayName),
+    InitiatedByIP = tostring(InitiatedBy.user.ipAddress)
+| where RoleName has_any (privilegedRoles)
+| extend
+    Initiator = iff(isnotempty(InitiatedBy), InitiatedBy, InitiatedByApp)
+| project
+    TimeGenerated,
+    OperationName,
+    RoleName,
+    TargetUser,
+    Initiator,
+    InitiatedByIP,
+    Result,
+    CorrelationId
+| order by TimeGenerated desc""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: Suspicious Privileged Role Assignment
+// MITRE ATT&CK: T1098.003 - Account Manipulation: Additional Cloud Roles
+// Detects unusual privileged role assignments, especially outside business hours or by new administrators
+let lookback = 24h;
+let privilegedRoles = dynamic([
+    "Global Administrator",
+    "Privileged Role Administrator",
+    "Security Administrator",
+    "Exchange Administrator",
+    "User Administrator",
+    "Application Administrator"
+]);
+// Get baseline of who typically assigns roles
+let RoleAssigners = AuditLogs
+| where TimeGenerated > ago(30d)
+| where OperationName has_any ("Add member to role", "Add eligible member to role")
+| extend Initiator = tostring(InitiatedBy.user.userPrincipalName)
+| where isnotempty(Initiator)
+| summarize AssignmentCount = count() by Initiator
+| where AssignmentCount > 3;
+// Detect new or unusual role assignments
+AuditLogs
+| where TimeGenerated > ago(lookback)
+| where OperationName has_any ("Add member to role", "Add eligible member to role")
+| extend
+    TargetUser = tostring(TargetResources[0].userPrincipalName),
+    RoleName = tostring(TargetResources[0].displayName),
+    InitiatedBy = tostring(InitiatedBy.user.userPrincipalName),
+    InitiatedByIP = tostring(InitiatedBy.user.ipAddress),
+    HourOfDay = hourofday(TimeGenerated),
+    DayOfWeek = dayofweek(TimeGenerated)
+| where RoleName has_any (privilegedRoles)
+| where isnotempty(InitiatedBy)
+// Flag suspicious patterns: outside business hours, new assigners, or self-assignment
+| extend
+    OutsideBusinessHours = HourOfDay < 8 or HourOfDay > 18 or DayOfWeek in (0d, 6d),
+    SelfAssignment = InitiatedBy == TargetUser
+| join kind=leftanti (RoleAssigners) on $left.InitiatedBy == $right.Initiator
+| extend NewAssigner = true
+| project
+    TimeGenerated,
+    OperationName,
+    RoleName,
+    TargetUser,
+    InitiatedBy,
+    InitiatedByIP,
+    OutsideBusinessHours,
+    SelfAssignment,
+    NewAssigner
+| where OutsideBusinessHours or SelfAssignment or NewAssigner""",
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Account Manipulation: Additional Cloud Roles (T1098.003)
 # Microsoft Defender detects Account Manipulation: Additional Cloud Roles activity

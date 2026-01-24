@@ -818,6 +818,107 @@ resource "google_monitoring_alert_policy" "ssh_brute_force" {
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
                 defender_alert_types=["Password spray attack", "Brute force attack"],
+                azure_kql_query="""// Azure Entra ID Brute Force Detection
+// MITRE ATT&CK: T1110 - Brute Force
+// Detects password guessing, spraying, and credential stuffing
+
+let lookback = 1h;
+let failedThreshold = 10;
+let passwordSprayThreshold = 5;
+
+// Brute force against single account
+let BruteForceAttempts = SigninLogs
+| where TimeGenerated > ago(lookback)
+| where ResultType == 50126  // Invalid username or password
+    or ResultType == 50053   // Account locked
+    or ResultType == 50057   // User disabled
+| summarize
+    FailedAttempts = count(),
+    UniqueIPs = dcount(IPAddress),
+    IPs = make_set(IPAddress, 10),
+    UserAgents = make_set(UserAgent, 5),
+    FirstAttempt = min(TimeGenerated),
+    LastAttempt = max(TimeGenerated)
+    by UserPrincipalName, IPAddress
+| where FailedAttempts > failedThreshold
+| extend AlertType = "BruteForce";
+
+// Password spray (same IP, multiple accounts)
+let PasswordSpray = SigninLogs
+| where TimeGenerated > ago(lookback)
+| where ResultType == 50126
+| summarize
+    TargetedAccounts = dcount(UserPrincipalName),
+    Accounts = make_set(UserPrincipalName, 20),
+    FailedAttempts = count(),
+    FirstAttempt = min(TimeGenerated),
+    LastAttempt = max(TimeGenerated)
+    by IPAddress, UserAgent
+| where TargetedAccounts > passwordSprayThreshold
+| extend AlertType = "PasswordSpray";
+
+BruteForceAttempts
+| project
+    TimeGenerated = LastAttempt,
+    AlertType,
+    UserPrincipalName,
+    IPAddress,
+    FailedAttempts,
+    UniqueIPs,
+    IPs
+| union (
+    PasswordSpray
+    | project
+        TimeGenerated = LastAttempt,
+        AlertType,
+        UserPrincipalName = strcat(TargetedAccounts, " accounts targeted"),
+        IPAddress,
+        FailedAttempts,
+        UniqueIPs = 1,
+        IPs = dynamic([])
+)
+| order by FailedAttempts desc""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: Brute Force Attack
+// MITRE ATT&CK: T1110
+let lookback = 24h;
+let shortWindow = 1h;
+
+// Detect brute force and password spray combined
+SigninLogs
+| where TimeGenerated > ago(lookback)
+| where ResultType in (50126, 50053, 50057, 50055, 50056)
+| extend
+    City = tostring(LocationDetails.city),
+    Country = tostring(LocationDetails.countryOrRegion),
+    ErrorCode = ResultType
+| summarize
+    TotalAttempts = count(),
+    UniqueUsers = dcount(UserPrincipalName),
+    UniqueIPs = dcount(IPAddress),
+    ErrorCodes = make_set(ErrorCode, 10),
+    Users = make_set(UserPrincipalName, 20),
+    Countries = make_set(Country, 10),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by IPAddress, bin(TimeGenerated, 15m)
+| where TotalAttempts > 10 or UniqueUsers > 5
+| extend
+    AttackType = case(
+        UniqueUsers > 5, "PasswordSpray",
+        TotalAttempts > 20, "BruteForce",
+        "SuspiciousActivity"
+    )
+| project
+    TimeGenerated = LastSeen,
+    IPAddress,
+    AttackType,
+    TotalAttempts,
+    UniqueUsers,
+    UniqueIPs,
+    Users,
+    Countries,
+    ErrorCodes,
+    Duration = datetime_diff('minute', LastSeen, FirstSeen)""",
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Brute Force (T1110)
 # Defender for Identity detects credential attacks

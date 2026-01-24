@@ -606,37 +606,109 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                sentinel_rule_query="""// Sentinel Analytics Rule: User Execution: Malicious File
-// MITRE ATT&CK: T1204.002
+                azure_kql_query="""// Azure Defender for Endpoint - Malicious File Execution Detection
+// MITRE ATT&CK: T1204.002 - User Execution: Malicious File
 let lookback = 24h;
-let threshold = 5;
-AzureActivity
+// Detect Defender for Endpoint alerts for malicious file execution
+SecurityAlert
 | where TimeGenerated > ago(lookback)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue in ("Success", "Succeeded")
-| summarize
-    EventCount = count(),
-    DistinctOperations = dcount(OperationNameValue),
-    Operations = make_set(OperationNameValue, 20),
-    Resources = make_set(Resource, 10),
-    FirstSeen = min(TimeGenerated),
-    LastSeen = max(TimeGenerated)
-    by Caller, CallerIpAddress, SubscriptionId
-| where EventCount > threshold
+| where ProductName in ("Microsoft Defender for Endpoint", "Microsoft Defender Advanced Threat Protection")
+| where AlertName has_any (
+    "Malicious file detected",
+    "Suspicious file execution",
+    "Malware detected",
+    "Suspicious Office child process",
+    "Macro execution",
+    "Suspicious script execution",
+    "Document with embedded script",
+    "Suspicious download",
+    "Executable from email"
+)
 | extend
-    AccountName = tostring(split(Caller, "@")[0]),
-    AccountDomain = tostring(split(Caller, "@")[1])
+    AlertDetails = parse_json(ExtendedProperties),
+    Entities = parse_json(Entities)
+| extend
+    FileName = tostring(AlertDetails.["File Name"]),
+    FilePath = tostring(AlertDetails.["File Path"]),
+    FileHash = tostring(AlertDetails.["SHA256"]),
+    DeviceName = tostring(AlertDetails.["Device Name"]),
+    UserName = tostring(AlertDetails.["User Name"]),
+    ProcessName = tostring(AlertDetails.["Process Name"])
 | project
-    TimeGenerated = LastSeen,
-    AccountName,
-    AccountDomain,
-    Caller,
-    CallerIpAddress,
-    SubscriptionId,
-    EventCount,
-    DistinctOperations,
-    Operations,
-    Resources""",
+    TimeGenerated,
+    AlertName,
+    AlertSeverity,
+    FileName,
+    FilePath,
+    FileHash,
+    DeviceName,
+    UserName,
+    ProcessName,
+    Description,
+    RemediationSteps
+| order by TimeGenerated desc""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: Malicious File Execution Detection
+// MITRE ATT&CK: T1204.002 - User Execution: Malicious File
+// Detects Office documents spawning suspicious processes or script execution
+let lookback = 24h;
+// Defender alerts for file-based attacks
+let FileAlerts = SecurityAlert
+| where TimeGenerated > ago(lookback)
+| where ProductName has "Defender"
+| where AlertName has_any (
+    "Malicious",
+    "Suspicious file",
+    "Macro",
+    "Script execution",
+    "Office"
+)
+| extend
+    DeviceName = tostring(parse_json(ExtendedProperties).["Device Name"]),
+    UserName = tostring(parse_json(ExtendedProperties).["User Name"]),
+    FileName = tostring(parse_json(ExtendedProperties).["File Name"])
+| summarize
+    AlertCount = count(),
+    Alerts = make_set(AlertName, 5),
+    Files = make_set(FileName, 10)
+    by DeviceName, UserName;
+// Device events showing Office child processes (if DeviceProcessEvents available)
+let OfficeChildProcesses = DeviceProcessEvents
+| where TimeGenerated > ago(lookback)
+| where InitiatingProcessFileName has_any (
+    "WINWORD.EXE",
+    "EXCEL.EXE",
+    "POWERPNT.EXE",
+    "OUTLOOK.EXE"
+)
+| where FileName has_any (
+    "powershell.exe",
+    "cmd.exe",
+    "wscript.exe",
+    "cscript.exe",
+    "mshta.exe",
+    "regsvr32.exe"
+)
+| summarize
+    ProcessCount = count(),
+    ChildProcesses = make_set(FileName, 5)
+    by DeviceName, AccountName;
+// Combine alerts and process data
+FileAlerts
+| join kind=leftouter (OfficeChildProcesses) on DeviceName
+| extend
+    TotalIndicators = AlertCount + coalesce(ProcessCount, 0),
+    RiskScore = AlertCount * 15 + coalesce(ProcessCount, 0) * 10
+| where RiskScore > 10
+| project
+    DeviceName,
+    UserName,
+    AlertCount,
+    Alerts,
+    Files,
+    ProcessCount,
+    ChildProcesses,
+    RiskScore
+| order by RiskScore desc""",
                 azure_terraform_template="""# Azure Detection for User Execution: Malicious File
 # MITRE ATT&CK: T1204.002
 

@@ -1009,37 +1009,82 @@ resource "google_monitoring_alert_policy" "external_container_alert" {
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                sentinel_rule_query="""// Sentinel Analytics Rule: User Execution
-// MITRE ATT&CK: T1204
+                azure_kql_query="""// Azure User Execution Detection via Cloud Shell and Portal
+// MITRE ATT&CK: T1204 - User Execution
 let lookback = 24h;
-let threshold = 5;
+// Detect Cloud Shell usage which indicates user-initiated command execution
 AzureActivity
 | where TimeGenerated > ago(lookback)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue in ("Success", "Succeeded")
-| summarize
-    EventCount = count(),
-    DistinctOperations = dcount(OperationNameValue),
-    Operations = make_set(OperationNameValue, 20),
-    Resources = make_set(Resource, 10),
-    FirstSeen = min(TimeGenerated),
-    LastSeen = max(TimeGenerated)
-    by Caller, CallerIpAddress, SubscriptionId
-| where EventCount > threshold
+| where OperationNameValue has_any (
+    "Microsoft.Portal/consoles/write",
+    "Microsoft.Portal/consoles/read",
+    "Microsoft.CloudShell/consoles/write"
+)
 | extend
-    AccountName = tostring(split(Caller, "@")[0]),
-    AccountDomain = tostring(split(Caller, "@")[1])
+    UserPrincipal = Caller,
+    ClientIP = CallerIpAddress,
+    ResourceName = tostring(parse_json(Properties).resource)
 | project
-    TimeGenerated = LastSeen,
-    AccountName,
-    AccountDomain,
-    Caller,
-    CallerIpAddress,
-    SubscriptionId,
-    EventCount,
-    DistinctOperations,
+    TimeGenerated,
+    UserPrincipal,
+    ClientIP,
+    OperationNameValue,
+    ResourceName,
+    ActivityStatusValue,
+    SubscriptionId
+| order by TimeGenerated desc""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: User Execution via Azure Cloud Shell
+// MITRE ATT&CK: T1204 - User Execution
+// Detects suspicious Cloud Shell activity that may indicate social engineering
+let lookback = 24h;
+// Cloud Shell and portal command execution
+let CloudShellActivity = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "Microsoft.Portal/consoles/write",
+    "Microsoft.CloudShell/consoles/write"
+)
+| extend UserPrincipal = Caller
+| summarize
+    ShellSessions = count(),
+    FirstSession = min(TimeGenerated),
+    LastSession = max(TimeGenerated),
+    UniqueIPs = dcount(CallerIpAddress),
+    IPs = make_set(CallerIpAddress, 5)
+    by UserPrincipal;
+// Suspicious administrative actions that may follow user execution
+let SuspiciousActions = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "Microsoft.Compute/virtualMachines/write",
+    "Microsoft.ContainerInstance/containerGroups/write",
+    "Microsoft.Web/sites/functions/write",
+    "Microsoft.Automation/automationAccounts/runbooks/write"
+)
+| extend UserPrincipal = Caller
+| summarize
+    AdminActions = count(),
+    Operations = make_set(OperationNameValue, 10)
+    by UserPrincipal, CallerIpAddress;
+// Correlate Cloud Shell usage with subsequent privileged operations
+CloudShellActivity
+| join kind=inner (SuspiciousActions) on UserPrincipal
+| where AdminActions > 0
+| project
+    UserPrincipal,
+    ShellSessions,
+    UniqueIPs,
+    IPs,
+    AdminActions,
     Operations,
-    Resources""",
+    CallerIpAddress,
+    FirstSession,
+    LastSession
+| extend
+    TimeWindow = datetime_diff('minute', LastSession, FirstSession),
+    RiskScore = ShellSessions * 5 + AdminActions * 10
+| where RiskScore > 20 or UniqueIPs > 1
+| order by RiskScore desc""",
                 azure_terraform_template="""# Azure Detection for User Execution
 # MITRE ATT&CK: T1204
 

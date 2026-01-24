@@ -293,37 +293,116 @@ resource "google_monitoring_alert_policy" "external_image" {
             azure_service="sentinel",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                sentinel_rule_query="""// Sentinel Analytics Rule: User Execution: Malicious Image
-// MITRE ATT&CK: T1204.003
+                azure_kql_query="""// Azure Container/VM Image Deployment Detection
+// MITRE ATT&CK: T1204.003 - User Execution: Malicious Image
 let lookback = 24h;
-let threshold = 5;
+// Detect container deployments from external registries
 AzureActivity
 | where TimeGenerated > ago(lookback)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue in ("Success", "Succeeded")
-| summarize
-    EventCount = count(),
-    DistinctOperations = dcount(OperationNameValue),
-    Operations = make_set(OperationNameValue, 20),
-    Resources = make_set(Resource, 10),
-    FirstSeen = min(TimeGenerated),
-    LastSeen = max(TimeGenerated)
-    by Caller, CallerIpAddress, SubscriptionId
-| where EventCount > threshold
+| where OperationNameValue has_any (
+    "Microsoft.ContainerInstance/containerGroups/write",
+    "Microsoft.ContainerService/managedClusters/agentPools/write",
+    "Microsoft.Web/sites/write",
+    "Microsoft.Compute/virtualMachines/write"
+)
+| where ActivityStatusValue == "Success"
 | extend
-    AccountName = tostring(split(Caller, "@")[0]),
-    AccountDomain = tostring(split(Caller, "@")[1])
+    Properties = parse_json(Properties),
+    ResourceDetails = parse_json(Properties).responseBody
+| extend
+    ContainerImage = tostring(ResourceDetails.properties.containers[0].properties.image),
+    VMImageReference = tostring(ResourceDetails.properties.storageProfile.imageReference.id),
+    ResourceName = tostring(split(Resource, "/")[-1])
+| where isnotempty(ContainerImage) or isnotempty(VMImageReference)
+// Flag external or untrusted sources
+| extend
+    IsExternalImage = ContainerImage !has ".azurecr.io" and isnotempty(ContainerImage),
+    IsPublicImage = ContainerImage has_any ("docker.io", "gcr.io", "ghcr.io", "quay.io")
 | project
-    TimeGenerated = LastSeen,
-    AccountName,
-    AccountDomain,
+    TimeGenerated,
     Caller,
     CallerIpAddress,
-    SubscriptionId,
-    EventCount,
-    DistinctOperations,
-    Operations,
-    Resources""",
+    OperationNameValue,
+    ResourceName,
+    ContainerImage,
+    VMImageReference,
+    IsExternalImage,
+    IsPublicImage,
+    SubscriptionId
+| order by TimeGenerated desc""",
+                sentinel_rule_query="""// Sentinel Analytics Rule: Malicious Container/VM Image Detection
+// MITRE ATT&CK: T1204.003 - User Execution: Malicious Image
+// Detects deployment of containers from untrusted registries
+let lookback = 24h;
+let trustedRegistries = dynamic([
+    ".azurecr.io",
+    "mcr.microsoft.com"
+]);
+// Container deployments
+let ContainerDeployments = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue has_any (
+    "Microsoft.ContainerInstance/containerGroups/write",
+    "Microsoft.Web/sites/config/write"
+)
+| where ActivityStatusValue == "Success"
+| extend
+    Properties = parse_json(Properties),
+    ResourceDetails = parse_json(Properties).responseBody
+| extend
+    ContainerImage = tostring(ResourceDetails.properties.containers[0].properties.image)
+| where isnotempty(ContainerImage)
+| extend
+    IsTrusted = ContainerImage has_any (trustedRegistries),
+    RegistryType = case(
+        ContainerImage has "azurecr.io", "Azure Container Registry",
+        ContainerImage has "mcr.microsoft.com", "Microsoft Container Registry",
+        ContainerImage has "docker.io", "Docker Hub",
+        ContainerImage has "gcr.io", "Google Container Registry",
+        ContainerImage has "ghcr.io", "GitHub Container Registry",
+        "Unknown/Custom"
+    )
+| where not(IsTrusted);
+// VM deployments from marketplace or custom images
+let VMDeployments = AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue == "Microsoft.Compute/virtualMachines/write"
+| where ActivityStatusValue == "Success"
+| extend
+    Properties = parse_json(Properties),
+    ResourceDetails = parse_json(Properties).responseBody
+| extend
+    ImagePublisher = tostring(ResourceDetails.properties.storageProfile.imageReference.publisher),
+    ImageOffer = tostring(ResourceDetails.properties.storageProfile.imageReference.offer),
+    ImageSku = tostring(ResourceDetails.properties.storageProfile.imageReference.sku),
+    CustomImageId = tostring(ResourceDetails.properties.storageProfile.imageReference.id)
+| extend
+    IsCustomImage = isnotempty(CustomImageId),
+    ImageSource = iff(isnotempty(ImagePublisher), strcat(ImagePublisher, "/", ImageOffer), "Custom Image")
+| where IsCustomImage or ImagePublisher !in ("MicrosoftWindowsServer", "Canonical", "RedHat");
+// Combine and score
+ContainerDeployments
+| extend ResourceType = "Container", ImageInfo = ContainerImage
+| union (
+    VMDeployments
+    | extend ResourceType = "VM", ImageInfo = ImageSource
+)
+| project
+    TimeGenerated,
+    Caller,
+    CallerIpAddress,
+    ResourceType,
+    ImageInfo,
+    RegistryType,
+    SubscriptionId
+| summarize
+    DeploymentCount = count(),
+    ImageSources = make_set(ImageInfo, 10),
+    RegistryTypes = make_set(RegistryType, 5)
+    by Caller, CallerIpAddress
+| where DeploymentCount > 1 or RegistryTypes has "Unknown"
+| extend RiskScore = DeploymentCount * 10
+| order by RiskScore desc""",
                 azure_terraform_template="""# Azure Detection for User Execution: Malicious Image
 # MITRE ATT&CK: T1204.003
 
