@@ -810,7 +810,7 @@ function StrategyCard({
 }) {
   const [showModal, setShowModal] = useState(false)
 
-  const hasArtefacts = strategy.has_query || strategy.has_cloudformation || strategy.has_terraform || strategy.has_gcp_query || strategy.has_gcp_terraform
+  const hasArtefacts = strategy.has_query || strategy.has_cloudformation || strategy.has_terraform || strategy.has_gcp_query || strategy.has_gcp_terraform || strategy.has_azure_query || strategy.has_azure_terraform
 
   return (
     <>
@@ -828,9 +828,9 @@ function StrategyCard({
               )}
             </div>
             <p className="text-sm text-gray-400 mt-1">
-              {strategy.detection_type} via {strategy.cloud_provider === 'gcp' ? strategy.gcp_service : strategy.aws_service}
+              {strategy.detection_type} via {strategy.cloud_provider === 'gcp' ? strategy.gcp_service : strategy.cloud_provider === 'azure' ? strategy.azure_service : strategy.aws_service}
               {strategy.cloud_provider && (
-                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-sm ${strategy.cloud_provider === 'gcp' ? 'bg-blue-900/30 text-blue-400' : 'bg-orange-900/30 text-orange-400'}`}>
+                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-sm ${strategy.cloud_provider === 'gcp' ? 'bg-blue-900/30 text-blue-400' : strategy.cloud_provider === 'azure' ? 'bg-cyan-900/30 text-cyan-400' : 'bg-orange-900/30 text-orange-400'}`}>
                   {strategy.cloud_provider.toUpperCase()}
                 </span>
               )}
@@ -891,6 +891,22 @@ function StrategyCard({
               className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded-sm hover:bg-blue-900/50 transition-colors cursor-pointer"
             >
               GCP Terraform
+            </button>
+          )}
+          {strategy.has_azure_query && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="text-xs bg-cyan-900/30 text-cyan-400 px-2 py-1 rounded-sm hover:bg-cyan-900/50 transition-colors cursor-pointer"
+            >
+              Azure KQL
+            </button>
+          )}
+          {strategy.has_azure_terraform && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="text-xs bg-cyan-900/30 text-cyan-400 px-2 py-1 rounded-sm hover:bg-cyan-900/50 transition-colors cursor-pointer"
+            >
+              Azure Terraform
             </button>
           )}
           {hasArtefacts && (

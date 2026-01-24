@@ -194,6 +194,10 @@ export interface RecommendedStrategy {
   cloud_provider?: string
   has_gcp_query?: boolean
   has_gcp_terraform?: boolean
+  // Azure support
+  azure_service?: string
+  has_azure_query?: boolean
+  has_azure_terraform?: boolean
 }
 
 export interface EffortEstimates {

@@ -248,6 +248,10 @@ async def get_coverage(
                     cloud_provider=s.get("cloud_provider"),
                     has_gcp_query=s.get("has_gcp_query", False),
                     has_gcp_terraform=s.get("has_gcp_terraform", False),
+                    # Azure support
+                    azure_service=s.get("azure_service"),
+                    has_azure_query=s.get("has_azure_query", False),
+                    has_azure_terraform=s.get("has_azure_terraform", False),
                 )
             )
 
@@ -608,6 +612,10 @@ async def calculate_coverage(
                     cloud_provider=s.get("cloud_provider"),
                     has_gcp_query=s.get("has_gcp_query", False),
                     has_gcp_terraform=s.get("has_gcp_terraform", False),
+                    # Azure support
+                    azure_service=s.get("azure_service"),
+                    has_azure_query=s.get("has_azure_query", False),
+                    has_azure_terraform=s.get("has_azure_terraform", False),
                 )
             )
 

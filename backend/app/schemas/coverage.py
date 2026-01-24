@@ -74,6 +74,10 @@ class RecommendedStrategyItem(BaseModel):
     cloud_provider: Optional[str] = None
     has_gcp_query: bool = False
     has_gcp_terraform: bool = False
+    # Azure support
+    azure_service: Optional[str] = None
+    has_azure_query: bool = False
+    has_azure_terraform: bool = False
 
 
 class EffortEstimatesResponse(BaseModel):

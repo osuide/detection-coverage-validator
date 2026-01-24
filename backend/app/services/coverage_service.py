@@ -144,6 +144,10 @@ class CoverageService:
                         "cloud_provider": s.cloud_provider,
                         "has_gcp_query": s.has_gcp_query,
                         "has_gcp_terraform": s.has_gcp_terraform,
+                        # Azure support
+                        "azure_service": s.azure_service,
+                        "has_azure_query": s.has_azure_query,
+                        "has_azure_terraform": s.has_azure_terraform,
                     }
                     for s in gap.recommended_strategies
                 ]

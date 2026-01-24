@@ -34,6 +34,10 @@ class RecommendedStrategy:
     cloud_provider: Optional[str] = None
     has_gcp_query: bool = False
     has_gcp_terraform: bool = False
+    # Azure support
+    azure_service: Optional[str] = None
+    has_azure_query: bool = False
+    has_azure_terraform: bool = False
 
 
 @dataclass
@@ -171,6 +175,12 @@ class GapAnalyzer:
                             has_gcp_query=strategy.implementation.gcp_logging_query
                             is not None,
                             has_gcp_terraform=strategy.implementation.gcp_terraform_template
+                            is not None,
+                            # Azure support
+                            azure_service=strategy.azure_service,
+                            has_azure_query=strategy.implementation.azure_kql_query
+                            is not None,
+                            has_azure_terraform=strategy.implementation.azure_terraform_template
                             is not None,
                         )
                         gap.recommended_strategies.append(rec_strategy)
