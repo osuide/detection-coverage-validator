@@ -120,7 +120,13 @@
           "Identity Platform",
           "Resource Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Management Groups",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -434,7 +440,13 @@
           "Identity Platform",
           "Resource Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Management Groups",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -802,7 +814,13 @@
           "Identity Platform",
           "Resource Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Management Groups",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -1982,7 +2000,13 @@
           "Identity Platform",
           "Resource Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Management Groups",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -3004,7 +3028,13 @@
           "Identity Platform",
           "Resource Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Management Groups",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -3610,7 +3640,13 @@
           "Identity Platform",
           "Resource Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Management Groups",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -4276,7 +4312,13 @@
           "Identity Platform",
           "Resource Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Management Groups",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -5262,7 +5304,13 @@
           "Identity Platform",
           "Resource Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Management Groups",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -5405,7 +5453,14 @@
           "Cloud Logging",
           "BigQuery"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Activity Log",
+          "Azure Blob Storage",
+          "Azure Monitor",
+          "Azure Synapse Analytics",
+          "Log Analytics"
+        ]
       },
       "technique_mappings": [
         {
@@ -5438,7 +5493,14 @@
           "Cloud Logging",
           "BigQuery"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Activity Log",
+          "Azure Blob Storage",
+          "Azure Monitor",
+          "Azure Synapse Analytics",
+          "Log Analytics"
+        ]
       },
       "technique_mappings": [
         {
@@ -6531,7 +6593,13 @@
           "Cloud Build",
           "Deployment Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Automation",
+          "Azure DevOps Pipelines",
+          "Azure Policy",
+          "Microsoft Defender for Cloud"
+        ]
       },
       "technique_mappings": [
         {
@@ -7591,7 +7659,13 @@
           "Cloud Build",
           "Deployment Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Automation",
+          "Azure DevOps Pipelines",
+          "Azure Policy",
+          "Microsoft Defender for Cloud"
+        ]
       },
       "technique_mappings": [
         {
@@ -7711,7 +7785,13 @@
           "Cloud Build",
           "Deployment Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Automation",
+          "Azure DevOps Pipelines",
+          "Azure Policy",
+          "Microsoft Defender for Cloud"
+        ]
       },
       "technique_mappings": [
         {
@@ -8323,7 +8403,13 @@
           "Cloud Build",
           "Deployment Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Automation",
+          "Azure DevOps Pipelines",
+          "Azure Policy",
+          "Microsoft Defender for Cloud"
+        ]
       },
       "technique_mappings": [
         {
@@ -9631,7 +9717,13 @@
           "Cloud Build",
           "Deployment Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Automation",
+          "Azure DevOps Pipelines",
+          "Azure Policy",
+          "Microsoft Defender for Cloud"
+        ]
       },
       "technique_mappings": [
         {
@@ -10455,7 +10547,13 @@
           "Cloud Build",
           "Deployment Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Automation",
+          "Azure DevOps Pipelines",
+          "Azure Policy",
+          "Microsoft Defender for Cloud"
+        ]
       },
       "technique_mappings": [
         {
@@ -11296,7 +11394,13 @@
           "Identity Platform",
           "Secret Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Key Vault",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -11974,7 +12078,13 @@
           "Identity Platform",
           "Secret Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Key Vault",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -12032,7 +12142,13 @@
           "Identity Platform",
           "Secret Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Key Vault",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -12190,7 +12306,13 @@
           "Identity Platform",
           "Secret Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Key Vault",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -12480,7 +12602,13 @@
           "Identity Platform",
           "Secret Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Key Vault",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -12612,7 +12740,13 @@
           "Identity Platform",
           "Secret Manager"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure AD B2C",
+          "Azure Key Vault",
+          "Azure RBAC",
+          "Entra ID"
+        ]
       },
       "technique_mappings": [
         {
@@ -12831,7 +12965,13 @@
           "Pub/Sub",
           "Security Command Center"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Event Grid",
+          "Azure Functions",
+          "Azure Service Bus",
+          "Microsoft Defender for Cloud"
+        ]
       },
       "technique_mappings": [
         {
@@ -13671,7 +13811,12 @@
           "Cloud KMS",
           "Cloud Armor"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Key Vault",
+          "Azure Virtual Network",
+          "Azure Web Application Firewall"
+        ]
       },
       "technique_mappings": [
         {
@@ -13739,7 +13884,12 @@
           "Cloud KMS",
           "Cloud Armor"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Key Vault",
+          "Azure Virtual Network",
+          "Azure Web Application Firewall"
+        ]
       },
       "technique_mappings": [
         {
@@ -14039,7 +14189,12 @@
           "Cloud KMS",
           "Cloud Armor"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Key Vault",
+          "Azure Virtual Network",
+          "Azure Web Application Firewall"
+        ]
       },
       "technique_mappings": [
         {
@@ -14443,7 +14598,12 @@
           "Cloud KMS",
           "Cloud Armor"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Key Vault",
+          "Azure Virtual Network",
+          "Azure Web Application Firewall"
+        ]
       },
       "technique_mappings": [
         {
@@ -14687,7 +14847,12 @@
           "Cloud KMS",
           "Cloud Armor"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Key Vault",
+          "Azure Virtual Network",
+          "Azure Web Application Firewall"
+        ]
       },
       "technique_mappings": [
         {
@@ -15228,7 +15393,12 @@
           "Cloud KMS",
           "Cloud Armor"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Key Vault",
+          "Azure Virtual Network",
+          "Azure Web Application Firewall"
+        ]
       },
       "technique_mappings": [
         {
@@ -15723,7 +15893,12 @@
           "Cloud KMS",
           "Cloud Armor"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Key Vault",
+          "Azure Virtual Network",
+          "Azure Web Application Firewall"
+        ]
       },
       "technique_mappings": [
         {
@@ -16343,7 +16518,12 @@
           "Cloud KMS",
           "Cloud Armor"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Azure Key Vault",
+          "Azure Virtual Network",
+          "Azure Web Application Firewall"
+        ]
       },
       "technique_mappings": [
         {
@@ -16436,7 +16616,12 @@
           "Cloud IDS",
           "Chronicle"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Microsoft Defender for Cloud",
+          "Microsoft Purview",
+          "Microsoft Sentinel"
+        ]
       },
       "technique_mappings": [
         {
@@ -17393,7 +17578,12 @@
           "Cloud IDS",
           "Chronicle"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Microsoft Defender for Cloud",
+          "Microsoft Purview",
+          "Microsoft Sentinel"
+        ]
       },
       "technique_mappings": [
         {
@@ -17783,7 +17973,12 @@
           "Cloud IDS",
           "Chronicle"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Microsoft Defender for Cloud",
+          "Microsoft Purview",
+          "Microsoft Sentinel"
+        ]
       },
       "technique_mappings": [
         {
@@ -18644,7 +18839,12 @@
           "Cloud IDS",
           "Chronicle"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Microsoft Defender for Cloud",
+          "Microsoft Purview",
+          "Microsoft Sentinel"
+        ]
       },
       "technique_mappings": [
         {
@@ -20053,7 +20253,12 @@
           "Cloud IDS",
           "Chronicle"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Microsoft Defender for Cloud",
+          "Microsoft Purview",
+          "Microsoft Sentinel"
+        ]
       },
       "technique_mappings": [
         {
@@ -20094,7 +20299,12 @@
           "Cloud IDS",
           "Chronicle"
         ],
-        "shared_responsibility": "customer"
+        "shared_responsibility": "customer",
+        "azure_services": [
+          "Microsoft Defender for Cloud",
+          "Microsoft Purview",
+          "Microsoft Sentinel"
+        ]
       },
       "technique_mappings": [
         {
