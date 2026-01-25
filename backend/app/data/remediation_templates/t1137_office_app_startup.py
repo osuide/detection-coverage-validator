@@ -143,6 +143,12 @@ variable "alert_email" {
   description = "Email for Office persistence alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create SNS topic for Office persistence alerts
 resource "aws_sns_topic" "office_persistence_alerts" {
   name         = "office-application-startup-alerts"
@@ -279,6 +285,12 @@ variable "alert_email" {
   description = "Email for macro execution alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create SNS topic for macro execution alerts
 resource "aws_sns_topic" "m365_macro_alerts" {
   name         = "m365-macro-execution-alerts"
@@ -396,6 +408,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email for add-in installation alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Create log-based metric for add-in installations
@@ -543,6 +561,12 @@ variable "alert_email" {
   description = "Email for registry persistence alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create SNS topic for registry alerts
 resource "aws_sns_topic" "registry_persistence_alerts" {
   name         = "office-registry-persistence-alerts"
@@ -670,6 +694,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Enable Defender for Cloud plans
 resource "azurerm_security_center_subscription_pricing" "defender_servers" {
   tier          = "Standard"
@@ -707,7 +737,7 @@ resource "azurerm_monitor_action_group" "defender_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_detection" {
   name                = "defender-t1137"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

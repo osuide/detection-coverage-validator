@@ -177,6 +177,12 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "network-interface-alerts"
@@ -652,6 +658,12 @@ variable "alert_email" {
   description = "Email address for alerts (SNS subscription requires confirmation)"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 variable "log_group_name" {
   type        = string
   default     = "/security/block-device-monitor"
@@ -1098,6 +1110,12 @@ variable "alert_email" {
   description = "Email for audit notifications"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: S3 bucket for audit logs
 resource "aws_s3_bucket" "audit_logs" {
   bucket = "hardware-audit-logs-${data.aws_caller_identity.current.account_id}"
@@ -1249,6 +1267,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Notification channel
@@ -1492,6 +1516,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Enable GuardDuty with Runtime Monitoring
 resource "aws_guardduty_detector" "main" {
   enable = true
@@ -1654,6 +1684,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Enable Defender for Cloud plans
 resource "azurerm_security_center_subscription_pricing" "defender_servers" {
   tier          = "Standard"
@@ -1691,7 +1727,7 @@ resource "azurerm_monitor_action_group" "defender_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_detection" {
   name                = "defender-t1200"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

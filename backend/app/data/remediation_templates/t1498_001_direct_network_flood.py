@@ -133,6 +133,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name = "network-flood-alerts"
@@ -290,6 +296,12 @@ variable "alert_email" {
   description = "Email for DDoS alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create SNS topic for DDoS alerts
 resource "aws_sns_topic" "ddos_alerts" {
   name = "shield-ddos-alerts"
@@ -407,6 +419,12 @@ variable "alert_email" {
   description = "Email for DDoS alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
@@ -512,6 +530,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email for network flood alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Create notification channel
@@ -640,6 +664,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Enable Defender for Cloud plans
 resource "azurerm_security_center_subscription_pricing" "defender_servers" {
   tier          = "Standard"
@@ -677,7 +707,7 @@ resource "azurerm_monitor_action_group" "defender_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_detection" {
   name                = "defender-t1498-001"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

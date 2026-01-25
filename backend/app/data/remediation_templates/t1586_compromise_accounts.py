@@ -138,6 +138,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # SNS topic for alerts
 resource "aws_sns_topic" "compromised_account_alerts" {
   name = "compromised-account-alerts"
@@ -225,6 +231,12 @@ resource "aws_cloudwatch_metric_alarm" "compromised_account" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Enable GuardDuty (if not already enabled)
@@ -408,6 +420,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Notification channel for alerts
 resource "google_monitoring_notification_channel" "security_email" {
   display_name = "Security Team Email"
@@ -575,6 +593,12 @@ resource "google_monitoring_alert_policy" "credential_stuffing" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Enable IAM Access Analyzer
@@ -774,6 +798,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Enable Defender for Cloud plans
 resource "azurerm_security_center_subscription_pricing" "defender_servers" {
   tier          = "Standard"
@@ -811,7 +841,7 @@ resource "azurerm_monitor_action_group" "defender_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_detection" {
   name                = "defender-t1586"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

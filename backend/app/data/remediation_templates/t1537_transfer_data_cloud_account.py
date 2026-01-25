@@ -86,6 +86,12 @@ variable "alert_email" {
   description = "Email for exfiltration alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create encrypted SNS topic
 resource "aws_sns_topic" "exfil_alerts" {
   name              = "guardduty-exfiltration-alerts"
@@ -819,6 +825,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
   name                = "transfer-data-to-cloud-account-alerts"
@@ -835,7 +847,7 @@ resource "azurerm_monitor_action_group" "security_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
   name                = "transfer-data-to-cloud-account-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

@@ -186,6 +186,12 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Enable GuardDuty with Runtime Monitoring
 resource "aws_guardduty_detector" "main" {
   enable = true
@@ -454,6 +460,12 @@ variable "alert_email" {
   description = "Email address for alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 resource "aws_sns_topic" "alerts" {
   name = "wmi-execution-alerts"
   kms_master_key_id = "alias/aws/sns"
@@ -570,6 +582,12 @@ variable "vpc_flow_log_group" {
 variable "alert_email" {
   type        = string
   description = "Email address for alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 resource "aws_sns_topic" "alerts" {
@@ -711,6 +729,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Create notification channel
@@ -895,6 +919,12 @@ variable "alert_email" {
   description = "Email address for alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 resource "aws_sns_topic" "alerts" {
   name = "wmi-persistence-alerts"
   kms_master_key_id = "alias/aws/sns"
@@ -1055,6 +1085,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
   name                = "windows-management-instrumentation-alerts"
@@ -1071,7 +1107,7 @@ resource "azurerm_monitor_action_group" "security_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
   name                = "windows-management-instrumentation-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

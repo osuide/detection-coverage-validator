@@ -195,6 +195,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for web shell alerts
 resource "azurerm_monitor_action_group" "webshell_alerts" {
   name                = "webshell-detection-alerts"
@@ -211,7 +217,7 @@ resource "azurerm_monitor_action_group" "webshell_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "webshell_detection" {
   name                = "appservice-webshell-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"
@@ -270,7 +276,7 @@ AppServiceHTTPLogs
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "webshell_upload" {
   name                = "appservice-webshell-upload"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"
@@ -443,6 +449,12 @@ variable "alert_email" {
   description = "Email for Defender alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 variable "security_phone" {
   type        = string
   default     = ""
@@ -512,6 +524,12 @@ output "defender_status" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 variable "resource_arn" {
@@ -779,6 +797,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Cloud Armor security policy

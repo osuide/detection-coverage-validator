@@ -216,6 +216,12 @@ variable "alert_email" {
   description = "Email for security alerts (SNS subscription confirmation required)"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 data "aws_caller_identity" "current" {}
 
 # SNS topic for alerts
@@ -946,6 +952,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
   name                = "container-administration-command-alerts"
@@ -962,7 +974,7 @@ resource "azurerm_monitor_action_group" "security_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
   name                = "container-administration-command-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

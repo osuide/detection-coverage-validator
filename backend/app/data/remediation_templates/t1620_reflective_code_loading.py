@@ -149,6 +149,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 data "aws_caller_identity" "current" {}
 
 resource "aws_sns_topic" "alerts" {
@@ -682,6 +688,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
   name                = "reflective-code-loading-alerts"
@@ -698,7 +710,7 @@ resource "azurerm_monitor_action_group" "security_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
   name                = "reflective-code-loading-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

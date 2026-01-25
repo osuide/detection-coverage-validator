@@ -135,6 +135,12 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create SNS topic for alerts
 resource "aws_sns_topic" "alerts" {
   name         = "email-protocol-c2-alerts"
@@ -276,6 +282,12 @@ Resources:
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Enable GuardDuty (if not already enabled)
@@ -457,6 +469,12 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
@@ -581,6 +599,12 @@ variable "organization_id" {
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Enable Security Command Centre (requires organisation-level permissions)
@@ -728,6 +752,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
   name                = "application-layer-protocol--mail-protocols-alerts"
@@ -744,7 +774,7 @@ resource "azurerm_monitor_action_group" "security_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
   name                = "application-layer-protocol--mail-protocols-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

@@ -127,6 +127,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # SNS topic for alerts
 resource "aws_sns_topic" "boot_alerts" {
   name         = "ec2-boot-integrity-alerts"
@@ -218,6 +224,12 @@ resource "aws_cloudwatch_metric_alarm" "boot_integrity" {
 variable "alert_email" {
   type        = string
   description = "Email for attestation alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # SNS topic for Nitro attestation alerts
@@ -426,6 +438,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Notification channel
 resource "google_monitoring_notification_channel" "email_s1" {
   project      = var.project_id
@@ -593,6 +611,12 @@ variable "alert_email" {
   description = "Email for alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Notification channel
 resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
@@ -709,6 +733,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Enable Defender for Cloud plans
 resource "azurerm_security_center_subscription_pricing" "defender_servers" {
   tier          = "Standard"
@@ -746,7 +776,7 @@ resource "azurerm_monitor_action_group" "defender_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_detection" {
   name                = "defender-t1195-003"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

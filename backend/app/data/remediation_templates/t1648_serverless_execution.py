@@ -185,6 +185,12 @@ variable "alert_email" {
   description = "Email for Lambda security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create encrypted SNS topic
 resource "aws_sns_topic" "lambda_alerts" {
   name              = "guardduty-lambda-alerts"
@@ -389,6 +395,12 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
 variable "alert_email" {
   type        = string
   description = "Email for Lambda lifecycle alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 variable "allowed_deployers" {
@@ -681,6 +693,12 @@ variable "alert_email" {
   description = "Email for privilege alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "lambda_iam_alerts" {
   name              = "lambda-iam-privilege-alerts"
@@ -959,6 +977,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Create notification channel
@@ -1258,6 +1282,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
   name                = "serverless-execution-alerts"
@@ -1274,7 +1304,7 @@ resource "azurerm_monitor_action_group" "security_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
   name                = "serverless-execution-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

@@ -150,6 +150,12 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "proxy_deployment_alerts" {
   name = "proxy-deployment-alerts"
@@ -398,6 +404,12 @@ variable "alert_email" {
   description = "Email address for alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: CloudWatch Log Group for VPC Flow Logs
 resource "aws_cloudwatch_log_group" "flow_logs" {
   name              = "/aws/vpc/flowlogs-proxy-detection"
@@ -503,6 +515,12 @@ variable "alert_email" {
   description = "Email address for alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "multihop_alerts" {
   name = "multihop-proxy-alerts"
@@ -599,6 +617,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Notification channel
@@ -714,6 +738,12 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Notification channel
 resource "google_monitoring_notification_channel" "email_s2" {
   project      = var.project_id
@@ -826,6 +856,12 @@ variable "cloudfront_distribution_id" {
 variable "alert_email" {
   type        = string
   description = "Email address for alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Enable CloudFront standard logging
@@ -1035,6 +1071,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
   name                = "proxy-alerts"
@@ -1051,7 +1093,7 @@ resource "azurerm_monitor_action_group" "security_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
   name                = "proxy-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

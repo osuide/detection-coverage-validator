@@ -156,6 +156,12 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: CloudWatch Log Group for Route 53 queries
 resource "aws_cloudwatch_log_group" "dga_detection" {
   name              = "/aws/route53/dga-detection"
@@ -335,6 +341,12 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 variable "vpc_id" {
   type        = string
   description = "VPC ID to monitor"
@@ -441,6 +453,12 @@ resource "aws_cloudwatch_metric_alarm" "ddns_detection" {
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: CloudWatch Log Group for Route 53 queries
@@ -610,6 +628,12 @@ Resources:
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Enable GuardDuty
@@ -796,6 +820,12 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Enable Cloud DNS logging (assumes DNS zone exists)
 resource "google_dns_managed_zone" "monitored" {
   name        = "monitored-zone"
@@ -924,6 +954,12 @@ variable "organization_id" {
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Notification channel
@@ -1078,6 +1114,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
   name                = "dynamic-resolution-alerts"
@@ -1094,7 +1136,7 @@ resource "azurerm_monitor_action_group" "security_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
   name                = "dynamic-resolution-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

@@ -92,6 +92,12 @@ variable "alert_email" {
   description = "Email for RDP security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # SNS Topic for alerts
 resource "aws_sns_topic" "rdp_alerts" {
   name              = "rdp-connection-alerts"
@@ -196,6 +202,12 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
 variable "alert_email" {
   type        = string
   description = "Email for RDP security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # SNS Topic for alerts
@@ -365,6 +377,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Notification channel
 resource "google_monitoring_notification_channel" "email" {
   project      = var.project_id
@@ -518,6 +536,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "rdp_alerts" {
   name                = "rdp-brute-force-alerts"
@@ -534,7 +558,7 @@ resource "azurerm_monitor_action_group" "rdp_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "rdp_brute_force" {
   name                = "rdp-brute-force-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"
@@ -587,7 +611,7 @@ SecurityEvent
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "rdp_success_after_failure" {
   name                = "rdp-success-after-brute-force"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

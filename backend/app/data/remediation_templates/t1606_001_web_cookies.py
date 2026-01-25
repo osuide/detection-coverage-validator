@@ -156,6 +156,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 data "aws_caller_identity" "current" {}
 
 # Step 1: Create SNS topic for alerts
@@ -329,6 +335,12 @@ variable "alert_email" {
   description = "Email for GuardDuty alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create SNS topic for GuardDuty findings
 resource "aws_sns_topic" "guardduty_alerts" {
   name = "guardduty-credential-alerts"
@@ -499,6 +511,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create notification channel for alerts
 resource "google_monitoring_notification_channel" "email_channel" {
   display_name = "Security Alert Email"
@@ -616,6 +634,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "session_alerts" {
   display_name = "Session Anomaly Alerts"
@@ -727,7 +751,17 @@ resource "google_monitoring_alert_policy" "session_anomaly" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Anomalous Token",
+                    "Token Issuer Anomaly",
+                    "Suspicious token activity",
+                    "Suspicious OAuth app file download activities",
+                    "Suspicious application consent",
+                    "OAuth application with unusual permissions",
+                    "Unfamiliar sign-in properties",
+                    "Atypical travel",
+                    "Impossible travel",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Forge Web Credentials: Web Cookies (T1606.001)
 # Microsoft Defender detects Forge Web Credentials: Web Cookies activity
@@ -754,6 +788,12 @@ variable "log_analytics_workspace_id" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Enable Defender for Cloud plans
@@ -793,7 +833,7 @@ resource "azurerm_monitor_action_group" "defender_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_detection" {
   name                = "defender-t1606-001"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"
@@ -804,10 +844,28 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_detection" {
     query = <<-QUERY
 SecurityAlert
 | where TimeGenerated > ago(1h)
-| where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
+| where ProductName in ("Azure Security Center", "Microsoft Defender for Cloud", "Azure Active Directory Identity Protection", "Microsoft Defender for Cloud Apps")
 | where AlertName has_any (
-                    "Suspicious activity detected",
-                )
+    // Token and session anomalies
+    "Anomalous Token",
+    "Token Issuer Anomaly",
+    "Suspicious token activity",
+    "Session cookie was accessed by unusual application",
+    // OAuth and application consent attacks
+    "Suspicious OAuth app file download activities",
+    "Suspicious application consent",
+    "OAuth application with unusual permissions",
+    "App with suspicious OAuth scope made graph calls",
+    // Authentication bypass indicators
+    "Unfamiliar sign-in properties",
+    "Atypical travel",
+    "Impossible travel",
+    "Sign-in from anonymous IP address",
+    "Sign-in from infected device",
+    // Credential and access anomalies
+    "Suspicious inbox forwarding",
+    "Suspicious cloud app access"
+)
 | project
     TimeGenerated,
     AlertName,

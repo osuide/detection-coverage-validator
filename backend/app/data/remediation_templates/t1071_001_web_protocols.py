@@ -149,6 +149,12 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "http_c2_alerts" {
   name = "http-c2-pattern-alerts"
@@ -293,6 +299,12 @@ variable "alb_log_group" {
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: SNS topic for alerts
@@ -445,6 +457,12 @@ variable "alert_email" {
   description = "Email address for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: SNS topic for alerts
 resource "aws_sns_topic" "https_anomaly_alerts" {
   name = "https-anomaly-alerts"
@@ -542,6 +560,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Notification channel
@@ -661,6 +685,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Notification channel
@@ -832,6 +862,12 @@ Resources:
 variable "alert_email" {
   type        = string
   description = "Email address for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Enable GuardDuty
@@ -1057,6 +1093,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
   name                = "application-layer-protocol--web-protocols-alerts"
@@ -1073,7 +1115,7 @@ resource "azurerm_monitor_action_group" "security_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
   name                = "application-layer-protocol--web-protocols-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

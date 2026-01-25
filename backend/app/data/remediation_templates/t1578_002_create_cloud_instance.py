@@ -86,6 +86,12 @@ variable "alert_email" {
   description = "Email for EC2 security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create encrypted SNS topic
 resource "aws_sns_topic" "ec2_alerts" {
   name              = "guardduty-ec2-runtime-alerts"
@@ -616,6 +622,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
   name                = "modify-cloud-compute-infrastructure--create-cloud--alerts"
@@ -632,7 +644,7 @@ resource "azurerm_monitor_action_group" "security_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
   name                = "modify-cloud-compute-infrastructure--create-cloud--detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

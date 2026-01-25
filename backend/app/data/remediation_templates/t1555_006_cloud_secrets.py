@@ -175,6 +175,12 @@ variable "alert_email" {
   description = "Email for credential access alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create encrypted SNS topic
 resource "aws_sns_topic" "credential_alerts" {
   name              = "guardduty-credential-access-alerts"
@@ -346,6 +352,12 @@ terraform {
 variable "alert_email" {
   type        = string
   description = "Email for secret access alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 variable "bulk_threshold" {
@@ -703,6 +715,12 @@ variable "alert_email" {
   description = "Email for parameter access alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 variable "sensitive_prefixes" {
   type        = list(string)
   default     = ["/prod/", "/credentials/", "/secrets/", "/api-keys/"]
@@ -853,6 +871,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: Create notification channel
@@ -1233,6 +1257,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Enable Defender for Cloud plans
 resource "azurerm_security_center_subscription_pricing" "defender_servers" {
   tier          = "Standard"
@@ -1270,7 +1300,7 @@ resource "azurerm_monitor_action_group" "defender_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_detection" {
   name                = "defender-t1555-006"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

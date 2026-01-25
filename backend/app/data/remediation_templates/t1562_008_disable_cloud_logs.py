@@ -182,6 +182,12 @@ variable "alert_email" {
   description = "Email for critical security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create encrypted SNS topic for Stealth alerts
 resource "aws_sns_topic" "stealth_alerts" {
   name              = "guardduty-stealth-alerts"
@@ -482,6 +488,12 @@ variable "alert_email" {
   description = "Email for compliance alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: SNS topic for compliance alerts
 resource "aws_sns_topic" "compliance_alerts" {
   name              = "config-cloudtrail-compliance"
@@ -700,6 +712,12 @@ resource "aws_iam_role_policy_attachment" "config_policy" {
 variable "alert_email" {
   type        = string
   description = "Email for logging modification alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: SNS topic for logging alerts
@@ -1008,6 +1026,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Step 1: Create notification channel
 resource "google_monitoring_notification_channel" "email_s1" {
   display_name = "Audit Log Security Alerts"
@@ -1273,6 +1297,12 @@ variable "security_account_id" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # Step 1: SCP to deny logging modifications (attach to OUs)
@@ -1671,6 +1701,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
   name                = "impair-defences--disable-or-modify-cloud-logs-alerts"
@@ -1687,7 +1723,7 @@ resource "azurerm_monitor_action_group" "security_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
   name                = "impair-defences--disable-or-modify-cloud-logs-detection"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"

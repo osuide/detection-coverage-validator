@@ -193,6 +193,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for Key Vault alerts
 resource "azurerm_monitor_action_group" "keyvault_alerts" {
   name                = "keyvault-credential-alerts"
@@ -209,7 +215,7 @@ resource "azurerm_monitor_action_group" "keyvault_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "bulk_access" {
   name                = "keyvault-bulk-secret-access"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT10M"
   window_duration      = "PT1H"
@@ -258,7 +264,7 @@ AzureDiagnostics
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "secret_export" {
   name                = "keyvault-secret-export"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT5M"
   window_duration      = "PT1H"
@@ -457,6 +463,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 resource "azurerm_monitor_action_group" "ssh_alerts" {
   name                = "ssh-key-access-alerts"
   resource_group_name = var.resource_group_name
@@ -471,7 +483,7 @@ resource "azurerm_monitor_action_group" "ssh_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "ssh_key_access" {
   name                = "vm-ssh-key-access"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT10M"
   window_duration      = "PT1H"
@@ -577,6 +589,12 @@ output "alert_rule_id" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 # SNS topic for alerts
@@ -776,6 +794,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 resource "google_monitoring_notification_channel" "email" {

@@ -165,6 +165,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "js_execution_alerts" {
   name                = "javascript-execution-alerts"
@@ -181,7 +187,7 @@ resource "azurerm_monitor_action_group" "js_execution_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "function_detection" {
   name                = "azure-function-suspicious-execution"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT10M"
   window_duration      = "PT1H"
@@ -387,6 +393,12 @@ variable "alert_email" {
   description = "Email for security alerts"
 }
 
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
+}
+
 resource "azurerm_monitor_action_group" "appservice_alerts" {
   name                = "appservice-script-alerts"
   resource_group_name = var.resource_group_name
@@ -401,7 +413,7 @@ resource "azurerm_monitor_action_group" "appservice_alerts" {
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "appservice_detection" {
   name                = "appservice-suspicious-script"
   resource_group_name = var.resource_group_name
-  location            = "uksouth"
+  location            = var.location
 
   evaluation_frequency = "PT10M"
   window_duration      = "PT1H"
@@ -510,6 +522,12 @@ AppServiceHTTPLogs
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 variable "lambda_log_groups" {
@@ -647,6 +665,12 @@ variable "project_id" {
 variable "alert_email" {
   type        = string
   description = "Email for security alerts"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure region for resources"
+  default     = "uksouth"
 }
 
 resource "google_monitoring_notification_channel" "email" {
