@@ -1190,7 +1190,11 @@ resource "google_monitoring_alert_policy" "gcr_activity" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Access from a suspicious application",
+                    "Malicious blob uploaded to storage account",
+                    "Potential malware uploaded to a storage account",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Supply Chain Compromise (T1195)
 # Microsoft Defender detects Supply Chain Compromise activity
@@ -1275,7 +1279,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Access from a suspicious application",
+                    "Malicious blob uploaded to storage account",
+                    "Potential malware uploaded to a storage account"
                 )
 | project
     TimeGenerated,

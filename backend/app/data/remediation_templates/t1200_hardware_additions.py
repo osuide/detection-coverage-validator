@@ -1655,7 +1655,10 @@ output "guardduty_detector_id" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspicious installation of GPU extension in your virtual machine",
+                    "Unusual application accessed a storage account",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Hardware Additions (T1200)
 # Microsoft Defender detects Hardware Additions activity
@@ -1740,7 +1743,9 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspicious installation of GPU extension in your virtual machine",
+                    "Unusual application accessed a storage account"
                 )
 | project
     TimeGenerated,

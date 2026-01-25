@@ -1103,7 +1103,11 @@ SPActivity
     SignInCount,
     IPs,
     FirstSeen""",
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspicious modification of the trust relationship of AD FS server",
+                    "Suspicious VPN connection",
+                    "Atypical travel",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Trusted Relationship (T1199)
 # Microsoft Defender detects Trusted Relationship activity
@@ -1188,7 +1192,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspicious modification of the trust relationship of AD FS server",
+                    "Suspicious VPN connection",
+                    "Atypical travel"
                 )
 | project
     TimeGenerated,

@@ -704,7 +704,11 @@ resource "google_pubsub_topic_iam_binding" "log_sink" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Unusual application accessed a storage account",
+                    "Access from a suspicious application",
+                    "Malicious blob was downloaded from a storage account",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Supply Chain Compromise: Compromise Hardware Supply Chain (T1195.003)
 # Microsoft Defender detects Supply Chain Compromise: Compromise Hardware Supply Chain activity
@@ -789,7 +793,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Unusual application accessed a storage account",
+                    "Access from a suspicious application",
+                    "Malicious blob was downloaded from a storage account"
                 )
 | project
     TimeGenerated,

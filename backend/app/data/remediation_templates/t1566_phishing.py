@@ -806,7 +806,12 @@ resource "google_monitoring_alert_policy" "malicious_url_alert" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Communication with possible phishing domain",
+                    "Phishing content hosted on a storage account",
+                    "Suspicious inbox manipulation rules",
+                    "Suspicious sending patterns",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Phishing (T1566)
 # Microsoft Defender detects Phishing activity
@@ -891,7 +896,11 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Communication with possible phishing domain",
+                    "Phishing content hosted on a storage account",
+                    "Suspicious inbox manipulation rules",
+                    "Suspicious sending patterns"
                 )
 | project
     TimeGenerated,

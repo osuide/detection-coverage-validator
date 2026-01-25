@@ -1213,7 +1213,11 @@ resource "aws_sns_topic_policy" "allow_events" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Malicious blob was downloaded from a storage account",
+                    "Detected file download from a known malicious source",
+                    "Potential malware uploaded to a storage account",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Replication Through Removable Media (T1091)
 # Microsoft Defender detects Replication Through Removable Media activity
@@ -1298,7 +1302,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Malicious blob was downloaded from a storage account",
+                    "Detected file download from a known malicious source",
+                    "Potential malware uploaded to a storage account"
                 )
 | project
     TimeGenerated,
