@@ -1001,7 +1001,12 @@ resource "aws_cloudwatch_log_metric_filter" "user_context_mismatch" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspected SID-History injection",
+                    "Anomalous Token",
+                    "Token issuer anomaly",
+                    "Suspicious modification of a sAMNameAccount attribute (CVE-2021-42278 and CVE-2021-42287 exploitation)",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Access Token Manipulation (T1134)
 # Microsoft Defender detects Access Token Manipulation activity
@@ -1086,7 +1091,11 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspected SID-History injection",
+                    "Anomalous Token",
+                    "Token issuer anomaly",
+                    "Suspicious modification of a sAMNameAccount attribute (CVE-2021-42278 and CVE-2021-42287 exploitation)"
                 )
 | project
     TimeGenerated,

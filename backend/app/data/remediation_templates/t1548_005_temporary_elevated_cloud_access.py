@@ -573,7 +573,11 @@ resource "google_monitoring_alert_policy" "sa_user_role_alert" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspicious additions to sensitive groups",
+                    "Suspicious modification of domain AdminSdHolder",
+                    "Suspected Netlogon privilege elevation attempt (CVE-2020-1472 exploitation)",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access (T1548.005)
 # Microsoft Defender detects Abuse Elevation Control Mechanism: Temporary Elevated Cloud Access activity
@@ -658,7 +662,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspicious additions to sensitive groups",
+                    "Suspicious modification of domain AdminSdHolder",
+                    "Suspected Netlogon privilege elevation attempt (CVE-2020-1472 exploitation)"
                 )
 | project
     TimeGenerated,
