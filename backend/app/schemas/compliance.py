@@ -27,6 +27,7 @@ class CloudContextResponse(BaseModel):
 
     aws_services: list[str] = []
     gcp_services: list[str] = []
+    azure_services: list[str] = []  # Azure service mappings
     shared_responsibility: str = "customer"  # "customer", "shared", "provider"
     detection_guidance: Optional[str] = None
 

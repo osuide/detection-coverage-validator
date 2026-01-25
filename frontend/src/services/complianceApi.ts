@@ -20,6 +20,7 @@ export interface ComplianceFramework {
 export interface CloudContext {
   aws_services: string[]
   gcp_services: string[]
+  azure_services: string[]  // Azure service mappings
   shared_responsibility: 'customer' | 'shared' | 'provider'
   detection_guidance: string | null
 }
