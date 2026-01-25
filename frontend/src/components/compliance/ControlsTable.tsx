@@ -225,7 +225,7 @@ export function ControlsTable({ controls }: ControlsTableProps) {
                     <div className="flex flex-wrap gap-1">
                       {control.cloud_context?.aws_services?.slice(0, 2).map((svc) => (
                         <span
-                          key={svc}
+                          key={`aws-${svc}`}
                           className="px-2 py-0.5 text-xs bg-orange-900/50 text-orange-300 border border-orange-700 rounded-sm"
                           title={`AWS: ${svc}`}
                         >
@@ -234,15 +234,25 @@ export function ControlsTable({ controls }: ControlsTableProps) {
                       ))}
                       {control.cloud_context?.gcp_services?.slice(0, 2).map((svc) => (
                         <span
-                          key={svc}
+                          key={`gcp-${svc}`}
                           className="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-300 border border-blue-700 rounded-sm"
                           title={`GCP: ${svc}`}
                         >
                           GCP {svc}
                         </span>
                       ))}
+                      {control.cloud_context?.azure_services?.slice(0, 2).map((svc) => (
+                        <span
+                          key={`azure-${svc}`}
+                          className="px-2 py-0.5 text-xs bg-cyan-900/50 text-cyan-300 border border-cyan-700 rounded-sm"
+                          title={`Azure: ${svc}`}
+                        >
+                          Azure {svc}
+                        </span>
+                      ))}
                       {!control.cloud_context?.aws_services?.length &&
-                        !control.cloud_context?.gcp_services?.length && (
+                        !control.cloud_context?.gcp_services?.length &&
+                        !control.cloud_context?.azure_services?.length && (
                           <span className="text-xs text-gray-500 italic">
                             {control.cloud_applicability === 'provider_responsibility'
                               ? 'Managed by provider'
