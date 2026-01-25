@@ -12,6 +12,7 @@ import { ControlGapItem, CloudApplicability, MissingTechniqueDetail } from '../.
 
 interface ControlsTableProps {
   controls: ControlGapItem[]
+  cloudProvider?: 'aws' | 'gcp' | 'azure'  // Filter cloud services by provider
 }
 
 // Cloud applicability display configuration
@@ -76,7 +77,7 @@ function TechniqueItem({ technique }: { technique: MissingTechniqueDetail }) {
   )
 }
 
-export function ControlsTable({ controls }: ControlsTableProps) {
+export function ControlsTable({ controls, cloudProvider }: ControlsTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
   const toggleRow = (controlId: string) => {
@@ -223,44 +224,63 @@ export function ControlsTable({ controls }: ControlsTableProps) {
                   </td>
                   <td className="py-3">
                     <div className="flex flex-wrap gap-1">
-                      {control.cloud_context?.aws_services?.slice(0, 2).map((svc) => (
-                        <span
-                          key={`aws-${svc}`}
-                          className="px-2 py-0.5 text-xs bg-orange-900/50 text-orange-300 border border-orange-700 rounded-sm"
-                          title={`AWS: ${svc}`}
-                        >
-                          AWS {svc}
-                        </span>
-                      ))}
-                      {control.cloud_context?.gcp_services?.slice(0, 2).map((svc) => (
-                        <span
-                          key={`gcp-${svc}`}
-                          className="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-300 border border-blue-700 rounded-sm"
-                          title={`GCP: ${svc}`}
-                        >
-                          GCP {svc}
-                        </span>
-                      ))}
-                      {control.cloud_context?.azure_services?.slice(0, 2).map((svc) => (
-                        <span
-                          key={`azure-${svc}`}
-                          className="px-2 py-0.5 text-xs bg-cyan-900/50 text-cyan-300 border border-cyan-700 rounded-sm"
-                          title={`Azure: ${svc}`}
-                        >
-                          Azure {svc}
-                        </span>
-                      ))}
-                      {!control.cloud_context?.aws_services?.length &&
-                        !control.cloud_context?.gcp_services?.length &&
-                        !control.cloud_context?.azure_services?.length && (
-                          <span className="text-xs text-gray-500 italic">
-                            {control.cloud_applicability === 'provider_responsibility'
-                              ? 'Managed by provider'
-                              : control.cloud_applicability === 'informational'
-                                ? 'Not cloud-specific'
-                                : 'No services mapped'}
+                      {/* AWS services - show if no provider filter or provider is aws */}
+                      {(!cloudProvider || cloudProvider === 'aws') &&
+                        control.cloud_context?.aws_services?.slice(0, 3).map((svc) => (
+                          <span
+                            key={`aws-${svc}`}
+                            className="px-2 py-0.5 text-xs bg-orange-900/50 text-orange-300 border border-orange-700 rounded-sm"
+                            title={`AWS: ${svc}`}
+                          >
+                            {cloudProvider ? svc : `AWS ${svc}`}
                           </span>
-                        )}
+                        ))}
+                      {/* GCP services - show if no provider filter or provider is gcp */}
+                      {(!cloudProvider || cloudProvider === 'gcp') &&
+                        control.cloud_context?.gcp_services?.slice(0, 3).map((svc) => (
+                          <span
+                            key={`gcp-${svc}`}
+                            className="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-300 border border-blue-700 rounded-sm"
+                            title={`GCP: ${svc}`}
+                          >
+                            {cloudProvider ? svc : `GCP ${svc}`}
+                          </span>
+                        ))}
+                      {/* Azure services - show if no provider filter or provider is azure */}
+                      {(!cloudProvider || cloudProvider === 'azure') &&
+                        control.cloud_context?.azure_services?.slice(0, 3).map((svc) => (
+                          <span
+                            key={`azure-${svc}`}
+                            className="px-2 py-0.5 text-xs bg-cyan-900/50 text-cyan-300 border border-cyan-700 rounded-sm"
+                            title={`Azure: ${svc}`}
+                          >
+                            {cloudProvider ? svc : `Azure ${svc}`}
+                          </span>
+                        ))}
+                      {/* Fallback message when no services for selected provider */}
+                      {(() => {
+                        const services = cloudProvider === 'aws'
+                          ? control.cloud_context?.aws_services
+                          : cloudProvider === 'gcp'
+                            ? control.cloud_context?.gcp_services
+                            : cloudProvider === 'azure'
+                              ? control.cloud_context?.azure_services
+                              : [...(control.cloud_context?.aws_services || []),
+                                 ...(control.cloud_context?.gcp_services || []),
+                                 ...(control.cloud_context?.azure_services || [])]
+                        if (!services?.length) {
+                          return (
+                            <span className="text-xs text-gray-500 italic">
+                              {control.cloud_applicability === 'provider_responsibility'
+                                ? 'Managed by provider'
+                                : control.cloud_applicability === 'informational'
+                                  ? 'Not cloud-specific'
+                                  : 'No services mapped'}
+                            </span>
+                          )
+                        }
+                        return null
+                      })()}
                     </div>
                   </td>
                 </tr>

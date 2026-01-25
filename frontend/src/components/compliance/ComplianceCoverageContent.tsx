@@ -39,6 +39,7 @@ interface InitialModalState {
 interface ComplianceCoverageContentProps {
   accountId: string
   initialModalState?: InitialModalState
+  cloudProvider?: 'aws' | 'gcp' | 'azure'  // Filter cloud services by provider
 }
 
 // Cloud applicability filter options
@@ -50,7 +51,7 @@ const applicabilityFilters: { value: CloudApplicability | 'all'; label: string }
   { value: 'provider_responsibility', label: 'Provider Managed' },
 ]
 
-export function ComplianceCoverageContent({ accountId, initialModalState }: ComplianceCoverageContentProps) {
+export function ComplianceCoverageContent({ accountId, initialModalState, cloudProvider }: ComplianceCoverageContentProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedFramework, setSelectedFramework] = useState<string>(
     initialModalState?.frameworkId || ''
@@ -453,7 +454,7 @@ export function ComplianceCoverageContent({ accountId, initialModalState }: Comp
               </div>
 
               {filteredGaps.length > 0 ? (
-                <ControlsTable controls={filteredGaps} />
+                <ControlsTable controls={filteredGaps} cloudProvider={cloudProvider} />
               ) : (
                 <div className="text-center py-8 text-gray-400">
                   <Cloud className="w-8 h-8 mx-auto mb-2 opacity-50" />

@@ -63,6 +63,7 @@ export default function Compliance() {
       <ComplianceCoverageContent
         accountId={selectedAccount.id}
         initialModalState={initialModalState}
+        cloudProvider={selectedAccount.provider}
       />
     </div>
   )
