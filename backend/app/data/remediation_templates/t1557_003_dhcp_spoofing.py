@@ -1068,7 +1068,11 @@ resource "google_monitoring_alert_policy" "dns_policy_change" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Detected suspicious network activity",
+                    "Suspicious network activity",
+                    "Communication with suspicious domain identified by threat intelligence",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Adversary-in-the-Middle: DHCP Spoofing (T1557.003)
 # Microsoft Defender detects Adversary-in-the-Middle: DHCP Spoofing activity
@@ -1153,7 +1157,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Detected suspicious network activity",
+                    "Suspicious network activity",
+                    "Communication with suspicious domain identified by threat intelligence"
                 )
 | project
     TimeGenerated,

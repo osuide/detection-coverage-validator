@@ -1107,7 +1107,11 @@ SigninLogs
     IPs,
     Apps,
     FirstSeen""",
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Attacker in the Middle",
+                    "Suspected NTLM authentication tampering",
+                    "Suspected NTLM relay attack (Exchange account)",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Adversary-in-the-Middle (T1557)
 # Microsoft Defender detects Adversary-in-the-Middle activity
@@ -1192,7 +1196,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Attacker in the Middle",
+                    "Suspected NTLM authentication tampering",
+                    "Suspected NTLM relay attack (Exchange account)"
                 )
 | project
     TimeGenerated,

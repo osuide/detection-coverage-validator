@@ -1040,7 +1040,11 @@ resource "google_monitoring_alert_policy" "ad_modification" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspected NTLM authentication tampering",
+                    "Suspected suspicious Kerberos ticket request",
+                    "Suspected NTLM relay attack (Exchange account)",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Adversary-in-the-Middle: LLMNR/NBT-NS Poisoning and SMB Relay (T1557.001)
 # Microsoft Defender detects Adversary-in-the-Middle: LLMNR/NBT-NS Poisoning and SMB Relay activity
@@ -1125,7 +1129,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspected NTLM authentication tampering",
+                    "Suspected suspicious Kerberos ticket request",
+                    "Suspected NTLM relay attack (Exchange account)"
                 )
 | project
     TimeGenerated,

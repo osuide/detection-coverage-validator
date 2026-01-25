@@ -1020,7 +1020,11 @@ resource "google_compute_packet_mirroring" "arp_detection" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspected NTLM authentication tampering",
+                    "Detected suspicious network activity",
+                    "Suspicious network activity",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Adversary-in-the-Middle: ARP Cache Poisoning (T1557.002)
 # Microsoft Defender detects Adversary-in-the-Middle: ARP Cache Poisoning activity
@@ -1105,7 +1109,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspected NTLM authentication tampering",
+                    "Detected suspicious network activity",
+                    "Suspicious network activity"
                 )
 | project
     TimeGenerated,
