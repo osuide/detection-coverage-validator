@@ -33,7 +33,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 const docSections = [
   {
     title: 'Getting Started',
-    pages: docPages.filter(d => ['getting-started', 'connecting-aws', 'connecting-gcp'].includes(d.slug)),
+    pages: docPages.filter(d => ['getting-started', 'connecting-aws', 'connecting-gcp', 'connecting-azure'].includes(d.slug)),
   },
   {
     title: 'Features',
