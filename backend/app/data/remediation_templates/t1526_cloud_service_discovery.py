@@ -518,6 +518,8 @@ let ServiceEnumeration = AzureActivity
 );
 
 // First-time service enumeration detection
+// PERFORMANCE WARNING: This query uses a 30-day lookback join which can be expensive
+// on large workspaces. Consider reducing to ago(7d) or ago(14d) for high-volume environments.
 let FirstTimeServiceDiscovery = AzureActivity
 | where TimeGenerated > ago(24h)
 | where OperationNameValue in (ServiceDiscoveryOps)

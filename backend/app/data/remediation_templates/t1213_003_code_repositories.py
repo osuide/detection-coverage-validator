@@ -779,6 +779,8 @@ let PermissionChanges = AzureDevOpsAuditing
 | extend AlertType = "SuspiciousPermissionChanges";
 
 // Detect first-time repository access from new location
+// PERFORMANCE WARNING: This query uses a 30-day lookback join which can be expensive
+// on large workspaces. Consider reducing to ago(7d) or ago(14d) for high-volume environments.
 let FirstTimeAccess = AzureDevOpsAuditing
 | where TimeGenerated > ago(24h)
 | where OperationName in ("Git.Clone", "Git.Fetch")

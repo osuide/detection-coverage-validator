@@ -890,6 +890,8 @@ let privilegedRoles = dynamic([
     "Application Administrator"
 ]);
 // Get baseline of who typically assigns roles
+// PERFORMANCE WARNING: This query scans 30 days of AuditLogs which can be expensive
+// on large Entra ID tenants. Consider reducing to ago(7d) or ago(14d) for high-volume environments.
 let RoleAssigners = AuditLogs
 | where TimeGenerated > ago(30d)
 | where OperationName has_any ("Add member to role", "Add eligible member to role")

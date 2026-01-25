@@ -1324,6 +1324,9 @@ let NetworkWatcherRecon = AzureActivity
 | extend AlertType = "NetworkWatcherRecon";
 
 // First-time network enumeration from new IP
+// PERFORMANCE WARNING: This query uses a 30-day lookback join which can be expensive
+// on large workspaces. Consider reducing to ago(7d) or ago(14d) for high-volume environments.
+// Alternatively, use a materialised view or scheduled query to pre-compute historical baselines.
 let FirstTimeNetworkEnum = AzureActivity
 | where TimeGenerated > ago(24h)
 | where OperationNameValue in (NetworkEnumOps)

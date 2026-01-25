@@ -1135,6 +1135,8 @@ let KeyVaultSecretOps = AzureDiagnostics
     by CallerIPAddress, identity_claim_upn_s, Resource
 | where TotalOperations > 5 or HighRiskOps > 0;
 // Part 2: Detect Key Vault access from new/unusual IPs
+// PERFORMANCE WARNING: This query uses a 30-day lookback join which can be expensive
+// on large workspaces. Consider reducing to ago(7d) or ago(14d) for high-volume environments.
 let KeyVaultNewIPs = AzureDiagnostics
 | where TimeGenerated > ago(24h)
 | where ResourceProvider == "MICROSOFT.KEYVAULT"
