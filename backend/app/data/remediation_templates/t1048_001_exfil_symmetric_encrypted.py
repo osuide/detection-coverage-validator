@@ -782,17 +782,85 @@ resource "google_monitoring_alert_policy" "crypto_tools" {
             implementation=DetectionImplementation(
                 azure_kql_query="""// Exfiltration Over Symmetric Encrypted Non-C2 Protocol Detection
 // Technique: T1048.001
-AzureActivity
+// Detects symmetric encryption operations followed by large encrypted egress
+// Prerequisites: AzureDiagnostics (Key Vault), AzureNetworkAnalytics_CL
+
+// Symmetric Key Operations in Azure Key Vault (AES, RC4, etc.)
+let SymmetricKeyOps = AzureDiagnostics
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in (
+    "SecretGet",      // Retrieving symmetric keys stored as secrets
+    "Encrypt",        // Encrypt operation using symmetric key
+    "Decrypt",        // Decrypt (may indicate key access for exfil prep)
+    "WrapKey",        // Key wrapping for transport
+    "UnwrapKey"       // Key unwrapping
+)
+| where ResultSignature == "OK" or ResultSignature == "200"
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+    SymmetricOps = count(),
+    UniqueSecrets = dcount(id_s),
+    Operations = make_set(OperationName, 10)
+    by CallerIPAddress, identity_claim_upn_s, bin(TimeGenerated, 1h)
+| where SymmetricOps > 20
+| extend AlertType = "HighSymmetricKeyUsage";
+
+// Large Encrypted Egress (HTTPS - port 443) following Key Vault activity
+let EncryptedEgress = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where DestPort_d == 443  // HTTPS
+| where FlowDirection_s == "O"  // Outbound
+| where FlowStatus_s == "A"  // Allowed
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Connections = count(),
+    UniqueDestinations = dcount(DestIP_s),
+    Destinations = make_set(DestIP_s, 10)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 52428800  // > 50 MB encrypted egress
+| extend AlertType = "LargeEncryptedEgress";
+
+// Bulk Secret/Key Retrieval (staging for encryption)
+let BulkSecretRetrieval = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in ("SecretGet", "SecretList", "KeyGet", "KeyList")
+| where ResultSignature == "OK" or ResultSignature == "200"
+| summarize
+    SecretOps = count(),
+    UniqueSecrets = dcount(id_s),
+    KeyVaults = dcount(Resource)
+    by CallerIPAddress, identity_claim_upn_s, bin(TimeGenerated, 30m)
+| where SecretOps > 10 or UniqueSecrets > 5 or KeyVaults > 2
+| extend AlertType = "BulkSecretRetrieval";
+
+// Non-standard Encrypted Ports (custom encryption channels)
+let CustomEncryptedChannels = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where DestPort_d in (8443, 9443, 8444)  // Common alternate HTTPS ports
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Connections = count()
+    by SrcIP_s, DestIP_s, DestPort_d, bin(TimeGenerated, 1h)
+| where TotalBytes > 10485760  // > 10 MB
+| extend AlertType = "CustomEncryptedChannel";
+
+// Combine all detection signals
+SymmetricKeyOps
+| union EncryptedEgress
+| union BulkSecretRetrieval
+| union CustomEncryptedChannels
+| project
+    TimeGenerated,
+    AlertType,
+    SourceIP = coalesce(CallerIPAddress, SrcIP_s),
+    User = identity_claim_upn_s,
+    Details = pack_all()
+| order by TimeGenerated desc""",
                 azure_terraform_template="""# Azure Detection for Exfiltration Over Symmetric Encrypted Non-C2 Protocol
 # MITRE ATT&CK: T1048.001
 
@@ -828,9 +896,9 @@ variable "location" {
 
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
-  name                = "exfiltration-over-symmetric-encrypted-non-c2-proto-alerts"
+  name                = "t1048-001-symmetric-encrypted-alerts"
   resource_group_name = var.resource_group_name
-  short_name          = "SecAlerts"
+  short_name          = "T1048001"
 
   email_receiver {
     name          = "security-team"
@@ -838,9 +906,9 @@ resource "azurerm_monitor_action_group" "security_alerts" {
   }
 }
 
-# Scheduled Query Rule for detection
-resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
-  name                = "exfiltration-over-symmetric-encrypted-non-c2-proto-detection"
+# Alert 1: Symmetric Key Operations in Azure Key Vault
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "symmetric_key_ops" {
+  name                = "t1048-001-symmetric-key-operations"
   resource_group_name = var.resource_group_name
   location            = var.location
 
@@ -851,19 +919,17 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
 
   criteria {
     query = <<-QUERY
-// Exfiltration Over Symmetric Encrypted Non-C2 Protocol Detection
-// Technique: T1048.001
-AzureActivity
-| where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in ("SecretGet", "Encrypt", "Decrypt", "WrapKey", "UnwrapKey")
+| where ResultSignature == "OK" or ResultSignature == "200"
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc
+    SymmetricOps = count(),
+    UniqueSecrets = dcount(id_s),
+    Operations = make_set(OperationName, 10)
+    by CallerIPAddress, identity_claim_upn_s, bin(TimeGenerated, 1h)
+| where SymmetricOps > 20
     QUERY
 
     time_aggregation_method = "Count"
@@ -877,23 +943,153 @@ AzureActivity
   }
 
   auto_mitigation_enabled = false
-
-  action {
-    action_groups = [azurerm_monitor_action_group.security_alerts.id]
-  }
-
-  description = "Detects Exfiltration Over Symmetric Encrypted Non-C2 Protocol (T1048.001) activity in Azure environment"
-  display_name = "Exfiltration Over Symmetric Encrypted Non-C2 Protocol Detection"
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects high-volume symmetric encryption operations in Azure Key Vault (T1048.001)"
+  display_name = "High Symmetric Key Operations Detected"
   enabled      = true
-
-  tags = {
-    "mitre-technique" = "T1048.001"
-    "detection-type"  = "security"
-  }
+  tags         = { "mitre-technique" = "T1048.001", "detection-type" = "security" }
 }
 
-output "alert_rule_id" {
-  value = azurerm_monitor_scheduled_query_rules_alert_v2.detection.id
+# Alert 2: Large Encrypted Egress (HTTPS Port 443)
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "encrypted_egress" {
+  name                = "t1048-001-encrypted-egress"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(1h)
+| where DestPort_d == 443
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Connections = count(),
+    UniqueDestinations = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 52428800
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects large encrypted egress (>50MB) over HTTPS (T1048.001)"
+  display_name = "Large Encrypted Egress Detected"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.001", "detection-type" = "security" }
+}
+
+# Alert 3: Bulk Secret/Key Retrieval
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "bulk_secret_retrieval" {
+  name                = "t1048-001-bulk-secret-retrieval"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT30M"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureDiagnostics
+| where TimeGenerated > ago(30m)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in ("SecretGet", "SecretList", "KeyGet", "KeyList")
+| where ResultSignature == "OK" or ResultSignature == "200"
+| summarize
+    SecretOps = count(),
+    UniqueSecrets = dcount(id_s),
+    KeyVaults = dcount(Resource)
+    by CallerIPAddress, identity_claim_upn_s, bin(TimeGenerated, 30m)
+| where SecretOps > 10 or UniqueSecrets > 5 or KeyVaults > 2
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects bulk retrieval of secrets/keys from Azure Key Vault (T1048.001)"
+  display_name = "Bulk Secret Retrieval Detected"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.001", "detection-type" = "security" }
+}
+
+# Alert 4: Custom Encrypted Channels (Non-Standard HTTPS Ports)
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "custom_encrypted_channels" {
+  name                = "t1048-001-custom-encrypted-channels"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(1h)
+| where DestPort_d in (8443, 9443, 8444)
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Connections = count()
+    by SrcIP_s, DestIP_s, DestPort_d, bin(TimeGenerated, 1h)
+| where TotalBytes > 10485760
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects large transfers over non-standard encrypted ports (T1048.001)"
+  display_name = "Custom Encrypted Channel Detected"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.001", "detection-type" = "security" }
+}
+
+output "alert_rule_ids" {
+  value = {
+    symmetric_key_ops       = azurerm_monitor_scheduled_query_rules_alert_v2.symmetric_key_ops.id
+    encrypted_egress        = azurerm_monitor_scheduled_query_rules_alert_v2.encrypted_egress.id
+    bulk_secret_retrieval   = azurerm_monitor_scheduled_query_rules_alert_v2.bulk_secret_retrieval.id
+    custom_encrypted_channels = azurerm_monitor_scheduled_query_rules_alert_v2.custom_encrypted_channels.id
+  }
 }""",
                 alert_severity="high",
                 alert_title="Azure: Exfiltration Over Symmetric Encrypted Non-C2 Protocol Detected",

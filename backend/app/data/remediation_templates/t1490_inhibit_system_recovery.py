@@ -851,23 +851,87 @@ resource "google_monitoring_alert_policy" "backup_policy_changes" {
             azure_service="log_analytics",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                azure_kql_query="""// Inhibit System Recovery Detection
-// Technique: T1490
+                azure_kql_query="""// T1490 - Inhibit System Recovery Detection
+// MITRE ATT&CK: Detects modifications to backup configurations and recovery infrastructure
+// Data Source: AzureActivity
+
+let lookback = 24h;
+let BackupPolicyOps = dynamic([
+    "Microsoft.RecoveryServices/vaults/backupPolicies/delete",
+    "Microsoft.RecoveryServices/vaults/backupPolicies/write",
+    "Microsoft.DataProtection/backupVaults/backupPolicies/delete"
+]);
+let ProtectedItemOps = dynamic([
+    "Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers/protectedItems/delete",
+    "Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers/protectedItems/write"
+]);
+let VaultOps = dynamic([
+    "Microsoft.RecoveryServices/vaults/delete",
+    "Microsoft.RecoveryServices/vaults/backupconfig/write",
+    "Microsoft.DataProtection/backupVaults/delete"
+]);
+let SnapshotOps = dynamic([
+    "Microsoft.Compute/snapshots/delete",
+    "Microsoft.Compute/restorePointCollections/delete",
+    "Microsoft.Compute/restorePointCollections/restorePoints/delete"
+]);
+let ImmutabilityOps = dynamic([
+    "Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/delete",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/lock/action"
+]);
 AzureActivity
-| where TimeGenerated > ago(24h)
-| where OperationNameValue contains "Microsoft.RecoveryServices/vaults/delete"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue in (BackupPolicyOps)
+    or OperationNameValue in (ProtectedItemOps)
+    or OperationNameValue in (VaultOps)
+    or OperationNameValue in (SnapshotOps)
+    or OperationNameValue in (ImmutabilityOps)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| extend
+    RecoveryImpact = case(
+        OperationNameValue in (VaultOps), "Vault Configuration",
+        OperationNameValue in (BackupPolicyOps), "Backup Policy",
+        OperationNameValue in (ProtectedItemOps), "Protected Item",
+        OperationNameValue in (SnapshotOps), "Snapshot/Restore Point",
+        OperationNameValue in (ImmutabilityOps), "Immutability Policy",
+        "Unknown"
+    ),
+    ActionType = case(
+        OperationNameValue has "delete", "Delete",
+        OperationNameValue has "write", "Modify",
+        OperationNameValue has "lock", "Lock",
+        "Unknown"
+    )
+| extend
+    ParsedProps = parse_json(Properties),
+    IsSoftDeleteDisable = Properties has "softDeleteFeatureState" and Properties has "Disabled"
+| extend
+    Severity = case(
+        ActionType == "Delete" and RecoveryImpact == "Vault Configuration", "Critical",
+        ActionType == "Delete" and RecoveryImpact == "Backup Policy", "Critical",
+        IsSoftDeleteDisable, "Critical",
+        ActionType == "Delete", "High",
+        RecoveryImpact == "Immutability Policy", "High",
+        "Medium"
+    ),
+    TechniqueId = "T1490",
+    TechniqueName = "Inhibit System Recovery"
 | project
     TimeGenerated,
+    Caller,
+    CallerIpAddress,
     SubscriptionId,
     ResourceGroup,
     Resource,
-    Caller,
-    CallerIpAddress,
     OperationNameValue,
-    ActivityStatusValue,
-    Properties
-| order by TimeGenerated desc""",
+    RecoveryImpact,
+    ActionType,
+    Severity,
+    IsSoftDeleteDisable,
+    CorrelationId,
+    TechniqueId,
+    TechniqueName
+| order by Severity, TimeGenerated desc""",
                 azure_activity_operations=["Microsoft.RecoveryServices/vaults/delete"],
                 azure_terraform_template="""# Azure Detection for Inhibit System Recovery
 # MITRE ATT&CK: T1490
@@ -927,23 +991,25 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
 
   criteria {
     query = <<-QUERY
-// Inhibit System Recovery Detection
+// Inhibit System Recovery - Backup Policy Operations
 // Technique: T1490
+let BackupPolicyOps = dynamic([
+    "Microsoft.RecoveryServices/vaults/backupPolicies/delete",
+    "Microsoft.RecoveryServices/vaults/backupPolicies/write",
+    "Microsoft.DataProtection/backupVaults/backupPolicies/delete"
+]);
 AzureActivity
-| where TimeGenerated > ago(24h)
-| where OperationNameValue contains "Microsoft.RecoveryServices/vaults/delete"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where TimeGenerated > ago(1h)
+| where OperationNameValue in (BackupPolicyOps)
+| where ActivityStatusValue in ("Success", "Succeeded")
 | project
     TimeGenerated,
+    Caller,
+    CallerIpAddress,
     SubscriptionId,
     ResourceGroup,
     Resource,
-    Caller,
-    CallerIpAddress,
-    OperationNameValue,
-    ActivityStatusValue,
-    Properties
-| order by TimeGenerated desc
+    OperationNameValue
     QUERY
 
     time_aggregation_method = "Count"
@@ -962,8 +1028,243 @@ AzureActivity
     action_groups = [azurerm_monitor_action_group.security_alerts.id]
   }
 
-  description = "Detects Inhibit System Recovery (T1490) activity in Azure environment"
-  display_name = "Inhibit System Recovery Detection"
+  description = "Detects backup policy deletion or modification (T1490)"
+  display_name = "T1490 - Backup Policy Changes"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1490"
+    "detection-type"  = "security"
+  }
+}
+
+# Alert 2: Recovery Vault Deletion
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "vault_deletion" {
+  name                = "t1490-vault-deletion"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 1
+
+  criteria {
+    query = <<-QUERY
+// Inhibit System Recovery - Vault Deletion
+// Technique: T1490
+let VaultOps = dynamic([
+    "Microsoft.RecoveryServices/vaults/delete",
+    "Microsoft.RecoveryServices/vaults/backupconfig/write",
+    "Microsoft.DataProtection/backupVaults/delete"
+]);
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue in (VaultOps)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| extend IsSoftDeleteDisable = Properties has "softDeleteFeatureState" and Properties has "Disabled"
+| project
+    TimeGenerated,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    OperationNameValue,
+    IsSoftDeleteDisable
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects recovery vault deletion or soft-delete disable (T1490)"
+  display_name = "T1490 - Vault Deletion"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1490"
+    "detection-type"  = "security"
+  }
+}
+
+# Alert 3: Snapshot and Restore Point Deletion
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "snapshot_deletion" {
+  name                = "t1490-snapshot-deletion"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+// Inhibit System Recovery - Snapshot Deletion
+// Technique: T1490
+let SnapshotOps = dynamic([
+    "Microsoft.Compute/snapshots/delete",
+    "Microsoft.Compute/restorePointCollections/delete",
+    "Microsoft.Compute/restorePointCollections/restorePoints/delete"
+]);
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue in (SnapshotOps)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    DeletionCount = count(),
+    Resources = make_set(Resource, 20)
+    by Caller, CallerIpAddress, SubscriptionId, bin(TimeGenerated, 1h)
+| where DeletionCount >= 1
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects snapshot and restore point deletion (T1490)"
+  display_name = "T1490 - Snapshot Deletion"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1490"
+    "detection-type"  = "security"
+  }
+}
+
+# Alert 4: Immutability Policy Tampering
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "immutability_tampering" {
+  name                = "t1490-immutability-tampering"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 1
+
+  criteria {
+    query = <<-QUERY
+// Inhibit System Recovery - Immutability Policy Changes
+// Technique: T1490
+let ImmutabilityOps = dynamic([
+    "Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/delete",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/lock/action"
+]);
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue in (ImmutabilityOps)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| project
+    TimeGenerated,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    OperationNameValue
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects immutability policy deletion or locking (T1490)"
+  display_name = "T1490 - Immutability Policy Tampering"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1490"
+    "detection-type"  = "security"
+  }
+}
+
+# Alert 5: Protected Item Removal
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "protected_item_removal" {
+  name                = "t1490-protected-item-removal"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+// Inhibit System Recovery - Protected Item Operations
+// Technique: T1490
+let ProtectedItemOps = dynamic([
+    "Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers/protectedItems/delete",
+    "Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers/protectedItems/write"
+]);
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue in (ProtectedItemOps)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    OperationCount = count(),
+    Resources = make_set(Resource, 20),
+    Operations = make_set(OperationNameValue)
+    by Caller, CallerIpAddress, SubscriptionId, bin(TimeGenerated, 1h)
+| where OperationCount >= 1
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects protected item removal from backup (T1490)"
+  display_name = "T1490 - Protected Item Removal"
   enabled      = true
 
   tags = {

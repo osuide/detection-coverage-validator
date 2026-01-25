@@ -460,18 +460,104 @@ resource "google_monitoring_alert_policy" "service_enum" {
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
                 azure_kql_query="""// Cloud Service Discovery Detection
-// Technique: T1526
-AzureActivity
+// Technique: T1526 - Detects enumeration of Azure managed services
+// Data sources: AzureActivity (control plane)
+
+// Define service discovery operations by Azure service type
+let ServiceDiscoveryOps = dynamic([
+    // App Services & Functions
+    "Microsoft.Web/sites/read",
+    "Microsoft.Web/sites/config/list/action",
+    "Microsoft.Web/sites/functions/read",
+    "Microsoft.Web/hostingEnvironments/read",
+    // Databases
+    "Microsoft.Sql/servers/read",
+    "Microsoft.Sql/servers/databases/read",
+    "Microsoft.DBforPostgreSQL/servers/read",
+    "Microsoft.DBforMySQL/servers/read",
+    "Microsoft.DocumentDB/databaseAccounts/read",
+    "Microsoft.DocumentDB/databaseAccounts/listKeys/action",
+    // Key Management
+    "Microsoft.KeyVault/vaults/read",
+    "Microsoft.KeyVault/vaults/secrets/read",
+    // Container Services
+    "Microsoft.ContainerService/managedClusters/read",
+    "Microsoft.ContainerRegistry/registries/read",
+    "Microsoft.ContainerRegistry/registries/listCredentials/action",
+    // Messaging & Events
+    "Microsoft.EventHub/namespaces/read",
+    "Microsoft.ServiceBus/namespaces/read",
+    "Microsoft.EventGrid/topics/read",
+    // Cache & Search
+    "Microsoft.Cache/Redis/read",
+    "Microsoft.Search/searchServices/read",
+    // API Management
+    "Microsoft.ApiManagement/service/read",
+    // Logic Apps & Automation
+    "Microsoft.Logic/workflows/read",
+    "Microsoft.Automation/automationAccounts/read"
+]);
+
+// Main detection: High-volume service enumeration
+let ServiceEnumeration = AzureActivity
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where OperationNameValue in (ServiceDiscoveryOps)
+| where ActivityStatusValue in ("Success", "Succeeded", "Accept")
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
+    DiscoveryCallCount = count(),
+    UniqueServiceTypes = dcount(OperationNameValue),
+    ServicesEnumerated = make_set(OperationNameValue, 20),
+    UniqueResourceGroups = dcount(tostring(split(Resource, "/")[4])),
+    AffectedResources = make_set(Resource, 10)
     by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+| where DiscoveryCallCount > 30 or UniqueServiceTypes > 8
+| extend AlertReason = case(
+    UniqueServiceTypes > 8, "Multi-service enumeration",
+    DiscoveryCallCount > 50, "High-volume service discovery",
+    "Service enumeration threshold exceeded"
+);
+
+// First-time service enumeration detection
+let FirstTimeServiceDiscovery = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (ServiceDiscoveryOps)
+| join kind=leftanti (
+    AzureActivity
+    | where TimeGenerated between (ago(30d) .. ago(24h))
+    | where OperationNameValue in (ServiceDiscoveryOps)
+    | distinct Caller, CallerIpAddress
+) on Caller, CallerIpAddress
+| summarize
+    DiscoveryCallCount = count(),
+    ServicesEnumerated = make_set(OperationNameValue, 10)
+    by Caller, CallerIpAddress
+| extend AlertReason = "First-time service discovery from new identity/IP";
+
+// Cross-subscription enumeration (advanced attacker pattern)
+let CrossSubscriptionEnum = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (ServiceDiscoveryOps)
+| summarize
+    UniqueSubscriptions = dcount(SubscriptionId),
+    SubscriptionsList = make_set(SubscriptionId, 10),
+    DiscoveryCallCount = count()
+    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
+| where UniqueSubscriptions > 3
+| extend AlertReason = "Cross-subscription service enumeration";
+
+// Combine all detection patterns
+ServiceEnumeration
+| union FirstTimeServiceDiscovery
+| union CrossSubscriptionEnum
+| project
+    TimeGenerated = now(),
+    Caller,
+    CallerIpAddress,
+    DiscoveryCallCount,
+    UniqueServiceTypes,
+    ServicesEnumerated,
+    AlertReason
+| order by DiscoveryCallCount desc""",
                 azure_terraform_template="""# Azure Detection for Cloud Service Discovery
 # MITRE ATT&CK: T1526
 

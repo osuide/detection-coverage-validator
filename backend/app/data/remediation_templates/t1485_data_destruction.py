@@ -706,23 +706,84 @@ resource "google_monitoring_alert_policy" "storage_delete" {
             azure_service="log_analytics",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                azure_kql_query="""// Data Destruction Detection
-// Technique: T1485
+                azure_kql_query="""// T1485 - Data Destruction Detection
+// MITRE ATT&CK: Detects deletion of storage accounts, databases, and backups
+// Data Source: AzureActivity
+
+let lookback = 24h;
+let StorageOperations = dynamic([
+    "Microsoft.Storage/storageAccounts/delete",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/delete"
+]);
+let DatabaseOperations = dynamic([
+    "Microsoft.Sql/servers/delete",
+    "Microsoft.Sql/servers/databases/delete",
+    "Microsoft.DocumentDB/databaseAccounts/delete",
+    "Microsoft.DBforPostgreSQL/servers/delete",
+    "Microsoft.DBforMySQL/servers/delete",
+    "Microsoft.DBforMariaDB/servers/delete",
+    "Microsoft.Cache/redis/delete"
+]);
+let BackupOperations = dynamic([
+    "Microsoft.RecoveryServices/vaults/delete",
+    "Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers/protectedItems/delete",
+    "Microsoft.DataProtection/backupVaults/delete"
+]);
+let ComputeOperations = dynamic([
+    "Microsoft.Compute/disks/delete",
+    "Microsoft.Compute/snapshots/delete",
+    "Microsoft.Compute/virtualMachines/delete"
+]);
 AzureActivity
-| where TimeGenerated > ago(24h)
-| where OperationNameValue contains "Microsoft.Storage/storageAccounts/delete" or OperationNameValue contains "Microsoft.Sql/servers/databases/delete"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue in (StorageOperations)
+    or OperationNameValue in (DatabaseOperations)
+    or OperationNameValue in (BackupOperations)
+    or OperationNameValue in (ComputeOperations)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| extend
+    DestructionType = case(
+        OperationNameValue in (StorageOperations), "Storage",
+        OperationNameValue in (DatabaseOperations), "Database",
+        OperationNameValue in (BackupOperations), "Backup",
+        OperationNameValue in (ComputeOperations), "Compute",
+        "Unknown"
+    ),
+    Severity = case(
+        OperationNameValue in (BackupOperations), "Critical",
+        OperationNameValue in (DatabaseOperations), "Critical",
+        OperationNameValue has "storageAccounts/delete", "Critical",
+        "High"
+    )
+| summarize
+    DeletionCount = count(),
+    DeletionTypes = make_set(DestructionType, 5),
+    Resources = make_set(Resource, 20),
+    Operations = make_set(OperationNameValue, 10),
+    MaxSeverity = max(Severity)
+    by Caller, CallerIpAddress, SubscriptionId, bin(TimeGenerated, 1h)
+| extend
+    AlertLevel = case(
+        DeletionCount > 5 and MaxSeverity == "Critical", "Critical",
+        DeletionCount > 10, "Critical",
+        MaxSeverity == "Critical", "High",
+        "Medium"
+    ),
+    TechniqueId = "T1485",
+    TechniqueName = "Data Destruction"
 | project
     TimeGenerated,
-    SubscriptionId,
-    ResourceGroup,
-    Resource,
     Caller,
     CallerIpAddress,
-    OperationNameValue,
-    ActivityStatusValue,
-    Properties
-| order by TimeGenerated desc""",
+    SubscriptionId,
+    DeletionCount,
+    AlertLevel,
+    DeletionTypes,
+    Resources,
+    Operations,
+    TechniqueId,
+    TechniqueName
+| order by AlertLevel, DeletionCount desc""",
                 azure_activity_operations=[
                     "Microsoft.Storage/storageAccounts/delete",
                     "Microsoft.Sql/servers/databases/delete",
@@ -785,23 +846,33 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
 
   criteria {
     query = <<-QUERY
-// Data Destruction Detection
+// Data Destruction Detection - Storage Operations
 // Technique: T1485
+let StorageOperations = dynamic([
+    "Microsoft.Storage/storageAccounts/delete",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/delete"
+]);
+let DatabaseOperations = dynamic([
+    "Microsoft.Sql/servers/delete",
+    "Microsoft.Sql/servers/databases/delete",
+    "Microsoft.DocumentDB/databaseAccounts/delete",
+    "Microsoft.DBforPostgreSQL/servers/delete",
+    "Microsoft.DBforMySQL/servers/delete"
+]);
 AzureActivity
-| where TimeGenerated > ago(24h)
-| where OperationNameValue contains "Microsoft.Storage/storageAccounts/delete" or OperationNameValue contains "Microsoft.Sql/servers/databases/delete"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
-| project
-    TimeGenerated,
-    SubscriptionId,
-    ResourceGroup,
-    Resource,
-    Caller,
-    CallerIpAddress,
-    OperationNameValue,
-    ActivityStatusValue,
-    Properties
-| order by TimeGenerated desc
+| where TimeGenerated > ago(1h)
+| where OperationNameValue in (StorageOperations) or OperationNameValue in (DatabaseOperations)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| extend DestructionType = case(
+    OperationNameValue in (StorageOperations), "Storage",
+    OperationNameValue in (DatabaseOperations), "Database",
+    "Unknown"
+)
+| summarize
+    DeletionCount = count(),
+    Resources = make_set(Resource, 10)
+    by Caller, CallerIpAddress, SubscriptionId
+| where DeletionCount >= 1
     QUERY
 
     time_aggregation_method = "Count"
@@ -820,8 +891,125 @@ AzureActivity
     action_groups = [azurerm_monitor_action_group.security_alerts.id]
   }
 
-  description = "Detects Data Destruction (T1485) activity in Azure environment"
-  display_name = "Data Destruction Detection"
+  description = "Detects storage and database deletion (T1485)"
+  display_name = "T1485 - Storage/Database Destruction"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1485"
+    "detection-type"  = "security"
+  }
+}
+
+# Alert 2: Backup and Recovery Destruction
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "backup_destruction" {
+  name                = "t1485-backup-destruction"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 1
+
+  criteria {
+    query = <<-QUERY
+// Data Destruction Detection - Backup Operations
+// Technique: T1485
+let BackupOperations = dynamic([
+    "Microsoft.RecoveryServices/vaults/delete",
+    "Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers/protectedItems/delete",
+    "Microsoft.DataProtection/backupVaults/delete"
+]);
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue in (BackupOperations)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| project
+    TimeGenerated,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    OperationNameValue
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects backup vault and protected item deletion (T1485)"
+  display_name = "T1485 - Backup Destruction"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1485"
+    "detection-type"  = "security"
+  }
+}
+
+# Alert 3: Compute Resource Destruction
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "compute_destruction" {
+  name                = "t1485-compute-destruction"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+// Data Destruction Detection - Compute Operations
+// Technique: T1485
+let ComputeOperations = dynamic([
+    "Microsoft.Compute/disks/delete",
+    "Microsoft.Compute/snapshots/delete",
+    "Microsoft.Compute/virtualMachines/delete"
+]);
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue in (ComputeOperations)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    DeletionCount = count(),
+    Resources = make_set(Resource, 20)
+    by Caller, CallerIpAddress, SubscriptionId, bin(TimeGenerated, 1h)
+| where DeletionCount > 3
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects bulk VM, disk, and snapshot deletion (T1485)"
+  display_name = "T1485 - Compute Destruction"
   enabled      = true
 
   tags = {

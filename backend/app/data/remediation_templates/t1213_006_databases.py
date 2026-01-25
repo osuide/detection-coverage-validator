@@ -819,19 +819,124 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             azure_service="log_analytics",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                azure_kql_query="""// Data from Information Repositories: Databases Detection
+                azure_kql_query="""// Database Data Extraction Detection - Azure SQL, Cosmos DB, PostgreSQL, MySQL
 // Technique: T1213.006
-AzureActivity
+// Detects bulk data exports, suspicious queries, and data extraction patterns
+// Prerequisites: Azure Diagnostics enabled for database services
+
+// Primary detection: Azure SQL Database export/copy operations
+let AzureSqlExports = AzureActivity
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where OperationNameValue in (
+    "Microsoft.Sql/servers/databases/export/action",
+    "Microsoft.Sql/servers/databases/copy/action",
+    "Microsoft.Sql/servers/databases/dataWarehouseQueries/action",
+    "Microsoft.Sql/servers/databases/syncGroups/triggerSync/action",
+    "Microsoft.Sql/servers/elasticPools/databases/copy/action"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    ExportCount = count(),
+    Databases = make_set(Resource, 10),
+    Operations = make_set(OperationNameValue, 10)
+    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
+| extend AlertType = "AzureSQLExport";
+
+// Detect Azure SQL security audit events for bulk data access
+let SqlBulkDataAccess = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where Category == "SQLSecurityAuditEvents"
+| where action_name_s in ("SELECT", "BULK INSERT", "OPENROWSET")
+| where succeeded_s == "true"
+| summarize
+    QueryCount = count(),
+    UniqueStatements = dcount(statement_s),
+    AffectedTables = make_set(object_name_s, 20)
+    by server_principal_name_s, client_ip_s, database_name_s, bin(TimeGenerated, 1h)
+| where QueryCount > 100 or UniqueStatements > 50
+| extend AlertType = "SQLBulkDataAccess";
+
+// Detect Cosmos DB data extraction operations
+let CosmosDbExtraction = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceType == "DOCUMENTDB"
+| where OperationName in ("Query", "ReadFeed", "ReadDocument", "ReadDocuments")
 | summarize
     OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
+    UniqueCollections = dcount(collectionRid_s),
+    DataRead_MB = sum(requestCharge_s) / 1000,
+    Collections = make_set(collectionRid_s, 10)
+    by clientIPAddress_s, userAgent_s, bin(TimeGenerated, 1h)
+| where OperationCount > 500 or DataRead_MB > 100
+| extend AlertType = "CosmosDBBulkRead";
+
+// Detect Cosmos DB key listing (credential access for data extraction)
+let CosmosDbKeyListing = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (
+    "Microsoft.DocumentDB/databaseAccounts/listKeys/action",
+    "Microsoft.DocumentDB/databaseAccounts/readonlykeys/action",
+    "Microsoft.DocumentDB/databaseAccounts/listConnectionStrings/action"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    KeyListCount = count(),
+    Accounts = make_set(Resource, 10)
     by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+| where KeyListCount > 3
+| extend AlertType = "CosmosDBKeyListing";
+
+// Detect Azure Database for PostgreSQL/MySQL export operations
+let PostgreSqlMySqlExports = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue has_any (
+    "Microsoft.DBforPostgreSQL/servers/databases",
+    "Microsoft.DBforMySQL/servers/databases",
+    "Microsoft.DBforMariaDB/servers/databases"
+)
+| where OperationNameValue endswith "export/action" or OperationNameValue endswith "backup/action"
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    ExportCount = count(),
+    Databases = make_set(Resource, 10)
+    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
+| extend AlertType = "PgMySqlExport";
+
+// Detect first-time database access from new IP
+let FirstTimeDatabaseAccess = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where Category == "SQLSecurityAuditEvents" or ResourceType == "DOCUMENTDB"
+| extend SourceIP = coalesce(client_ip_s, clientIPAddress_s)
+| extend UserPrincipal = coalesce(server_principal_name_s, "")
+| join kind=leftanti (
+    AzureDiagnostics
+    | where TimeGenerated between (ago(30d) .. ago(24h))
+    | where Category == "SQLSecurityAuditEvents" or ResourceType == "DOCUMENTDB"
+    | extend SourceIP = coalesce(client_ip_s, clientIPAddress_s)
+    | extend UserPrincipal = coalesce(server_principal_name_s, "")
+    | distinct UserPrincipal, SourceIP
+) on UserPrincipal, SourceIP
+| summarize
+    FirstTimeQueries = count(),
+    DatabasesAccessed = dcount(database_name_s)
+    by UserPrincipal, SourceIP
+| where FirstTimeQueries > 1
+| extend AlertType = "FirstTimeDatabaseAccessFromNewIP";
+
+// Combine all detection signals
+AzureSqlExports
+| union SqlBulkDataAccess
+| union CosmosDbExtraction
+| union CosmosDbKeyListing
+| union PostgreSqlMySqlExports
+| union FirstTimeDatabaseAccess
+| project
+    TimeGenerated,
+    AlertType,
+    Caller = coalesce(Caller, server_principal_name_s, UserPrincipal, ""),
+    SourceIP = coalesce(CallerIpAddress, client_ip_s, clientIPAddress_s, SourceIP, ""),
+    Details = pack_all()
+| order by TimeGenerated desc""",
                 azure_terraform_template="""# Azure Detection for Data from Information Repositories: Databases
 # MITRE ATT&CK: T1213.006
 
@@ -890,19 +995,36 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
 
   criteria {
     query = <<-QUERY
-// Data from Information Repositories: Databases Detection
+// Database Data Extraction Detection - Azure SQL, Cosmos DB
 // Technique: T1213.006
-AzureActivity
+
+// Azure SQL Database export/copy operations
+let AzureSqlExports = AzureActivity
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
-| summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc
+| where OperationNameValue in (
+    "Microsoft.Sql/servers/databases/export/action",
+    "Microsoft.Sql/servers/databases/copy/action"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize ExportCount = count(), Databases = make_set(Resource, 10)
+    by Caller, CallerIpAddress
+| extend AlertType = "AzureSQLExport";
+
+// Cosmos DB key listing (credential access)
+let CosmosDbKeyListing = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (
+    "Microsoft.DocumentDB/databaseAccounts/listKeys/action",
+    "Microsoft.DocumentDB/databaseAccounts/listConnectionStrings/action"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize KeyListCount = count(), Accounts = make_set(Resource, 10)
+    by Caller, CallerIpAddress
+| where KeyListCount > 3
+| extend AlertType = "CosmosDBKeyListing";
+
+AzureSqlExports | union CosmosDbKeyListing
+| project TimeGenerated, AlertType, Caller, SourceIP = CallerIpAddress
     QUERY
 
     time_aggregation_method = "Count"

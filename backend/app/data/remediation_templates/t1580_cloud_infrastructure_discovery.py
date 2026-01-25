@@ -485,25 +485,103 @@ resource "google_monitoring_alert_policy" "infra_enum" {
             azure_service="log_analytics",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                azure_kql_query="""// Cloud Infrastructure Discovery Detection
-// Technique: T1580
-AzureActivity
+                azure_kql_query="""// T1580 - Cloud Infrastructure Discovery Detection
+// Detects enumeration of Azure infrastructure (VMs, networks, databases)
+// Data Sources: AzureActivity
+
+// Infrastructure enumeration operations
+let InfraDiscoveryOps = dynamic([
+    // Subscription-level discovery
+    "Microsoft.Resources/subscriptions/resources/read",
+    "Microsoft.Resources/subscriptions/resourceGroups/read",
+    "Microsoft.Resources/subscriptions/locations/read",
+    // Compute discovery
+    "Microsoft.Compute/virtualMachines/read",
+    "Microsoft.Compute/virtualMachineScaleSets/read",
+    "Microsoft.Compute/disks/read",
+    "Microsoft.Compute/snapshots/read",
+    // Network discovery
+    "Microsoft.Network/virtualNetworks/read",
+    "Microsoft.Network/virtualNetworks/subnets/read",
+    "Microsoft.Network/networkSecurityGroups/read",
+    "Microsoft.Network/publicIPAddresses/read",
+    "Microsoft.Network/loadBalancers/read",
+    "Microsoft.Network/applicationGateways/read",
+    // Storage discovery
+    "Microsoft.Storage/storageAccounts/read",
+    "Microsoft.Storage/storageAccounts/listkeys/action",
+    // Database discovery
+    "Microsoft.Sql/servers/read",
+    "Microsoft.Sql/servers/databases/read",
+    "Microsoft.DocumentDB/databaseAccounts/read",
+    "Microsoft.DBforPostgreSQL/servers/read",
+    "Microsoft.DBforMySQL/servers/read",
+    // Container discovery
+    "Microsoft.ContainerService/managedClusters/read",
+    "Microsoft.ContainerInstance/containerGroups/read",
+    // Key Vault discovery
+    "Microsoft.KeyVault/vaults/read"
+]);
+
+// Detect high-volume infrastructure enumeration
+let InfraEnum = AzureActivity
 | where TimeGenerated > ago(24h)
-| where OperationNameValue contains "Microsoft.Resources/subscriptions/resources/read"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
-| project
-    TimeGenerated,
-    SubscriptionId,
-    ResourceGroup,
-    Resource,
-    Caller,
-    CallerIpAddress,
-    OperationNameValue,
-    ActivityStatusValue,
-    Properties
+| where OperationNameValue in (InfraDiscoveryOps)
+| where ActivityStatusValue == "Succeeded"
+| summarize
+    DiscoveryCount = count(),
+    UniqueOperations = dcount(OperationNameValue),
+    OperationsUsed = make_set(OperationNameValue, 20),
+    ResourceGroups = make_set(ResourceGroup, 10)
+    by Caller, CallerIpAddress, SubscriptionId, bin(TimeGenerated, 1h)
+| where DiscoveryCount > 50 or UniqueOperations > 10
+| extend AlertSeverity = case(
+    DiscoveryCount > 200 or UniqueOperations > 15, "High",
+    DiscoveryCount > 100, "Medium",
+    "Low"
+);
+
+// Detect first-time enumeration from new IP/identity
+let FirstTimeEnum = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (InfraDiscoveryOps)
+| where ActivityStatusValue == "Succeeded"
+| summarize
+    FirstSeen = min(TimeGenerated),
+    DiscoveryCount = count()
+    by Caller, CallerIpAddress
+| join kind=leftanti (
+    AzureActivity
+    | where TimeGenerated between (ago(30d) .. ago(24h))
+    | where OperationNameValue in (InfraDiscoveryOps)
+    | distinct Caller, CallerIpAddress
+) on Caller, CallerIpAddress
+| where DiscoveryCount > 20;
+
+// Detect cross-resource-group enumeration (suspicious pattern)
+let CrossRGEnum = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (InfraDiscoveryOps)
+| where ActivityStatusValue == "Succeeded"
+| summarize
+    UniqueRGs = dcount(ResourceGroup),
+    RGs = make_set(ResourceGroup, 20)
+    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
+| where UniqueRGs > 5;
+
+// Combine detection patterns
+InfraEnum | extend AlertType = "High Volume Enumeration"
+| union (FirstTimeEnum | extend AlertType = "First Time Enumeration")
+| union (CrossRGEnum | extend AlertType = "Cross-RG Enumeration")
 | order by TimeGenerated desc""",
                 azure_activity_operations=[
-                    "Microsoft.Resources/subscriptions/resources/read"
+                    "Microsoft.Resources/subscriptions/resources/read",
+                    "Microsoft.Resources/subscriptions/resourceGroups/read",
+                    "Microsoft.Compute/virtualMachines/read",
+                    "Microsoft.Network/virtualNetworks/read",
+                    "Microsoft.Storage/storageAccounts/read",
+                    "Microsoft.Sql/servers/read",
+                    "Microsoft.KeyVault/vaults/read",
                 ],
                 azure_terraform_template="""# Azure Detection for Cloud Infrastructure Discovery
 # MITRE ATT&CK: T1580

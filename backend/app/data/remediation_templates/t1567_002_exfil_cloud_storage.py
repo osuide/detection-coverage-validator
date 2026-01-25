@@ -873,19 +873,93 @@ resource "google_monitoring_alert_policy" "https_upload" {
             azure_service="log_analytics",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                azure_kql_query="""// Exfiltration Over Web Service: Exfiltration to Cloud Storage Detection
-// Technique: T1567.002
-AzureActivity
+                azure_kql_query="""// T1567.002 - Exfiltration to Cloud Storage Detection
+// Detects data exfiltration to Dropbox, Google Drive, OneDrive, MEGA, Box
+// Data Sources: AzureDiagnostics (Firewall), AzureNetworkAnalytics, DeviceNetworkEvents
+
+// Cloud storage service domains
+let CloudStorageDomains = dynamic([
+    "dropbox.com", "api.dropboxapi.com", "content.dropboxapi.com",
+    "drive.google.com", "www.googleapis.com", "storage.googleapis.com",
+    "onedrive.live.com", "graph.microsoft.com", "1drv.ms",
+    "mega.nz", "mega.co.nz", "g.api.mega.co.nz",
+    "box.com", "api.box.com", "upload.box.com",
+    "wetransfer.com", "we.tl",
+    "mediafire.com", "sendspace.com"
+]);
+
+// Strategy 1: Azure Firewall - Outbound to cloud storage
+let CloudStorageFirewall = AzureDiagnostics
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where Category == "AzureFirewallApplicationRule"
+| where msg_s has_any (CloudStorageDomains)
+| extend
+    FQDN = extract(@"FQDN:([^\s,]+)", 1, msg_s),
+    SourceIP = extract(@"from ([0-9.]+)", 1, msg_s),
+    Action = extract(@"Action: (\w+)", 1, msg_s)
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+    RequestCount = count(),
+    BytesSent = sum(toint(extract(@"TotalBytes:(\d+)", 1, msg_s))),
+    UniqueFQDNs = make_set(FQDN, 10)
+    by SourceIP, bin(TimeGenerated, 1h)
+| where BytesSent > 104857600 or RequestCount > 100;  // 100MB or 100 requests
+
+// Strategy 2: Defender for Endpoint - Cloud storage upload tools
+let UploadToolActivity = DeviceNetworkEvents
+| where TimeGenerated > ago(24h)
+| where RemoteUrl has_any (CloudStorageDomains)
+    or InitiatingProcessFileName in~ ("rclone.exe", "rclone", "azcopy.exe", "azcopy", "gsutil", "aws.exe")
+| where ActionType == "ConnectionSuccess"
+| summarize
+    ConnectionCount = count(),
+    BytesSent = sum(SentBytes),
+    UniqueProcesses = make_set(InitiatingProcessFileName, 5),
+    RemoteURLs = make_set(RemoteUrl, 10),
+    Devices = dcount(DeviceId)
+    by AccountName, bin(TimeGenerated, 1h)
+| where BytesSent > 52428800;  // 50MB threshold
+
+// Strategy 3: File staging before exfiltration (zip, tar, 7z)
+let FileStagingActivity = DeviceFileEvents
+| where TimeGenerated > ago(24h)
+| where FileName endswith ".zip" or FileName endswith ".7z" or FileName endswith ".tar.gz"
+    or FileName endswith ".rar" or FileName endswith ".tar"
+| where FolderPath has_any ("Temp", "tmp", "Downloads", "Desktop", "AppData")
+| where FileSize > 52428800  // 50MB
+| summarize
+    ArchiveCount = count(),
+    TotalSize = sum(FileSize),
+    FileNames = make_set(FileName, 10)
+    by DeviceId, AccountName, bin(TimeGenerated, 1h)
+| where ArchiveCount > 3 or TotalSize > 524288000;  // 3 archives or 500MB
+
+// Strategy 4: NSG Flow Logs - Large outbound HTTPS
+let LargeOutboundHTTPS = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where FlowDirection_s == "O"
+| where DestPort_d == 443
+| where FlowStatus_s == "A"
+| summarize
+    TotalBytesSent = sum(BytesSent_d),
+    FlowCount = count(),
+    UniqueDestIPs = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytesSent > 1073741824;  // 1GB threshold
+
+// Strategy 5: Defender for Cloud Apps - Unusual upload volume
+let CASBAlerts = SecurityAlert
+| where TimeGenerated > ago(24h)
+| where ProviderName == "MCAS" or ProductName == "Microsoft Cloud App Security"
+| where AlertType has_any ("UnusualFileUpload", "MassDownload", "SuspiciousCloudStorageActivity")
+| project TimeGenerated, AlertName, Description, Entities, AlertSeverity;
+
+// Combine all detection strategies
+CloudStorageFirewall | extend AlertType = "Firewall - Cloud Storage Traffic"
+| union (UploadToolActivity | extend AlertType = "Endpoint - Upload Tool")
+| union (FileStagingActivity | extend AlertType = "Endpoint - File Staging")
+| union (LargeOutboundHTTPS | extend AlertType = "Network - Large HTTPS Egress")
+| union (CASBAlerts | extend AlertType = "CASB - Unusual Upload")
+| order by TimeGenerated desc""",
                 azure_terraform_template="""# Azure Detection for Exfiltration Over Web Service: Exfiltration to Cloud Storage
 # MITRE ATT&CK: T1567.002
 

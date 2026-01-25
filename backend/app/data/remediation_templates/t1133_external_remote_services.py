@@ -799,6 +799,7 @@ SigninLogs
     FirstSeen""",
                 azure_terraform_template="""# Azure Detection for External Remote Services
 # MITRE ATT&CK: T1133
+# Comprehensive detection for VPN, RDP, SSH, and container API access
 
 terraform {
   required_providers {
@@ -832,9 +833,9 @@ variable "location" {
 
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
-  name                = "external-remote-services-alerts"
+  name                = "t1133-remote-services-alerts"
   resource_group_name = var.resource_group_name
-  short_name          = "SecAlerts"
+  short_name          = "T1133Alerts"
 
   email_receiver {
     name          = "security-team"
@@ -842,9 +843,12 @@ resource "azurerm_monitor_action_group" "security_alerts" {
   }
 }
 
-# Scheduled Query Rule for detection
-resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
-  name                = "external-remote-services-detection"
+#############################################################################
+# Alert 1: VPN and Remote Desktop Sign-ins
+# Detects VPN, AVD, and Remote Desktop sign-ins with risk assessment
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "vpn_remote_desktop" {
+  name                = "t1133-vpn-remote-desktop-signin"
   resource_group_name = var.resource_group_name
   location            = var.location
 
@@ -855,42 +859,29 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
 
   criteria {
     query = <<-QUERY
-// Sentinel Analytics Rule: External Remote Services
-// MITRE ATT&CK: T1133
-let lookback = 24h;
-let threshold = 5;
-AzureActivity
-| where TimeGenerated > ago(lookback)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue in ("Success", "Succeeded")
+SigninLogs
+| where TimeGenerated > ago(1h)
+| where AppDisplayName in ("VPN", "Azure Virtual Desktop", "Windows Virtual Desktop", "Microsoft Remote Desktop")
+| where ResultType == 0
+| extend
+    City = tostring(LocationDetails.city),
+    Country = tostring(LocationDetails.countryOrRegion),
+    IsRisky = RiskLevelDuringSignIn in ("high", "medium")
 | summarize
-    EventCount = count(),
-    DistinctOperations = dcount(OperationNameValue),
-    Operations = make_set(OperationNameValue, 20),
-    Resources = make_set(Resource, 10),
+    LoginCount = count(),
+    Countries = make_set(Country, 5),
+    Cities = make_set(City, 10),
+    IPs = make_set(IPAddress, 10),
+    RiskyLogins = countif(IsRisky),
     FirstSeen = min(TimeGenerated),
     LastSeen = max(TimeGenerated)
-    by Caller, CallerIpAddress, SubscriptionId
-| where EventCount > threshold
-| extend
-    AccountName = tostring(split(Caller, "@")[0]),
-    AccountDomain = tostring(split(Caller, "@")[1])
-| project
-    TimeGenerated = LastSeen,
-    AccountName,
-    AccountDomain,
-    Caller,
-    CallerIpAddress,
-    SubscriptionId,
-    EventCount,
-    DistinctOperations,
-    Operations,
-    Resources
+    by UserPrincipalName, AppDisplayName
+| where LoginCount > 3 or RiskyLogins > 0
     QUERY
 
     time_aggregation_method = "Count"
-    threshold               = 1
-    operator                = "GreaterThanOrEqual"
+    threshold               = 0
+    operator                = "GreaterThan"
 
     failing_periods {
       minimum_failing_periods_to_trigger_alert = 1
@@ -904,18 +895,388 @@ AzureActivity
     action_groups = [azurerm_monitor_action_group.security_alerts.id]
   }
 
-  description = "Detects External Remote Services (T1133) activity in Azure environment"
-  display_name = "External Remote Services Detection"
+  description  = "Detects VPN and Remote Desktop sign-ins (T1133)"
+  display_name = "T1133: VPN/Remote Desktop Access"
   enabled      = true
 
   tags = {
     "mitre-technique" = "T1133"
-    "detection-type"  = "security"
+    "detection-type"  = "remote-access"
+    "data-source"     = "SigninLogs"
   }
 }
 
-output "alert_rule_id" {
-  value = azurerm_monitor_scheduled_query_rules_alert_v2.detection.id
+#############################################################################
+# Alert 2: Risky VPN Sign-ins (High Severity)
+# Detects sign-ins flagged as risky by Entra ID Protection
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "risky_vpn_signin" {
+  name                = "t1133-risky-vpn-signin"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 1
+
+  criteria {
+    query = <<-QUERY
+SigninLogs
+| where TimeGenerated > ago(1h)
+| where AppDisplayName in ("VPN", "Azure Virtual Desktop", "Windows Virtual Desktop", "Microsoft Remote Desktop")
+| where RiskLevelDuringSignIn in ("high", "medium")
+| project TimeGenerated, UserPrincipalName, IPAddress, AppDisplayName,
+    RiskLevelDuringSignIn, RiskEventTypes_V2, RiskState,
+    Country = tostring(LocationDetails.countryOrRegion),
+    City = tostring(LocationDetails.city),
+    DeviceDetail, ConditionalAccessStatus
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description  = "Detects risky VPN/Remote Desktop sign-ins (T1133)"
+  display_name = "T1133: Risky Remote Access Sign-in"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1133"
+    "detection-type"  = "risky-signin"
+    "data-source"     = "SigninLogs"
+    "severity"        = "high"
+  }
+}
+
+#############################################################################
+# Alert 3: VPN Gateway Operations
+# Detects VPN gateway connections and profile generation
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "vpn_gateway_ops" {
+  name                = "t1133-vpn-gateway-operations"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue has_any (
+    "Microsoft.Network/vpnGateways",
+    "Microsoft.Network/virtualNetworkGateways"
+)
+| where OperationNameValue has_any (
+    "connect", "startPacketCapture", "generateVpnProfile",
+    "getVpnClientConnectionHealth", "disconnect"
+)
+| where ActivityStatusValue in ("Success", "Succeeded", "Started")
+| project TimeGenerated, Caller, CallerIpAddress, Resource,
+    ResourceGroup, SubscriptionId, OperationNameValue
+| extend GatewayName = tostring(split(Resource, "/")[-1])
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description  = "Detects VPN gateway operations (T1133)"
+  display_name = "T1133: VPN Gateway Operation"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1133"
+    "detection-type"  = "vpn-gateway"
+    "data-source"     = "AzureActivity"
+  }
+}
+
+#############################################################################
+# Alert 4: AKS/Container Admin Credential Access
+# Detects attempts to retrieve cluster admin credentials (container API exposure)
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "container_api_access" {
+  name                = "t1133-container-api-cred-access"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 1
+
+  criteria {
+    query = <<-QUERY
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue has_any (
+    "Microsoft.ContainerService/managedClusters/listClusterAdminCredential",
+    "Microsoft.ContainerService/managedClusters/listClusterUserCredential",
+    "Microsoft.ContainerRegistry/registries/listCredentials"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| project TimeGenerated, Caller, CallerIpAddress, Resource,
+    ResourceGroup, SubscriptionId, OperationNameValue
+| extend ResourceName = tostring(split(Resource, "/")[-1])
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description  = "Detects container API credential access (T1133)"
+  display_name = "T1133: Container API Credential Access"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1133"
+    "detection-type"  = "container-api"
+    "data-source"     = "AzureActivity"
+    "severity"        = "high"
+  }
+}
+
+#############################################################################
+# Alert 5: Azure Bastion Sessions
+# Detects Azure Bastion connections (legitimate but should be monitored)
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "bastion_sessions" {
+  name                = "t1133-bastion-sessions"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT10M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 3
+
+  criteria {
+    query = <<-QUERY
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where ResourceType == "BASTIONHOSTS"
+| where OperationName has_any ("BastionHostOperationalLog", "BastionAuditLogs")
+| summarize SessionCount = count(),
+    TargetVMs = make_set(targetResourceId_s, 10),
+    SourceIPs = make_set(clientIpAddress_s, 10)
+    by userName_s, bastionHostName_s, bin(TimeGenerated, 10m)
+| where SessionCount > 5
+| project TimeGenerated, userName_s, bastionHostName_s,
+    SessionCount, TargetVMs, SourceIPs
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description  = "Detects Azure Bastion session activity (T1133)"
+  display_name = "T1133: Azure Bastion Sessions"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1133"
+    "detection-type"  = "bastion"
+    "data-source"     = "AzureDiagnostics"
+  }
+}
+
+#############################################################################
+# Alert 6: NSG Flow Logs - External SSH/RDP Access
+# Detects external SSH (22) and RDP (3389) connections
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "external_ssh_rdp" {
+  name                = "t1133-external-ssh-rdp"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where Category == "NetworkSecurityGroupFlowEvent"
+| extend FlowLog = parse_json(flowLog_s)
+| mv-expand FlowLog
+| extend
+    SourceIP = tostring(split(FlowLog.flows[0].flowTuples[0], ",")[0]),
+    DestPort = toint(split(FlowLog.flows[0].flowTuples[0], ",")[4]),
+    FlowDirection = tostring(FlowLog.flows[0].flowTuples[0])
+| where DestPort in (22, 3389)
+| where FlowDirection has "I"
+| where SourceIP !startswith "10." and SourceIP !startswith "172." and SourceIP !startswith "192.168."
+| summarize ConnectionCount = count(),
+    SourceIPs = make_set(SourceIP, 20)
+    by DestPort, Resource, bin(TimeGenerated, 10m)
+| where ConnectionCount > 10
+| extend ProtocolName = case(DestPort == 22, "SSH", DestPort == 3389, "RDP", "Unknown")
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description  = "Detects external SSH/RDP connections via NSG Flow Logs (T1133)"
+  display_name = "T1133: External SSH/RDP Access"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1133"
+    "detection-type"  = "network-flow"
+    "data-source"     = "AzureDiagnostics-NSGFlowLogs"
+  }
+}
+
+#############################################################################
+# Alert 7: Failed Remote Access Attempts (Brute Force Indicator)
+# Detects multiple failed VPN/Remote Desktop sign-in attempts
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "failed_remote_access" {
+  name                = "t1133-failed-remote-access"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+SigninLogs
+| where TimeGenerated > ago(1h)
+| where AppDisplayName in ("VPN", "Azure Virtual Desktop", "Windows Virtual Desktop", "Microsoft Remote Desktop")
+| where ResultType != 0
+| summarize FailedCount = count(),
+    ResultCodes = make_set(ResultType, 10),
+    IPs = make_set(IPAddress, 10)
+    by UserPrincipalName, AppDisplayName, bin(TimeGenerated, 10m)
+| where FailedCount > 5
+| project TimeGenerated, UserPrincipalName, AppDisplayName,
+    FailedCount, ResultCodes, IPs
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description  = "Detects failed remote access attempts indicating brute force (T1133)"
+  display_name = "T1133: Failed Remote Access Attempts"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1133"
+    "detection-type"  = "brute-force"
+    "data-source"     = "SigninLogs"
+  }
+}
+
+output "vpn_remote_desktop_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.vpn_remote_desktop.id
+}
+
+output "risky_vpn_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.risky_vpn_signin.id
+}
+
+output "vpn_gateway_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.vpn_gateway_ops.id
+}
+
+output "container_api_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.container_api_access.id
+}
+
+output "bastion_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.bastion_sessions.id
+}
+
+output "external_ssh_rdp_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.external_ssh_rdp.id
+}
+
+output "failed_remote_access_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.failed_remote_access.id
 }""",
                 alert_severity="high",
                 alert_title="Azure: External Remote Services Detected",

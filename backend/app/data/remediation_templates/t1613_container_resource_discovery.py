@@ -629,18 +629,116 @@ resource "google_monitoring_alert_policy" "k8s_discovery" {
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
                 azure_kql_query="""// Container and Resource Discovery Detection
-// Technique: T1613
-AzureActivity
+// Technique: T1613 - Detects enumeration of AKS clusters, containers, and Kubernetes resources
+// Data sources: AzureActivity (ARM), AzureDiagnostics (AKS audit logs)
+
+// Define AKS/Container discovery ARM operations
+let ContainerDiscoveryOps = dynamic([
+    // AKS Cluster enumeration
+    "Microsoft.ContainerService/managedClusters/read",
+    "Microsoft.ContainerService/managedClusters/listClusterAdminCredential/action",
+    "Microsoft.ContainerService/managedClusters/listClusterUserCredential/action",
+    "Microsoft.ContainerService/managedClusters/agentPools/read",
+    // Container Registry enumeration
+    "Microsoft.ContainerRegistry/registries/read",
+    "Microsoft.ContainerRegistry/registries/listCredentials/action",
+    "Microsoft.ContainerRegistry/registries/repositories/read",
+    // Container Instances
+    "Microsoft.ContainerInstance/containerGroups/read",
+    "Microsoft.ContainerInstance/containerGroups/containers/logs/read"
+]);
+
+// ARM-level AKS enumeration detection
+let ARMContainerDiscovery = AzureActivity
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where OperationNameValue in (ContainerDiscoveryOps)
+| where ActivityStatusValue in ("Success", "Succeeded", "Accept")
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
+    DiscoveryOpsCount = count(),
+    UniqueOpTypes = dcount(OperationNameValue),
+    OperationsUsed = make_set(OperationNameValue, 15),
+    UniqueClusters = dcount(Resource)
     by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+| where DiscoveryOpsCount > 20 or UniqueOpTypes > 5
+| extend AlertReason = case(
+    UniqueOpTypes > 5, "Multi-type container enumeration",
+    DiscoveryOpsCount > 30, "High-volume container discovery",
+    "Container discovery threshold exceeded"
+);
+
+// Kubernetes API-level enumeration via AKS audit logs
+let K8sAPIDiscovery = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceType == "MANAGEDCLUSTERS"
+| where Category in ("kube-audit", "kube-audit-admin")
+| where log_s has_any ("list", "get", "watch")
+| extend AuditLog = parse_json(log_s)
+| where AuditLog.verb in ("list", "get")
+| where AuditLog.objectRef.resource in ("pods", "nodes", "deployments", "services", "namespaces", "secrets", "configmaps", "serviceaccounts", "daemonsets", "replicasets")
+| summarize
+    DiscoveryOpsCount = count(),
+    UniqueResourceTypes = dcount(tostring(AuditLog.objectRef.resource)),
+    ResourcesQueried = make_set(AuditLog.objectRef.resource, 15),
+    UniqueNamespaces = dcount(tostring(AuditLog.objectRef.namespace))
+    by
+    User = tostring(AuditLog.user.username),
+    SourceIP = tostring(AuditLog.sourceIPs[0]),
+    ClusterName = Resource,
+    bin(TimeGenerated, 1h)
+| where DiscoveryOpsCount > 50 or UniqueResourceTypes > 6
+| extend AlertReason = case(
+    UniqueResourceTypes > 6, "Multi-resource-type Kubernetes enumeration",
+    DiscoveryOpsCount > 100, "High-volume kubectl get/list commands",
+    "Kubernetes discovery threshold exceeded"
+);
+
+// Credential retrieval for AKS clusters (high-value target)
+let CredentialRetrieval = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (
+    "Microsoft.ContainerService/managedClusters/listClusterAdminCredential/action",
+    "Microsoft.ContainerService/managedClusters/listClusterUserCredential/action"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    CredentialRetrievals = count(),
+    UniqueClusters = dcount(Resource),
+    ClustersAccessed = make_set(Resource, 10)
+    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
+| where CredentialRetrievals > 3 or UniqueClusters > 2
+| extend AlertReason = "AKS cluster credential retrieval";
+
+// First-time container enumeration from new identity/IP
+let FirstTimeDiscovery = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (ContainerDiscoveryOps)
+| join kind=leftanti (
+    AzureActivity
+    | where TimeGenerated between (ago(30d) .. ago(24h))
+    | where OperationNameValue in (ContainerDiscoveryOps)
+    | distinct Caller, CallerIpAddress
+) on Caller, CallerIpAddress
+| summarize
+    DiscoveryOpsCount = count(),
+    OperationsUsed = make_set(OperationNameValue, 10)
+    by Caller, CallerIpAddress
+| where DiscoveryOpsCount > 5
+| extend AlertReason = "First-time container discovery from new identity/IP";
+
+// Combine all detection patterns
+ARMContainerDiscovery
+| union K8sAPIDiscovery
+| union CredentialRetrieval
+| union FirstTimeDiscovery
+| project
+    TimeGenerated = now(),
+    Caller,
+    CallerIpAddress,
+    DiscoveryOpsCount,
+    UniqueOpTypes,
+    OperationsUsed,
+    AlertReason
+| order by DiscoveryOpsCount desc""",
                 azure_terraform_template="""# Azure Detection for Container and Resource Discovery
 # MITRE ATT&CK: T1613
 

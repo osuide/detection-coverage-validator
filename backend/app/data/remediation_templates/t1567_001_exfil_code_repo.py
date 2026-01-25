@@ -766,19 +766,75 @@ resource "google_monitoring_alert_policy" "git_push" {
             azure_service="log_analytics",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                azure_kql_query="""// Exfiltration Over Web Service: Exfiltration to Code Repository Detection
-// Technique: T1567.001
-AzureActivity
+                azure_kql_query="""// T1567.001 - Exfiltration to Code Repository Detection
+// Detects data exfiltration to GitHub, GitLab, Bitbucket, Azure DevOps
+// Data Sources: AzureNetworkAnalytics, AzureDiagnostics (Firewall), DeviceNetworkEvents
+
+// Strategy 1: Azure Firewall logs - Outbound to code repositories
+let CodeRepoDomainsFirewall = AzureDiagnostics
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where Category == "AzureFirewallApplicationRule" or Category == "AzureFirewallNetworkRule"
+| where msg_s has_any ("github.com", "gitlab.com", "bitbucket.org", "api.github.com", "dev.azure.com")
+| extend
+    FQDN = extract(@"FQDN:([^\s,]+)", 1, msg_s),
+    SourceIP = extract(@"from ([0-9.]+)", 1, msg_s),
+    DestPort = extract(@":(\d+)\.", 1, msg_s),
+    Action = extract(@"Action: (\w+)", 1, msg_s)
+| where DestPort == "443"
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+    RequestCount = count(),
+    BytesSent = sum(toint(extract(@"TotalBytes:(\d+)", 1, msg_s)))
+    by SourceIP, FQDN, bin(TimeGenerated, 1h)
+| where RequestCount > 50 or BytesSent > 10485760;  // 50 requests or 10MB
+
+// Strategy 2: NSG Flow Logs - Large uploads to code repository IPs
+// Note: Requires resolving GitHub/GitLab IP ranges
+let CodeRepoIPRanges = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where FlowDirection_s == "O"  // Outbound
+| where DestPort_d == 443
+| where FlowStatus_s == "A"     // Allowed
+// GitHub IP ranges: 140.82.112.0/20, 192.30.252.0/22, 185.199.108.0/22
+| where DestIP_s startswith "140.82.11" or DestIP_s startswith "192.30.25"
+    or DestIP_s startswith "185.199.1" or DestIP_s startswith "20.201."  // Azure DevOps
+| summarize
+    FlowCount = count(),
+    TotalBytesSent = sum(BytesSent_d),
+    UniqueDestIPs = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytesSent > 52428800;  // 50MB threshold
+
+// Strategy 3: Defender for Endpoint - Git process network activity
+let GitProcessActivity = DeviceNetworkEvents
+| where TimeGenerated > ago(24h)
+| where InitiatingProcessFileName in~ ("git.exe", "git", "gh.exe", "gh", "curl.exe", "curl")
+| where RemoteUrl has_any ("github.com", "gitlab.com", "bitbucket.org", "dev.azure.com")
+| where ActionType == "ConnectionSuccess"
+| summarize
+    ConnectionCount = count(),
+    BytesSent = sum(SentBytes),
+    UniqueDevices = dcount(DeviceId),
+    RemoteURLs = make_set(RemoteUrl, 10)
+    by InitiatingProcessFileName, AccountName, bin(TimeGenerated, 1h)
+| where BytesSent > 10485760;  // 10MB threshold
+
+// Strategy 4: Azure Repos - Unusual push activity (if using Azure DevOps)
+let AzureReposPush = AzureDevOpsAuditing
+| where TimeGenerated > ago(24h)
+| where OperationName == "Git.Push"
+| summarize
+    PushCount = count(),
+    UniqueRepos = dcount(Data.RepoName),
+    TotalChanges = sum(toint(Data.ChangedFiles))
+    by ActorUPN, IpAddress, bin(TimeGenerated, 1h)
+| where PushCount > 20 or TotalChanges > 100;
+
+// Combine results
+CodeRepoDomainsFirewall | extend AlertType = "Firewall - Code Repo Traffic"
+| union (CodeRepoIPRanges | extend AlertType = "NSG Flow - Code Repo IPs")
+| union (GitProcessActivity | extend AlertType = "Defender - Git Process")
+| union (AzureReposPush | extend AlertType = "Azure DevOps - Bulk Push")
+| order by TimeGenerated desc""",
                 azure_terraform_template="""# Azure Detection for Exfiltration Over Web Service: Exfiltration to Code Repository
 # MITRE ATT&CK: T1567.001
 

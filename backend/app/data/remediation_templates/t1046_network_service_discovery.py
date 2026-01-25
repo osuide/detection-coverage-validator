@@ -1261,21 +1261,115 @@ resource "google_monitoring_alert_policy" "enumeration" {
             azure_service="log_analytics",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                azure_kql_query="""// Network Service Discovery Detection
+                azure_kql_query="""// Network Service Discovery Detection - Azure Network Enumeration
 // Technique: T1046
-AzureActivity
+// Detects enumeration of NSGs, VNets, Subnets, and network scanning patterns
+// Prerequisites: AzureActivity, AzureNetworkAnalytics_CL (NSG Flow Logs), AzureDiagnostics
+
+// Define network enumeration ARM operations
+let NetworkEnumOps = dynamic([
+    // NSG enumeration
+    "Microsoft.Network/networkSecurityGroups/read",
+    "Microsoft.Network/networkSecurityGroups/securityRules/read",
+    "Microsoft.Network/networkSecurityGroups/effectiveNetworkSecurityGroups/action",
+    // VNet/Subnet enumeration
+    "Microsoft.Network/virtualNetworks/read",
+    "Microsoft.Network/virtualNetworks/subnets/read",
+    "Microsoft.Network/virtualNetworks/virtualNetworkPeerings/read",
+    // Network interface discovery
+    "Microsoft.Network/networkInterfaces/read",
+    "Microsoft.Network/networkInterfaces/effectiveNetworkSecurityGroups/action",
+    "Microsoft.Network/networkInterfaces/effectiveRouteTable/action",
+    // Public IP enumeration
+    "Microsoft.Network/publicIPAddresses/read",
+    // Firewall enumeration
+    "Microsoft.Network/azureFirewalls/read",
+    "Microsoft.Network/firewallPolicies/read",
+    // Network Watcher (network analysis tools)
+    "Microsoft.Network/networkWatchers/read",
+    "Microsoft.Network/networkWatchers/topology/action",
+    "Microsoft.Network/networkWatchers/securityGroupView/action",
+    "Microsoft.Network/networkWatchers/ipFlowVerify/action",
+    // Load Balancer discovery
+    "Microsoft.Network/loadBalancers/read",
+    "Microsoft.Network/loadBalancers/frontendIPConfigurations/read"
+]);
+
+// Primary detection: Bulk network enumeration via AzureActivity
+let NetworkEnumeration = AzureActivity
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where OperationNameValue in (NetworkEnumOps)
+| where ActivityStatusValue in ("Success", "Succeeded")
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
+    EnumOperations = count(),
+    UniqueNSGs = dcountif(Resource, OperationNameValue contains "networkSecurityGroups"),
+    UniqueVNets = dcountif(Resource, OperationNameValue contains "virtualNetworks"),
+    OperationTypes = make_set(OperationNameValue, 15),
+    ResourcesAccessed = make_set(Resource, 20)
     by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+| where EnumOperations > 20 or UniqueNSGs > 5 or UniqueVNets > 3
+| extend AlertType = "NetworkEnumeration";
+
+// Detect Network Watcher reconnaissance (security analysis tools)
+let NetworkWatcherRecon = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue has "Microsoft.Network/networkWatchers"
+| where OperationNameValue has_any ("topology", "securityGroupView", "ipFlowVerify", "nextHop")
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    WatcherOps = count(),
+    Operations = make_set(OperationNameValue, 10)
+    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
+| where WatcherOps > 5
+| extend AlertType = "NetworkWatcherRecon";
+
+// Detect NSG Flow Logs port scanning (if NSG Flow Logs v2 enabled)
+// Note: Requires AzureNetworkAnalytics_CL table from Traffic Analytics
+let PortScanning = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| where FlowStatus_s == "D"  // Denied flows
+| where FlowDirection_s == "I"  // Inbound
+| summarize
+    DeniedConnections = count(),
+    UniqueDestPorts = dcount(DestPort_d),
+    DestPorts = make_set(DestPort_d, 50)
+    by SrcIP_s, DestIP_s, bin(TimeGenerated, 5m)
+| where DeniedConnections > 100 or UniqueDestPorts > 20
+| extend AlertType = "PortScanning";
+
+// First-time network enumeration from new IP
+let FirstTimeNetworkEnum = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (NetworkEnumOps)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| join kind=leftanti (
+    AzureActivity
+    | where TimeGenerated between (ago(30d) .. ago(24h))
+    | where OperationNameValue in (NetworkEnumOps)
+    | distinct Caller, CallerIpAddress
+) on Caller, CallerIpAddress
+| summarize
+    FirstTimeEnumOps = count(),
+    Operations = make_set(OperationNameValue, 10)
+    by Caller, CallerIpAddress
+| where FirstTimeEnumOps > 3
+| extend AlertType = "FirstTimeNetworkEnumFromNewIP";
+
+// Combine all detection signals
+NetworkEnumeration
+| union NetworkWatcherRecon
+| union FirstTimeNetworkEnum
+| project
+    TimeGenerated,
+    AlertType,
+    Caller,
+    SourceIP = CallerIpAddress,
+    Details = pack_all()
+| order by TimeGenerated desc""",
                 azure_terraform_template="""# Azure Detection for Network Service Discovery
 # MITRE ATT&CK: T1046
+# Detects network enumeration, NSG/VNet reconnaissance, and port scanning
 
 terraform {
   required_providers {
@@ -1307,11 +1401,23 @@ variable "location" {
   default     = "uksouth"
 }
 
+variable "enum_threshold" {
+  type        = number
+  default     = 20
+  description = "Threshold for network enumeration operations"
+}
+
+variable "portscan_threshold" {
+  type        = number
+  default     = 100
+  description = "Threshold for denied connections indicating port scanning"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
-  name                = "network-service-discovery-alerts"
+  name                = "t1046-network-discovery-alerts"
   resource_group_name = var.resource_group_name
-  short_name          = "SecAlerts"
+  short_name          = "T1046Alert"
 
   email_receiver {
     name          = "security-team"
@@ -1319,9 +1425,9 @@ resource "azurerm_monitor_action_group" "security_alerts" {
   }
 }
 
-# Scheduled Query Rule for detection
-resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
-  name                = "network-service-discovery-detection"
+# Primary Alert: Network Enumeration Detection
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "network_enumeration" {
+  name                = "t1046-network-enumeration-detection"
   resource_group_name = var.resource_group_name
   location            = var.location
 
@@ -1332,19 +1438,36 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
 
   criteria {
     query = <<-QUERY
-// Network Service Discovery Detection
+// Network Service Discovery Detection - Azure Network Enumeration
 // Technique: T1046
+let NetworkEnumOps = dynamic([
+    "Microsoft.Network/networkSecurityGroups/read",
+    "Microsoft.Network/networkSecurityGroups/securityRules/read",
+    "Microsoft.Network/networkSecurityGroups/effectiveNetworkSecurityGroups/action",
+    "Microsoft.Network/virtualNetworks/read",
+    "Microsoft.Network/virtualNetworks/subnets/read",
+    "Microsoft.Network/virtualNetworks/virtualNetworkPeerings/read",
+    "Microsoft.Network/networkInterfaces/read",
+    "Microsoft.Network/networkInterfaces/effectiveNetworkSecurityGroups/action",
+    "Microsoft.Network/publicIPAddresses/read",
+    "Microsoft.Network/azureFirewalls/read",
+    "Microsoft.Network/firewallPolicies/read",
+    "Microsoft.Network/networkWatchers/read",
+    "Microsoft.Network/networkWatchers/topology/action",
+    "Microsoft.Network/networkWatchers/securityGroupView/action",
+    "Microsoft.Network/loadBalancers/read"
+]);
 AzureActivity
-| where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where TimeGenerated > ago(1h)
+| where OperationNameValue in (NetworkEnumOps)
+| where ActivityStatusValue in ("Success", "Succeeded")
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc
+    EnumOperations = count(),
+    UniqueNSGs = dcountif(Resource, OperationNameValue contains "networkSecurityGroups"),
+    UniqueVNets = dcountif(Resource, OperationNameValue contains "virtualNetworks"),
+    OperationTypes = make_set(OperationNameValue, 15)
+    by Caller, CallerIpAddress
+| where EnumOperations > ${var.enum_threshold} or UniqueNSGs > 5 or UniqueVNets > 3
     QUERY
 
     time_aggregation_method = "Count"
@@ -1363,18 +1486,201 @@ AzureActivity
     action_groups = [azurerm_monitor_action_group.security_alerts.id]
   }
 
-  description = "Detects Network Service Discovery (T1046) activity in Azure environment"
-  display_name = "Network Service Discovery Detection"
+  description = "Detects bulk enumeration of NSGs, VNets, and network resources indicating T1046 reconnaissance"
+  display_name = "T1046: Network Enumeration Detected"
   enabled      = true
 
   tags = {
     "mitre-technique" = "T1046"
-    "detection-type"  = "security"
+    "detection-type"  = "network-reconnaissance"
   }
 }
 
-output "alert_rule_id" {
-  value = azurerm_monitor_scheduled_query_rules_alert_v2.detection.id
+# Alert: Network Watcher Reconnaissance
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "network_watcher_recon" {
+  name                = "t1046-network-watcher-recon"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+// Network Watcher Security Analysis Tool Usage
+// Technique: T1046
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue has "Microsoft.Network/networkWatchers"
+| where OperationNameValue has_any ("topology", "securityGroupView", "ipFlowVerify", "nextHop")
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    WatcherOps = count(),
+    Operations = make_set(OperationNameValue, 10)
+    by Caller, CallerIpAddress
+| where WatcherOps > 5
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects usage of Network Watcher security analysis tools for network reconnaissance"
+  display_name = "T1046: Network Watcher Reconnaissance"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1046"
+    "detection-type"  = "network-watcher-recon"
+  }
+}
+
+# Alert: Port Scanning via NSG Flow Logs (requires Traffic Analytics)
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "port_scanning" {
+  name                = "t1046-port-scanning-detection"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT15M"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+// Port Scanning Detection via NSG Flow Logs
+// Technique: T1046
+// Requires Traffic Analytics enabled on NSG Flow Logs
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(15m)
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| where FlowStatus_s == "D"  // Denied flows
+| where FlowDirection_s == "I"  // Inbound
+| summarize
+    DeniedConnections = count(),
+    UniqueDestPorts = dcount(DestPort_d),
+    DestPorts = make_set(DestPort_d, 50)
+    by SrcIP_s, DestIP_s
+| where DeniedConnections > ${var.portscan_threshold} or UniqueDestPorts > 20
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects port scanning activity via NSG Flow Logs denied connections"
+  display_name = "T1046: Port Scanning Detected"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1046"
+    "detection-type"  = "port-scanning"
+  }
+}
+
+# Alert: First-time Network Enumeration from New IP
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "first_time_enum" {
+  name                = "t1046-first-time-network-enum"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT15M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 3
+
+  criteria {
+    query = <<-QUERY
+// First-time Network Enumeration from New IP
+// Technique: T1046
+let NetworkEnumOps = dynamic([
+    "Microsoft.Network/networkSecurityGroups/read",
+    "Microsoft.Network/virtualNetworks/read",
+    "Microsoft.Network/networkWatchers/topology/action"
+]);
+let RecentActivity = AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue in (NetworkEnumOps)
+| where ActivityStatusValue in ("Success", "Succeeded");
+let HistoricalCallers = AzureActivity
+| where TimeGenerated between (ago(30d) .. ago(1h))
+| where OperationNameValue in (NetworkEnumOps)
+| distinct Caller, CallerIpAddress;
+RecentActivity
+| join kind=leftanti HistoricalCallers on Caller, CallerIpAddress
+| summarize
+    FirstTimeEnumOps = count(),
+    Operations = make_set(OperationNameValue, 10)
+    by Caller, CallerIpAddress
+| where FirstTimeEnumOps > 3
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects first-time network enumeration from new caller/IP combination"
+  display_name = "T1046: First-time Network Enumeration"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1046"
+    "detection-type"  = "first-time-activity"
+  }
+}
+
+output "network_enumeration_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.network_enumeration.id
+}
+
+output "network_watcher_recon_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.network_watcher_recon.id
+}
+
+output "port_scanning_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.port_scanning.id
+}
+
+output "first_time_enum_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.first_time_enum.id
 }""",
                 alert_severity="high",
                 alert_title="Azure: Network Service Discovery Detected",

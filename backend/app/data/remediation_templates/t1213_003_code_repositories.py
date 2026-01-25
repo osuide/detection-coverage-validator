@@ -734,19 +734,91 @@ resource "google_monitoring_alert_policy" "secret_enumeration" {
             azure_service="log_analytics",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                azure_kql_query="""// Data from Information Repositories: Code Repositories Detection
+                azure_kql_query="""// Code Repository Access Detection - Azure DevOps
 // Technique: T1213.003
-AzureActivity
+// Detects bulk repository cloning, secrets retrieval, and suspicious access patterns
+// Prerequisites: Azure DevOps diagnostic logs → Log Analytics
+
+// Primary detection: Azure DevOps bulk repository operations
+let BulkRepoOperations = AzureDevOpsAuditing
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where OperationName in ("Git.Clone", "Git.Fetch", "Git.Pull", "Repository.Export")
+| summarize
+    CloneCount = countif(OperationName == "Git.Clone"),
+    FetchCount = countif(OperationName == "Git.Fetch"),
+    TotalOps = count(),
+    UniqueRepos = dcount(Data.RepositoryName),
+    ReposAccessed = make_set(Data.RepositoryName, 20),
+    ProjectsAccessed = make_set(Data.ProjectName, 10)
+    by ActorUPN, IpAddress, bin(TimeGenerated, 1h)
+| where TotalOps > 10 or UniqueRepos > 5
+| extend AlertType = "BulkRepositoryAccess";
+
+// Detect secrets/variable group access from Azure DevOps
+let SecretsAccess = AzureDevOpsAuditing
+| where TimeGenerated > ago(24h)
+| where OperationName in ("Library.SecretRetrieved", "Library.VariableGroupModified", "Library.ServiceConnectionModified")
+| summarize
+    SecretsRetrieved = count(),
+    UniqueVariableGroups = dcount(Data.VariableGroupName),
+    VariableGroups = make_set(Data.VariableGroupName, 20)
+    by ActorUPN, IpAddress, bin(TimeGenerated, 1h)
+| where SecretsRetrieved > 5
+| extend AlertType = "BulkSecretsAccess";
+
+// Detect permission changes on repositories (privilege escalation for access)
+let PermissionChanges = AzureDevOpsAuditing
+| where TimeGenerated > ago(24h)
+| where OperationName in ("Git.RepositoryPermissionsChanged", "Security.ModifyPermission", "Security.ModifyAccessControlLists")
+| summarize
+    PermissionChanges = count(),
+    UniqueRepos = dcount(Data.RepositoryName),
+    TargetUsers = make_set(Data.TargetUser, 10)
+    by ActorUPN, IpAddress, bin(TimeGenerated, 1h)
+| where PermissionChanges > 3
+| extend AlertType = "SuspiciousPermissionChanges";
+
+// Detect first-time repository access from new location
+let FirstTimeAccess = AzureDevOpsAuditing
+| where TimeGenerated > ago(24h)
+| where OperationName in ("Git.Clone", "Git.Fetch")
+| join kind=leftanti (
+    AzureDevOpsAuditing
+    | where TimeGenerated between (ago(30d) .. ago(24h))
+    | where OperationName in ("Git.Clone", "Git.Fetch")
+    | distinct ActorUPN, IpAddress
+) on ActorUPN, IpAddress
+| summarize
+    FirstTimeClones = count(),
+    ReposAccessed = make_set(Data.RepositoryName, 10)
+    by ActorUPN, IpAddress
+| where FirstTimeClones >= 1
+| extend AlertType = "FirstTimeRepoAccessFromNewLocation";
+
+// GitHub Enterprise Server (if integrated via Azure)
+let GitHubEnterpriseAccess = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue has_any ("Microsoft.GitHub", "github")
+| where ActivityStatusValue in ("Success", "Succeeded")
 | summarize
     OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
+    Operations = make_set(OperationNameValue, 10)
     by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+| where OperationCount > 5
+| extend AlertType = "GitHubEnterpriseAccess";
+
+// Combine all detection signals
+BulkRepoOperations
+| union SecretsAccess
+| union PermissionChanges
+| union FirstTimeAccess
+| project
+    TimeGenerated,
+    AlertType,
+    Actor = coalesce(ActorUPN, ""),
+    SourceIP = coalesce(IpAddress, ""),
+    Details = pack_all()
+| order by TimeGenerated desc""",
                 azure_terraform_template="""# Azure Detection for Data from Information Repositories: Code Repositories
 # MITRE ATT&CK: T1213.003
 
@@ -805,19 +877,33 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
 
   criteria {
     query = <<-QUERY
-// Data from Information Repositories: Code Repositories Detection
+// Code Repository Access Detection - Azure DevOps
 // Technique: T1213.003
-AzureActivity
+// Detects bulk repository cloning, secrets retrieval, and suspicious access patterns
+
+// Azure DevOps bulk repository operations
+let BulkRepoOperations = AzureDevOpsAuditing
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where OperationName in ("Git.Clone", "Git.Fetch", "Git.Pull", "Repository.Export")
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc
+    CloneCount = countif(OperationName == "Git.Clone"),
+    TotalOps = count(),
+    UniqueRepos = dcount(Data.RepositoryName),
+    ReposAccessed = make_set(Data.RepositoryName, 20)
+    by ActorUPN, IpAddress, bin(TimeGenerated, 1h)
+| where TotalOps > 10 or UniqueRepos > 5
+| extend AlertType = "BulkRepositoryAccess";
+
+// Secrets/variable group access
+let SecretsAccess = AzureDevOpsAuditing
+| where TimeGenerated > ago(24h)
+| where OperationName in ("Library.SecretRetrieved", "Library.VariableGroupModified")
+| summarize SecretsRetrieved = count() by ActorUPN, IpAddress
+| where SecretsRetrieved > 5
+| extend AlertType = "BulkSecretsAccess";
+
+BulkRepoOperations | union SecretsAccess
+| project TimeGenerated, AlertType, Actor = ActorUPN, SourceIP = IpAddress
     QUERY
 
     time_aggregation_method = "Count"

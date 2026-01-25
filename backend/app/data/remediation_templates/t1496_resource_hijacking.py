@@ -1066,9 +1066,8 @@ union miningAlerts, suspiciousVMs, containerMining
                     "Suspicious process execution",
                     "Unusual Azure resource deployment",
                 ],
-                azure_terraform_template="""# Microsoft Defender for Cloud Detection
-# Resource Hijacking (T1496)
-# Defender detects resource hijacking for mining
+                azure_terraform_template="""# Azure Detection for Resource Hijacking (T1496)
+# Multi-signal cryptomining and resource abuse detection
 
 terraform {
   required_providers {
@@ -1086,7 +1085,7 @@ variable "resource_group_name" {
 
 variable "log_analytics_workspace_id" {
   type        = string
-  description = "Log Analytics workspace for Defender"
+  description = "Log Analytics workspace resource ID"
 }
 
 variable "alert_email" {
@@ -1100,32 +1099,11 @@ variable "location" {
   default     = "uksouth"
 }
 
-# Enable Defender for Cloud plans
-resource "azurerm_security_center_subscription_pricing" "defender_servers" {
-  tier          = "Standard"
-  resource_type = "VirtualMachines"
-}
-
-resource "azurerm_security_center_subscription_pricing" "defender_storage" {
-  tier          = "Standard"
-  resource_type = "StorageAccounts"
-}
-
-resource "azurerm_security_center_subscription_pricing" "defender_keyvault" {
-  tier          = "Standard"
-  resource_type = "KeyVaults"
-}
-
-resource "azurerm_security_center_subscription_pricing" "defender_arm" {
-  tier          = "Standard"
-  resource_type = "Arm"
-}
-
-# Action Group for Defender alerts
-resource "azurerm_monitor_action_group" "defender_alerts" {
-  name                = "defender-t1496-alerts"
+# Action Group for all T1496 alerts
+resource "azurerm_monitor_action_group" "resource_hijacking" {
+  name                = "t1496-resource-hijacking-alerts"
   resource_group_name = var.resource_group_name
-  short_name          = "DefAlerts"
+  short_name          = "T1496Alert"
 
   email_receiver {
     name          = "security-team"
@@ -1133,9 +1111,11 @@ resource "azurerm_monitor_action_group" "defender_alerts" {
   }
 }
 
-# Log Analytics query for Defender alerts
-resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_detection" {
-  name                = "defender-t1496"
+# =============================================================================
+# Alert 1: Defender Cryptomining Alerts (highest fidelity)
+# =============================================================================
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_cryptomining" {
+  name                = "t1496-defender-cryptomining"
   resource_group_name = var.resource_group_name
   location            = var.location
 
@@ -1148,18 +1128,24 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_detection" {
     query = <<-QUERY
 SecurityAlert
 | where TimeGenerated > ago(1h)
-| where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
+| where ProductName in ("Azure Security Center", "Microsoft Defender for Cloud", "Microsoft Defender for Containers", "Microsoft Defender for Servers")
 | where AlertName has_any (
-                    "Cryptocurrency mining activity",
-                )
+    "Cryptocurrency",
+    "mining",
+    "cryptominer",
+    "Digital currency",
+    "Bitcoin",
+    "Monero",
+    "coin miner",
+    "crypto miner"
+)
 | project
     TimeGenerated,
     AlertName,
     AlertSeverity,
     Description,
-    RemediationSteps,
-    ExtendedProperties,
-    Entities
+    CompromisedEntity,
+    RemediationSteps
     QUERY
 
     time_aggregation_method = "Count"
@@ -1173,21 +1159,254 @@ SecurityAlert
   }
 
   action {
-    action_groups = [azurerm_monitor_action_group.defender_alerts.id]
+    action_groups = [azurerm_monitor_action_group.resource_hijacking.id]
   }
 
-  description = "Defender detects resource hijacking for mining"
-  display_name = "Defender: Resource Hijacking"
+  description  = "Defender for Cloud detected cryptocurrency mining activity"
+  display_name = "T1496: Defender Cryptomining Alert"
   enabled      = true
 
   tags = {
     "mitre-technique" = "T1496"
-    "detection-type"  = "security"
+    "detection-type"  = "defender-alert"
   }
 }
 
-output "alert_rule_id" {
-  value = azurerm_monitor_scheduled_query_rules_alert_v2.defender_detection.id
+# =============================================================================
+# Alert 2: Sustained High CPU Usage (VM-level)
+# =============================================================================
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "sustained_high_cpu" {
+  name                = "t1496-sustained-high-cpu"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT15M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureMetrics
+| where TimeGenerated > ago(1h)
+| where ResourceProvider == "MICROSOFT.COMPUTE"
+| where MetricName == "Percentage CPU"
+| where Average > 85
+| summarize
+    AvgCPU = avg(Average),
+    MaxCPU = max(Maximum),
+    HighCpuSamples = count(),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Resource, ResourceGroup, bin(TimeGenerated, 1h)
+| where HighCpuSamples >= 6 and AvgCPU > 85
+| extend
+    SustainedHighCpu = true,
+    Duration = LastSeen - FirstSeen
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.resource_hijacking.id]
+  }
+
+  description  = "Sustained high CPU usage detected - potential cryptomining"
+  display_name = "T1496: Sustained High CPU"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1496"
+    "detection-type"  = "metrics-anomaly"
+  }
+}
+
+# =============================================================================
+# Alert 3: Mining Pool Port Connections (NSG Flow Logs)
+# =============================================================================
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mining_pool_connections" {
+  name                = "t1496-mining-pool-connections"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT30M"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 1
+
+  criteria {
+    query = <<-QUERY
+let MiningPorts = dynamic([3333, 4444, 5555, 7777, 8888, 9999, 14433, 14444, 45560]);
+AzureDiagnostics
+| where TimeGenerated > ago(30m)
+| where Category == "NetworkSecurityGroupFlowEvent"
+| extend FlowLog = parse_json(flowLog_s)
+| mv-expand FlowLog
+| extend
+    DestPort = toint(split(FlowLog.flows[0].flowTuples[0], ",")[4]),
+    FlowDirection = tostring(split(FlowLog.flows[0].flowTuples[0], ",")[6]),
+    FlowStatus = tostring(split(FlowLog.flows[0].flowTuples[0], ",")[7]),
+    SrcIP = tostring(split(FlowLog.flows[0].flowTuples[0], ",")[1]),
+    DstIP = tostring(split(FlowLog.flows[0].flowTuples[0], ",")[2])
+| where DestPort in (MiningPorts)
+| where FlowDirection == "O" and FlowStatus == "A"
+| summarize
+    ConnectionCount = count(),
+    UniqueDestinations = dcount(DstIP),
+    Ports = make_set(DestPort),
+    DestIPs = make_set(DstIP, 10)
+    by SrcIP, Resource, bin(TimeGenerated, 5m)
+| where ConnectionCount > 3
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.resource_hijacking.id]
+  }
+
+  description  = "Network connections to known cryptocurrency mining pool ports detected"
+  display_name = "T1496: Mining Pool Connection"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1496"
+    "detection-type"  = "network-ioc"
+  }
+}
+
+# =============================================================================
+# Alert 4: GPU VM Creation (potential mining rigs)
+# =============================================================================
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "gpu_vm_creation" {
+  name                = "t1496-gpu-vm-creation"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue has "Microsoft.Compute/virtualMachines/write"
+| where ActivityStatusValue in ("Success", "Succeeded")
+| extend Properties = parse_json(Properties)
+| where Properties has_any ("NC", "ND", "NV", "Standard_NC", "Standard_ND", "Standard_NV", "GPU")
+| project
+    TimeGenerated,
+    Caller,
+    CallerIpAddress,
+    VMName = Resource,
+    ResourceGroup,
+    SubscriptionId,
+    VMSize = tostring(Properties.responseBody.properties.hardwareProfile.vmSize)
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.resource_hijacking.id]
+  }
+
+  description  = "GPU-enabled VM created - potential cryptomining infrastructure"
+  display_name = "T1496: GPU VM Creation"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1496"
+    "detection-type"  = "resource-creation"
+  }
+}
+
+# =============================================================================
+# Alert 5: AKS Container High CPU (Container Insights)
+# =============================================================================
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "aks_container_high_cpu" {
+  name                = "t1496-aks-container-cpu"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT10M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+Perf
+| where TimeGenerated > ago(1h)
+| where ObjectName == "K8SContainer" and CounterName == "cpuUsageNanoCores"
+| extend ContainerName = tostring(split(InstanceName, "/")[-1])
+| summarize
+    AvgCpuNanos = avg(CounterValue),
+    MaxCpuNanos = max(CounterValue),
+    SampleCount = count()
+    by ContainerName, Computer, bin(TimeGenerated, 10m)
+| where AvgCpuNanos > 500000000
+| where SampleCount >= 3
+| extend AvgCpuCores = AvgCpuNanos / 1000000000
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.resource_hijacking.id]
+  }
+
+  description  = "AKS container showing sustained high CPU usage - potential cryptomining"
+  display_name = "T1496: AKS Container High CPU"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1496"
+    "detection-type"  = "container-metrics"
+  }
+}
+
+output "alert_rule_ids" {
+  value = {
+    defender_cryptomining   = azurerm_monitor_scheduled_query_rules_alert_v2.defender_cryptomining.id
+    sustained_high_cpu      = azurerm_monitor_scheduled_query_rules_alert_v2.sustained_high_cpu.id
+    mining_pool_connections = azurerm_monitor_scheduled_query_rules_alert_v2.mining_pool_connections.id
+    gpu_vm_creation         = azurerm_monitor_scheduled_query_rules_alert_v2.gpu_vm_creation.id
+    aks_container_cpu       = azurerm_monitor_scheduled_query_rules_alert_v2.aks_container_high_cpu.id
+  }
 }""",
                 alert_severity="high",
                 alert_title="Azure: Resource Hijacking Detected",

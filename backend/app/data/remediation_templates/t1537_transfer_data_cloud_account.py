@@ -777,26 +777,94 @@ resource "google_monitoring_alert_policy" "image_share" {
             azure_service="log_analytics",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                azure_kql_query="""// Transfer Data to Cloud Account Detection
-// Technique: T1537
-AzureActivity
+                azure_kql_query="""// T1537 - Transfer Data to Cloud Account Detection
+// Detects data transfer to external/attacker-controlled Azure accounts
+// Data Sources: AzureActivity, StorageBlobLogs, AzureDiagnostics
+
+// Strategy 1: Disk Snapshot sharing to external subscriptions
+let SnapshotSharing = AzureActivity
 | where TimeGenerated > ago(24h)
-| where OperationNameValue contains "Microsoft.Storage/storageAccounts/" or OperationNameValue contains "Microsoft.Cdn/"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
-| project
-    TimeGenerated,
-    SubscriptionId,
-    ResourceGroup,
-    Resource,
-    Caller,
-    CallerIpAddress,
-    OperationNameValue,
-    ActivityStatusValue,
-    Properties
+| where OperationNameValue in (
+    "Microsoft.Compute/snapshots/write",
+    "Microsoft.Compute/disks/beginGetAccess/action",
+    "Microsoft.Compute/snapshots/beginGetAccess/action"
+)
+| where ActivityStatusValue == "Succeeded"
+| extend PropertiesJson = parse_json(Properties)
+| extend TargetSubscription = tostring(PropertiesJson.targetResourceId)
+| where TargetSubscription != "" and TargetSubscription != SubscriptionId
+| project TimeGenerated, SubscriptionId, Caller, CallerIpAddress, OperationNameValue,
+          Resource, TargetSubscription, AlertType = "Snapshot External Share";
+
+// Strategy 2: Storage Account cross-subscription copy operations
+let CrossSubCopy = StorageBlobLogs
+| where TimeGenerated > ago(24h)
+| where OperationName in ("CopyBlob", "CopyBlobFromURL", "StartCopyBlob")
+| where StatusCode in (200, 202)
+| extend SourceUri = tostring(parse_json(RequestHeaderValue).["x-ms-copy-source"])
+| where SourceUri != "" and SourceUri !contains AccountName
+| summarize
+    CopyCount = count(),
+    TotalBytes = sum(RequestBodySize),
+    DestinationAccounts = make_set(AccountName, 10)
+    by CallerIpAddress, SourceUri, bin(TimeGenerated, 1h)
+| where CopyCount > 10 or TotalBytes > 104857600;
+
+// Strategy 3: SAS token generation for external access
+let SASGeneration = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (
+    "Microsoft.Storage/storageAccounts/listServiceSas/action",
+    "Microsoft.Storage/storageAccounts/listAccountSas/action",
+    "Microsoft.Storage/storageAccounts/listkeys/action"
+)
+| where ActivityStatusValue == "Succeeded"
+| summarize
+    TokenCount = count(),
+    StorageAccounts = make_set(Resource, 10)
+    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
+| where TokenCount > 5;
+
+// Strategy 4: VM Image/Disk shared to external tenants
+let ImageSharing = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (
+    "Microsoft.Compute/galleries/images/versions/write",
+    "Microsoft.Compute/galleries/share/action",
+    "Microsoft.Compute/images/write"
+)
+| where ActivityStatusValue == "Succeeded"
+| extend PropertiesJson = parse_json(Properties)
+| project TimeGenerated, SubscriptionId, Caller, CallerIpAddress, OperationNameValue,
+          Resource, Properties, AlertType = "VM Image External Share";
+
+// Strategy 5: Cross-subscription storage replication
+let ReplicationConfig = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (
+    "Microsoft.Storage/storageAccounts/objectReplicationPolicies/write",
+    "Microsoft.Storage/storageAccounts/write"
+)
+| where ActivityStatusValue == "Succeeded"
+| extend PropertiesJson = parse_json(Properties)
+| where PropertiesJson has "objectReplication" or PropertiesJson has "geoReplication"
+| project TimeGenerated, SubscriptionId, Caller, CallerIpAddress, OperationNameValue,
+          Resource, Properties, AlertType = "Replication Configuration";
+
+// Combine all detection patterns
+SnapshotSharing
+| union ImageSharing
+| union ReplicationConfig
+| union (SASGeneration | extend AlertType = "SAS Token Bulk Generation")
 | order by TimeGenerated desc""",
                 azure_activity_operations=[
-                    "Microsoft.Storage/storageAccounts/",
-                    "Microsoft.Cdn/",
+                    "Microsoft.Compute/snapshots/write",
+                    "Microsoft.Compute/snapshots/beginGetAccess/action",
+                    "Microsoft.Compute/disks/beginGetAccess/action",
+                    "Microsoft.Compute/galleries/share/action",
+                    "Microsoft.Storage/storageAccounts/listServiceSas/action",
+                    "Microsoft.Storage/storageAccounts/listAccountSas/action",
+                    "Microsoft.Storage/storageAccounts/objectReplicationPolicies/write",
                 ],
                 azure_terraform_template="""# Azure Detection for Transfer Data to Cloud Account
 # MITRE ATT&CK: T1537

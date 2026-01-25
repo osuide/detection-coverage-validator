@@ -961,17 +961,107 @@ resource "google_monitoring_alert_policy" "storage_access" {
             implementation=DetectionImplementation(
                 azure_kql_query="""// Exfiltration Over Asymmetric Encrypted Non-C2 Protocol Detection
 // Technique: T1048.002
-AzureActivity
+// Detects HTTPS/TLS exfiltration, SFTP, and asymmetric key operations
+// Prerequisites: AzureNetworkAnalytics_CL, AzureDiagnostics (Key Vault)
+
+// Large HTTPS Egress to External Destinations
+let HTTPSExfiltration = AzureNetworkAnalytics_CL
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where DestPort_d == 443  // HTTPS
+| where FlowDirection_s == "O"  // Outbound
+| where FlowStatus_s == "A"  // Allowed
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+// Exclude known Azure and Microsoft IPs
+| where not(DestIP_s startswith "13." or DestIP_s startswith "20." or DestIP_s startswith "40.")
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Connections = count(),
+    UniqueDestinations = dcount(DestIP_s),
+    TopDestinations = make_set(DestIP_s, 10)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 52428800  // > 50 MB
+| extend AlertType = "LargeHTTPSEgress";
+
+// SFTP/SCP Exfiltration (SSH port 22)
+let SFTPExfiltration = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where DestPort_d == 22  // SSH/SFTP
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Sessions = count(),
+    UniqueServers = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 10485760  // > 10 MB
+| extend AlertType = "SFTPExfiltration";
+
+// SMTPS (Encrypted Email) Exfiltration
+let SMTPSExfiltration = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where DestPort_d in (465, 587, 993, 995)  // SMTPS, Submission, IMAPS, POP3S
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    EmailConnections = count(),
+    UniqueMailServers = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 10485760 or EmailConnections > 100
+| extend AlertType = "EncryptedEmailExfiltration";
+
+// Asymmetric Key Operations in Key Vault (RSA, EC)
+let AsymmetricKeyOps = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in (
+    "KeySign",           // Using private key to sign (for auth/exfil)
+    "KeyVerify",         // Verifying signatures
+    "KeyEncrypt",        // RSA encryption
+    "KeyDecrypt",        // RSA decryption
+    "CertificateGet",    // Getting certificate (for TLS)
+    "CertificateImport"  // Importing cert (for exfil channel)
+)
+| where ResultSignature == "OK" or ResultSignature == "200"
+| summarize
+    AsymmetricOps = count(),
+    UniqueKeys = dcount(id_s),
+    Operations = make_set(OperationName, 10)
+    by CallerIPAddress, identity_claim_upn_s, bin(TimeGenerated, 1h)
+| where AsymmetricOps > 10
+| extend AlertType = "HighAsymmetricKeyUsage";
+
+// Sensitive Data Access Followed by Encrypted Transfer (correlation)
+let DataAccessBeforeTransfer = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue has_any (
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read",
+    "Microsoft.KeyVault/vaults/secrets/read",
+    "Microsoft.Sql/servers/databases/export"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    DataAccessOps = count(),
+    ResourcesAccessed = make_set(Resource, 10)
+    by Caller, CallerIpAddress, bin(TimeGenerated, 30m)
+| where DataAccessOps > 5
+| extend AlertType = "BulkDataAccessBeforeTransfer";
+
+// Combine all detection signals
+HTTPSExfiltration
+| union SFTPExfiltration
+| union SMTPSExfiltration
+| union AsymmetricKeyOps
+| union DataAccessBeforeTransfer
+| project
+    TimeGenerated,
+    AlertType,
+    SourceIP = coalesce(SrcIP_s, CallerIPAddress, CallerIpAddress),
+    User = coalesce(identity_claim_upn_s, Caller),
+    Details = pack_all()
+| order by TimeGenerated desc""",
                 azure_terraform_template="""# Azure Detection for Exfiltration Over Asymmetric Encrypted Non-C2 Protocol
 # MITRE ATT&CK: T1048.002
 
@@ -1007,9 +1097,9 @@ variable "location" {
 
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
-  name                = "exfiltration-over-asymmetric-encrypted-non-c2-prot-alerts"
+  name                = "t1048-002-asymmetric-encrypted-alerts"
   resource_group_name = var.resource_group_name
-  short_name          = "SecAlerts"
+  short_name          = "T1048002"
 
   email_receiver {
     name          = "security-team"
@@ -1017,9 +1107,9 @@ resource "azurerm_monitor_action_group" "security_alerts" {
   }
 }
 
-# Scheduled Query Rule for detection
-resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
-  name                = "exfiltration-over-asymmetric-encrypted-non-c2-prot-detection"
+# Alert 1: Large HTTPS Egress to External Destinations
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "https_exfiltration" {
+  name                = "t1048-002-https-exfiltration"
   resource_group_name = var.resource_group_name
   location            = var.location
 
@@ -1030,19 +1120,19 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
 
   criteria {
     query = <<-QUERY
-// Exfiltration Over Asymmetric Encrypted Non-C2 Protocol Detection
-// Technique: T1048.002
-AzureActivity
-| where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(1h)
+| where DestPort_d == 443
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| where not(DestIP_s startswith "13." or DestIP_s startswith "20." or DestIP_s startswith "40.")
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Connections = count(),
+    UniqueDestinations = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 52428800
     QUERY
 
     time_aggregation_method = "Count"
@@ -1056,23 +1146,201 @@ AzureActivity
   }
 
   auto_mitigation_enabled = false
-
-  action {
-    action_groups = [azurerm_monitor_action_group.security_alerts.id]
-  }
-
-  description = "Detects Exfiltration Over Asymmetric Encrypted Non-C2 Protocol (T1048.002) activity in Azure environment"
-  display_name = "Exfiltration Over Asymmetric Encrypted Non-C2 Protocol Detection"
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects large HTTPS egress (>50MB) to non-Azure destinations (T1048.002)"
+  display_name = "Large HTTPS Exfiltration Detected"
   enabled      = true
-
-  tags = {
-    "mitre-technique" = "T1048.002"
-    "detection-type"  = "security"
-  }
+  tags         = { "mitre-technique" = "T1048.002", "detection-type" = "security" }
 }
 
-output "alert_rule_id" {
-  value = azurerm_monitor_scheduled_query_rules_alert_v2.detection.id
+# Alert 2: SFTP/SCP Exfiltration
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "sftp_exfiltration" {
+  name                = "t1048-002-sftp-exfiltration"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(1h)
+| where DestPort_d == 22
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Sessions = count(),
+    UniqueServers = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 10485760
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects large SFTP/SCP transfers (>10MB) to external servers (T1048.002)"
+  display_name = "SFTP Exfiltration Detected"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.002", "detection-type" = "security" }
+}
+
+# Alert 3: SMTPS (Encrypted Email) Exfiltration
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "smtps_exfiltration" {
+  name                = "t1048-002-smtps-exfiltration"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(1h)
+| where DestPort_d in (465, 587, 993, 995)
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    EmailConnections = count(),
+    UniqueMailServers = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 10485760 or EmailConnections > 100
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects high volume encrypted email exfiltration (T1048.002)"
+  display_name = "Encrypted Email Exfiltration Detected"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.002", "detection-type" = "security" }
+}
+
+# Alert 4: Asymmetric Key Operations in Key Vault
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "asymmetric_key_ops" {
+  name                = "t1048-002-asymmetric-key-ops"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where ResourceProvider == "MICROSOFT.KEYVAULT"
+| where OperationName in ("KeySign", "KeyVerify", "KeyEncrypt", "KeyDecrypt", "CertificateGet", "CertificateImport")
+| where ResultSignature == "OK" or ResultSignature == "200"
+| summarize
+    AsymmetricOps = count(),
+    UniqueKeys = dcount(id_s),
+    Operations = make_set(OperationName, 10)
+    by CallerIPAddress, identity_claim_upn_s, bin(TimeGenerated, 1h)
+| where AsymmetricOps > 10
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects high-volume asymmetric key operations in Azure Key Vault (T1048.002)"
+  display_name = "High Asymmetric Key Usage Detected"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.002", "detection-type" = "security" }
+}
+
+# Alert 5: Bulk Data Access Before Transfer
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "bulk_data_access" {
+  name                = "t1048-002-bulk-data-access"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT30M"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureActivity
+| where TimeGenerated > ago(30m)
+| where OperationNameValue has_any (
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read",
+    "Microsoft.KeyVault/vaults/secrets/read",
+    "Microsoft.Sql/servers/databases/export"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    DataAccessOps = count(),
+    ResourcesAccessed = make_set(Resource, 10)
+    by Caller, CallerIpAddress, bin(TimeGenerated, 30m)
+| where DataAccessOps > 5
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects bulk data access that may precede encrypted exfiltration (T1048.002)"
+  display_name = "Bulk Data Access Before Transfer"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.002", "detection-type" = "security" }
+}
+
+output "alert_rule_ids" {
+  value = {
+    https_exfiltration  = azurerm_monitor_scheduled_query_rules_alert_v2.https_exfiltration.id
+    sftp_exfiltration   = azurerm_monitor_scheduled_query_rules_alert_v2.sftp_exfiltration.id
+    smtps_exfiltration  = azurerm_monitor_scheduled_query_rules_alert_v2.smtps_exfiltration.id
+    asymmetric_key_ops  = azurerm_monitor_scheduled_query_rules_alert_v2.asymmetric_key_ops.id
+    bulk_data_access    = azurerm_monitor_scheduled_query_rules_alert_v2.bulk_data_access.id
+  }
 }""",
                 alert_severity="high",
                 alert_title="Azure: Exfiltration Over Asymmetric Encrypted Non-C2 Protocol Detected",

@@ -841,6 +841,7 @@ AzureActivity
     Resources""",
                 azure_terraform_template="""# Azure Detection for Deploy Container
 # MITRE ATT&CK: T1610
+# Comprehensive detection for container deployments across ACI, AKS, ACR, and Web Apps
 
 terraform {
   required_providers {
@@ -874,9 +875,9 @@ variable "location" {
 
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
-  name                = "deploy-container-alerts"
+  name                = "t1610-container-deploy-alerts"
   resource_group_name = var.resource_group_name
-  short_name          = "SecAlerts"
+  short_name          = "T1610Alerts"
 
   email_receiver {
     name          = "security-team"
@@ -884,9 +885,12 @@ resource "azurerm_monitor_action_group" "security_alerts" {
   }
 }
 
-# Scheduled Query Rule for detection
-resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
-  name                = "deploy-container-detection"
+#############################################################################
+# Alert 1: Azure Container Instances (ACI) Deployment
+# Detects container group creation and start operations
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "aci_deployment" {
+  name                = "t1610-aci-container-deployment"
   resource_group_name = var.resource_group_name
   location            = var.location
 
@@ -897,42 +901,22 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
 
   criteria {
     query = <<-QUERY
-// Sentinel Analytics Rule: Deploy Container
-// MITRE ATT&CK: T1610
-let lookback = 24h;
-let threshold = 5;
 AzureActivity
-| where TimeGenerated > ago(lookback)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue in ("Success", "Succeeded")
-| summarize
-    EventCount = count(),
-    DistinctOperations = dcount(OperationNameValue),
-    Operations = make_set(OperationNameValue, 20),
-    Resources = make_set(Resource, 10),
-    FirstSeen = min(TimeGenerated),
-    LastSeen = max(TimeGenerated)
-    by Caller, CallerIpAddress, SubscriptionId
-| where EventCount > threshold
-| extend
-    AccountName = tostring(split(Caller, "@")[0]),
-    AccountDomain = tostring(split(Caller, "@")[1])
-| project
-    TimeGenerated = LastSeen,
-    AccountName,
-    AccountDomain,
-    Caller,
-    CallerIpAddress,
-    SubscriptionId,
-    EventCount,
-    DistinctOperations,
-    Operations,
-    Resources
+| where TimeGenerated > ago(1h)
+| where OperationNameValue has_any (
+    "MICROSOFT.CONTAINERINSTANCE/CONTAINERGROUPS/WRITE",
+    "Microsoft.ContainerInstance/containerGroups/write",
+    "MICROSOFT.CONTAINERINSTANCE/CONTAINERGROUPS/START/ACTION"
+)
+| where ActivityStatusValue in ("Success", "Succeeded", "Started")
+| project TimeGenerated, Caller, CallerIpAddress, Resource,
+    ResourceGroup, SubscriptionId, OperationNameValue, Properties
+| extend ContainerGroup = tostring(split(Resource, "/")[-1])
     QUERY
 
     time_aggregation_method = "Count"
-    threshold               = 1
-    operator                = "GreaterThanOrEqual"
+    threshold               = 0
+    operator                = "GreaterThan"
 
     failing_periods {
       minimum_failing_periods_to_trigger_alert = 1
@@ -946,18 +930,332 @@ AzureActivity
     action_groups = [azurerm_monitor_action_group.security_alerts.id]
   }
 
-  description = "Detects Deploy Container (T1610) activity in Azure environment"
-  display_name = "Deploy Container Detection"
+  description  = "Detects Azure Container Instances deployment (T1610)"
+  display_name = "T1610: ACI Container Group Deployed"
   enabled      = true
 
   tags = {
     "mitre-technique" = "T1610"
-    "detection-type"  = "security"
+    "detection-type"  = "container-deployment"
+    "data-source"     = "AzureActivity"
   }
 }
 
-output "alert_rule_id" {
-  value = azurerm_monitor_scheduled_query_rules_alert_v2.detection.id
+#############################################################################
+# Alert 2: AKS Pod Creation via kube-audit
+# Detects pod deployments in AKS clusters including privileged pods
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "aks_pod_creation" {
+  name                = "t1610-aks-pod-creation"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where ResourceType == "MANAGEDCLUSTERS"
+| where Category == "kube-audit" or Category == "kube-audit-admin"
+| where log_s has "pods" and log_s has "create"
+| extend AuditLog = parse_json(log_s)
+| where AuditLog.verb == "create"
+| where AuditLog.objectRef.resource == "pods"
+| project TimeGenerated, Resource, ResourceGroup,
+    User = tostring(AuditLog.user.username),
+    Namespace = tostring(AuditLog.objectRef.namespace),
+    PodName = tostring(AuditLog.objectRef.name),
+    Verb = tostring(AuditLog.verb)
+| where Namespace !in ("kube-system", "kube-public", "kube-node-lease", "gatekeeper-system")
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description  = "Detects pod creation in AKS clusters (T1610)"
+  display_name = "T1610: AKS Pod Created"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1610"
+    "detection-type"  = "kubernetes-workload"
+    "data-source"     = "AzureDiagnostics-kube-audit"
+  }
+}
+
+#############################################################################
+# Alert 3: AKS Privileged/DaemonSet Deployments (High Severity)
+# Detects privileged containers and DaemonSets that could indicate attack
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "aks_privileged_daemonset" {
+  name                = "t1610-aks-privileged-daemonset"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 1
+
+  criteria {
+    query = <<-QUERY
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where ResourceType == "MANAGEDCLUSTERS"
+| where Category == "kube-audit" or Category == "kube-audit-admin"
+| where log_s has "create"
+| extend AuditLog = parse_json(log_s)
+| where AuditLog.verb == "create"
+| where AuditLog.objectRef.resource in ("pods", "daemonsets", "deployments")
+| where log_s has_any ("privileged", "hostNetwork", "hostPID", "hostIPC")
+    or AuditLog.objectRef.resource == "daemonsets"
+| project TimeGenerated, Resource, ResourceGroup,
+    User = tostring(AuditLog.user.username),
+    Namespace = tostring(AuditLog.objectRef.namespace),
+    WorkloadName = tostring(AuditLog.objectRef.name),
+    WorkloadType = tostring(AuditLog.objectRef.resource),
+    RiskIndicator = case(
+        log_s has "privileged", "Privileged Container",
+        log_s has "hostNetwork", "Host Network Access",
+        log_s has "hostPID", "Host PID Namespace",
+        AuditLog.objectRef.resource == "daemonsets", "DaemonSet Deployment",
+        "Unknown"
+    )
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description  = "Detects privileged containers or DaemonSets in AKS (T1610)"
+  display_name = "T1610: AKS Privileged/DaemonSet Deployment"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1610"
+    "detection-type"  = "privileged-workload"
+    "data-source"     = "AzureDiagnostics-kube-audit"
+    "severity"        = "high"
+  }
+}
+
+#############################################################################
+# Alert 4: Defender for Containers Alerts
+# Detects container security alerts from Microsoft Defender
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "defender_container_alerts" {
+  name                = "t1610-defender-container-alerts"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 1
+
+  criteria {
+    query = <<-QUERY
+SecurityAlert
+| where TimeGenerated > ago(1h)
+| where ProductName in ("Azure Security Center", "Microsoft Defender for Cloud", "Microsoft Defender for Containers")
+| where AlertName has_any (
+    "Container", "Kubernetes", "pod",
+    "Suspicious container", "Privileged container",
+    "AKS", "container image", "Docker"
+)
+| project TimeGenerated, AlertName, AlertSeverity, Description,
+    CompromisedEntity, RemediationSteps, ExtendedProperties
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description  = "Detects Defender for Containers security alerts (T1610)"
+  display_name = "T1610: Defender Container Alert"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1610"
+    "detection-type"  = "defender-alert"
+    "data-source"     = "SecurityAlert"
+  }
+}
+
+#############################################################################
+# Alert 5: Azure Container Registry Image Pull
+# Detects image pulls which may indicate container deployment
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "acr_image_pull" {
+  name                = "t1610-acr-image-pull"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT10M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 3
+
+  criteria {
+    query = <<-QUERY
+ContainerRegistryLoginEvents
+| where TimeGenerated > ago(1h)
+| where OperationName == "Pull"
+| summarize PullCount = count(),
+    Repositories = make_set(Repository, 10),
+    Tags = make_set(Tag, 10)
+    by LoginServer, CallerIpAddress, Identity, bin(TimeGenerated, 10m)
+| where PullCount > 5
+| project TimeGenerated, LoginServer, CallerIpAddress, Identity,
+    PullCount, Repositories, Tags
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description  = "Detects multiple ACR image pulls indicating deployment activity (T1610)"
+  display_name = "T1610: ACR Image Pull Activity"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1610"
+    "detection-type"  = "registry-activity"
+    "data-source"     = "ContainerRegistryLoginEvents"
+  }
+}
+
+#############################################################################
+# Alert 6: Web App Container Configuration
+# Detects Azure Web App container deployments
+#############################################################################
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "webapp_container" {
+  name                = "t1610-webapp-container-config"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue has_any (
+    "MICROSOFT.WEB/SITES/CONFIG/WRITE",
+    "MICROSOFT.WEB/SITES/WRITE"
+)
+| where Properties has "linuxFxVersion" or Properties has "windowsFxVersion"
+| where ActivityStatusValue in ("Success", "Succeeded")
+| project TimeGenerated, Caller, CallerIpAddress, Resource,
+    ResourceGroup, SubscriptionId, OperationNameValue
+| extend WebApp = tostring(split(Resource, "/")[-1])
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description  = "Detects Azure Web App container configuration changes (T1610)"
+  display_name = "T1610: Web App Container Deployed"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1610"
+    "detection-type"  = "webapp-container"
+    "data-source"     = "AzureActivity"
+  }
+}
+
+output "aci_deployment_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.aci_deployment.id
+}
+
+output "aks_pod_creation_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.aks_pod_creation.id
+}
+
+output "aks_privileged_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.aks_privileged_daemonset.id
+}
+
+output "defender_container_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.defender_container_alerts.id
+}
+
+output "acr_pull_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.acr_image_pull.id
+}
+
+output "webapp_container_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.webapp_container.id
 }""",
                 alert_severity="high",
                 alert_title="Azure: Deploy Container Detected",

@@ -1222,19 +1222,98 @@ resource "google_monitoring_alert_policy" "alt_protocol" {
             implementation=DetectionImplementation(
                 azure_kql_query="""// Exfiltration Over Alternative Protocol Detection
 // Technique: T1048
-AzureActivity
+// Detects data exfiltration via DNS tunnelling, FTP, SMTP, and unusual port activity
+// Prerequisites: AzureNetworkAnalytics_CL (Traffic Analytics), DnsEvents, AzureFirewallDnsProxy
+
+// DNS Tunnelling Detection via Azure DNS Analytics
+let DNSTunnelling = DnsEvents
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where QueryType in ("TXT", "NULL", "CNAME")
+| extend QueryNameLength = strlen(Name)
+| where QueryNameLength > 50  // Unusually long DNS queries indicate encoding
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+    QueryCount = count(),
+    AvgQueryLength = avg(QueryNameLength),
+    UniqueQueries = dcount(Name),
+    SampleQueries = make_set(Name, 10)
+    by ClientIP, bin(TimeGenerated, 5m)
+| where QueryCount > 50 or AvgQueryLength > 60
+| extend AlertType = "DNSTunnelling";
+
+// FTP Exfiltration via NSG Flow Logs
+let FTPExfiltration = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where DestPort_d in (20, 21, 989, 990)  // FTP and FTPS ports
+| where FlowDirection_s == "O"  // Outbound
+| where FlowStatus_s == "A"  // Allowed
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")  // External destination
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    FlowCount = count(),
+    UniqueDestIPs = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 10485760  // > 10 MB
+| extend AlertType = "FTPExfiltration";
+
+// SMTP Exfiltration via NSG Flow Logs
+let SMTPExfiltration = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where DestPort_d in (25, 465, 587)  // SMTP ports
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    EmailConnections = count(),
+    UniqueMailServers = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 5242880 or EmailConnections > 50  // > 5 MB or many connections
+| extend AlertType = "SMTPExfiltration";
+
+// Unusual Port Activity (non-standard ports for data transfer)
+let UnusualPortActivity = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| where DestPort_d !in (80, 443, 22, 25, 53, 123, 143, 993, 995)  // Non-standard ports
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    FlowCount = count(),
+    UniquePorts = dcount(DestPort_d),
+    Ports = make_set(DestPort_d, 20)
+    by SrcIP_s, DestIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 10485760  // > 10 MB on unusual ports
+| extend AlertType = "UnusualPortExfiltration";
+
+// Azure Firewall DNS Proxy for DNS tunnelling (if Azure Firewall enabled)
+let FirewallDNSTunnel = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where Category == "AzureFirewallDnsProxy"
+| extend QueryName = tostring(split(msg_s, " ")[4])
+| extend QueryLength = strlen(QueryName)
+| where QueryLength > 50
+| summarize
+    QueryCount = count(),
+    AvgLength = avg(QueryLength)
+    by SourceIP = tostring(split(msg_s, " ")[1]), bin(TimeGenerated, 5m)
+| where QueryCount > 30
+| extend AlertType = "FirewallDNSTunnelling";
+
+// Combine all detection signals
+DNSTunnelling
+| union FTPExfiltration
+| union SMTPExfiltration
+| union UnusualPortActivity
+| project
+    TimeGenerated,
+    AlertType,
+    SourceIP = coalesce(ClientIP, SrcIP_s),
+    Details = pack_all()
+| order by TimeGenerated desc""",
                 azure_terraform_template="""# Azure Detection for Exfiltration Over Alternative Protocol
 # MITRE ATT&CK: T1048
+# Detects DNS tunnelling, FTP, SMTP, and unusual port exfiltration
 
 terraform {
   required_providers {
@@ -1266,11 +1345,23 @@ variable "location" {
   default     = "uksouth"
 }
 
+variable "dns_query_threshold" {
+  type        = number
+  default     = 50
+  description = "Threshold for suspicious DNS query count"
+}
+
+variable "data_transfer_threshold_mb" {
+  type        = number
+  default     = 10
+  description = "Threshold in MB for data exfiltration detection"
+}
+
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
-  name                = "exfiltration-over-alternative-protocol-alerts"
+  name                = "t1048-exfil-alt-protocol-alerts"
   resource_group_name = var.resource_group_name
-  short_name          = "SecAlerts"
+  short_name          = "T1048Alert"
 
   email_receiver {
     name          = "security-team"
@@ -1278,32 +1369,26 @@ resource "azurerm_monitor_action_group" "security_alerts" {
   }
 }
 
-# Scheduled Query Rule for detection
-resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
-  name                = "exfiltration-over-alternative-protocol-detection"
+# Alert: DNS Tunnelling Detection
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "dns_tunnelling" {
+  name                = "t1048-dns-tunnelling-detection"
   resource_group_name = var.resource_group_name
   location            = var.location
 
   evaluation_frequency = "PT5M"
-  window_duration      = "PT1H"
+  window_duration      = "PT15M"
   scopes               = [var.log_analytics_workspace_id]
   severity             = 2
 
   criteria {
     query = <<-QUERY
-// Exfiltration Over Alternative Protocol Detection
-// Technique: T1048
-AzureActivity
-| where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
-| summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc
+DnsEvents
+| where TimeGenerated > ago(15m)
+| where QueryType in ("TXT", "NULL", "CNAME")
+| extend QueryNameLength = strlen(Name)
+| where QueryNameLength > 50
+| summarize QueryCount = count(), AvgQueryLength = avg(QueryNameLength) by ClientIP
+| where QueryCount > ${var.dns_query_threshold} or AvgQueryLength > 60
     QUERY
 
     time_aggregation_method = "Count"
@@ -1317,23 +1402,147 @@ AzureActivity
   }
 
   auto_mitigation_enabled = false
-
-  action {
-    action_groups = [azurerm_monitor_action_group.security_alerts.id]
-  }
-
-  description = "Detects Exfiltration Over Alternative Protocol (T1048) activity in Azure environment"
-  display_name = "Exfiltration Over Alternative Protocol Detection"
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects DNS tunnelling patterns indicative of T1048 exfiltration"
+  display_name = "T1048: DNS Tunnelling Detected"
   enabled      = true
-
-  tags = {
-    "mitre-technique" = "T1048"
-    "detection-type"  = "security"
-  }
+  tags = { "mitre-technique" = "T1048", "detection-type" = "dns-tunnelling" }
 }
 
-output "alert_rule_id" {
-  value = azurerm_monitor_scheduled_query_rules_alert_v2.detection.id
+# Alert: FTP Exfiltration Detection
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "ftp_exfiltration" {
+  name                = "t1048-ftp-exfiltration-detection"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(1h)
+| where DestPort_d in (20, 21, 989, 990)
+| where FlowDirection_s == "O" and FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize TotalBytes = sum(todouble(OutboundBytes_d)) by SrcIP_s
+| where TotalBytes > ${var.data_transfer_threshold_mb * 1048576}
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects large FTP data transfers to external destinations"
+  display_name = "T1048: FTP Exfiltration Detected"
+  enabled      = true
+  tags = { "mitre-technique" = "T1048", "detection-type" = "ftp-exfiltration" }
+}
+
+# Alert: SMTP Exfiltration Detection
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "smtp_exfiltration" {
+  name                = "t1048-smtp-exfiltration-detection"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(1h)
+| where DestPort_d in (25, 465, 587)
+| where FlowDirection_s == "O" and FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize TotalBytes = sum(todouble(OutboundBytes_d)), Connections = count() by SrcIP_s
+| where TotalBytes > 5242880 or Connections > 50
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects large email/SMTP transfers to external mail servers"
+  display_name = "T1048: SMTP Exfiltration Detected"
+  enabled      = true
+  tags = { "mitre-technique" = "T1048", "detection-type" = "smtp-exfiltration" }
+}
+
+# Alert: Unusual Port Exfiltration
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "unusual_port" {
+  name                = "t1048-unusual-port-exfiltration"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(1h)
+| where FlowDirection_s == "O" and FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| where DestPort_d !in (80, 443, 22, 25, 53, 123, 143, 993, 995)
+| summarize TotalBytes = sum(todouble(OutboundBytes_d)) by SrcIP_s, DestIP_s
+| where TotalBytes > ${var.data_transfer_threshold_mb * 1048576}
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects large data transfers on non-standard ports"
+  display_name = "T1048: Unusual Port Exfiltration"
+  enabled      = true
+  tags = { "mitre-technique" = "T1048", "detection-type" = "unusual-port" }
+}
+
+output "dns_tunnelling_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.dns_tunnelling.id
+}
+
+output "ftp_exfiltration_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.ftp_exfiltration.id
+}
+
+output "smtp_exfiltration_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.smtp_exfiltration.id
+}
+
+output "unusual_port_alert_id" {
+  value = azurerm_monitor_scheduled_query_rules_alert_v2.unusual_port.id
 }""",
                 alert_severity="high",
                 alert_title="Azure: Exfiltration Over Alternative Protocol Detected",

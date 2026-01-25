@@ -861,18 +861,128 @@ resource "google_monitoring_alert_policy" "bigquery_access" {
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
                 azure_kql_query="""// Data from Information Repositories Detection
-// Technique: T1213
-AzureActivity
+// Technique: T1213 - Detects data access from Azure info repositories
+// Data sources: AzureActivity, OfficeActivity, AzureDiagnostics, SigninLogs
+
+// Define information repository access operations
+let InfoRepoOps = dynamic([
+    // Cosmos DB / Document databases
+    "Microsoft.DocumentDB/databaseAccounts/read",
+    "Microsoft.DocumentDB/databaseAccounts/listKeys/action",
+    "Microsoft.DocumentDB/databaseAccounts/readonlykeys/action",
+    "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/read",
+    // Azure SQL databases
+    "Microsoft.Sql/servers/databases/read",
+    "Microsoft.Sql/servers/databases/export/action",
+    "Microsoft.Sql/servers/read",
+    // Azure DevOps / Repos access via ARM
+    "Microsoft.DevOps/pipelines/read",
+    // Key Vault (often contains repo secrets)
+    "Microsoft.KeyVault/vaults/secrets/read",
+    "Microsoft.KeyVault/vaults/secrets/getSecret/action"
+]);
+
+// ARM-level info repository enumeration
+let InfoRepoDiscovery = AzureActivity
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where OperationNameValue in (InfoRepoOps)
+| where ActivityStatusValue in ("Success", "Succeeded", "Accept")
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
+    AccessCount = count(),
+    UniqueOpTypes = dcount(OperationNameValue),
+    OperationsUsed = make_set(OperationNameValue, 15),
+    UniqueResources = dcount(Resource),
+    ResourcesAccessed = make_set(Resource, 10)
     by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+| where AccessCount > 20 or UniqueResources > 5
+| extend AlertReason = case(
+    UniqueResources > 5, "Cross-resource information repository access",
+    AccessCount > 30, "High-volume repository access",
+    "Information repository access threshold exceeded"
+);
+
+// SharePoint/OneDrive bulk access via OfficeActivity (if available)
+let SharePointAccess = OfficeActivity
+| where TimeGenerated > ago(24h)
+| where RecordType in ("SharePointFileOperation", "OneDrive")
+| where Operation in ("FileDownloaded", "FileSyncDownloadedFull", "FileAccessed", "FolderModified")
+| summarize
+    AccessCount = count(),
+    UniqueFiles = dcount(OfficeObjectId),
+    FileTypes = make_set(SourceFileExtension, 10),
+    UniqueUsers = dcount(UserId)
+    by UserId, ClientIP, bin(TimeGenerated, 1h)
+| where AccessCount > 50 or UniqueFiles > 30
+| extend AlertReason = "Bulk SharePoint/OneDrive access";
+
+// Azure DevOps audit log access (if ADO audit connected)
+let DevOpsAccess = AzureDevOpsAuditing
+| where TimeGenerated > ago(24h)
+| where OperationName in (
+    "Git.Clone", "Git.Push", "Git.Fetch",
+    "Library.SecretRetrieved", "Pipelines.PipelineRetained",
+    "Project.AreaPathRead", "Git.RepositoryRead"
+)
+| summarize
+    AccessCount = count(),
+    UniqueRepos = dcount(Data.RepositoryId),
+    ReposAccessed = make_set(Data.RepositoryName, 10),
+    UniqueProjects = dcount(ProjectName)
+    by ActorUPN, IpAddress, bin(TimeGenerated, 1h)
+| where AccessCount > 30 or UniqueRepos > 5
+| extend AlertReason = "Bulk Azure DevOps repository access";
+
+// Database connection string/key retrieval
+let DatabaseKeyAccess = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (
+    "Microsoft.DocumentDB/databaseAccounts/listKeys/action",
+    "Microsoft.DocumentDB/databaseAccounts/listConnectionStrings/action",
+    "Microsoft.Sql/servers/databases/export/action",
+    "Microsoft.DBforPostgreSQL/servers/read",
+    "Microsoft.DBforMySQL/servers/read"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    KeyRetrievals = count(),
+    UniqueDatabases = dcount(Resource),
+    DatabasesAccessed = make_set(Resource, 10)
+    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
+| where KeyRetrievals > 5 or UniqueDatabases > 3
+| extend AlertReason = "Database connection key/string retrieval";
+
+// First-time repository access from new identity
+let FirstTimeRepoAccess = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (InfoRepoOps)
+| join kind=leftanti (
+    AzureActivity
+    | where TimeGenerated between (ago(30d) .. ago(24h))
+    | where OperationNameValue in (InfoRepoOps)
+    | distinct Caller, CallerIpAddress
+) on Caller, CallerIpAddress
+| summarize
+    AccessCount = count(),
+    OperationsUsed = make_set(OperationNameValue, 10)
+    by Caller, CallerIpAddress
+| where AccessCount > 5
+| extend AlertReason = "First-time info repository access from new identity/IP";
+
+// Combine all detection patterns
+InfoRepoDiscovery
+| union SharePointAccess
+| union DevOpsAccess
+| union DatabaseKeyAccess
+| union FirstTimeRepoAccess
+| project
+    TimeGenerated = now(),
+    Caller,
+    CallerIpAddress,
+    AccessCount,
+    UniqueResources,
+    ResourcesAccessed,
+    AlertReason
+| order by AccessCount desc""",
                 azure_terraform_template="""# Azure Detection for Data from Information Repositories
 # MITRE ATT&CK: T1213
 

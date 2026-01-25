@@ -391,26 +391,101 @@ resource "google_monitoring_alert_policy" "service_stop" {
             azure_service="log_analytics",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                azure_kql_query="""// Service Stop Detection
-// Technique: T1489
-AzureActivity
+                azure_kql_query="""// T1489 - Service Stop Detection
+// Detects stopping/disabling of critical Azure services (ransomware precursor)
+// Data Sources: AzureActivity
+
+// Comprehensive service stop operations
+let ServiceStopOps = dynamic([
+    // Virtual Machines
+    "Microsoft.Compute/virtualMachines/deallocate/action",
+    "Microsoft.Compute/virtualMachines/powerOff/action",
+    "Microsoft.Compute/virtualMachines/delete",
+    // VM Scale Sets
+    "Microsoft.Compute/virtualMachineScaleSets/deallocate/action",
+    "Microsoft.Compute/virtualMachineScaleSets/powerOff/action",
+    "Microsoft.Compute/virtualMachineScaleSets/delete",
+    "Microsoft.Compute/virtualMachineScaleSets/virtualMachines/deallocate/action",
+    // Azure Functions
+    "Microsoft.Web/sites/stop/action",
+    "Microsoft.Web/sites/delete",
+    "Microsoft.Web/sites/slots/stop/action",
+    // App Services
+    "Microsoft.Web/serverfarms/delete",
+    // Azure Kubernetes Service
+    "Microsoft.ContainerService/managedClusters/stop/action",
+    "Microsoft.ContainerService/managedClusters/delete",
+    // Logic Apps
+    "Microsoft.Logic/workflows/disable/action",
+    "Microsoft.Logic/workflows/delete",
+    // Container Instances
+    "Microsoft.ContainerInstance/containerGroups/stop/action",
+    "Microsoft.ContainerInstance/containerGroups/delete",
+    // SQL Databases
+    "Microsoft.Sql/servers/databases/pause/action",
+    "Microsoft.Sql/servers/delete",
+    "Microsoft.Sql/servers/databases/delete",
+    // Cosmos DB
+    "Microsoft.DocumentDB/databaseAccounts/delete",
+    // Redis Cache
+    "Microsoft.Cache/redis/stop/action",
+    "Microsoft.Cache/redis/delete",
+    // Event Hubs
+    "Microsoft.EventHub/namespaces/delete",
+    // Service Bus
+    "Microsoft.ServiceBus/namespaces/delete",
+    // API Management
+    "Microsoft.ApiManagement/service/delete"
+]);
+
+// Detect service stops
+let ServiceStops = AzureActivity
 | where TimeGenerated > ago(24h)
-| where OperationNameValue contains "Microsoft.Compute/virtualMachines/deallocate/" or OperationNameValue contains "stop/"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
-| project
-    TimeGenerated,
-    SubscriptionId,
-    ResourceGroup,
-    Resource,
-    Caller,
-    CallerIpAddress,
-    OperationNameValue,
-    ActivityStatusValue,
-    Properties
+| where OperationNameValue in (ServiceStopOps)
+| where ActivityStatusValue == "Succeeded"
+| project TimeGenerated, SubscriptionId, ResourceGroup, Resource, Caller,
+          CallerIpAddress, OperationNameValue, ActivityStatusValue;
+
+// Detect bulk service stops (ransomware indicator)
+let BulkStops = ServiceStops
+| summarize
+    StopCount = count(),
+    ServicesAffected = make_set(Resource, 20),
+    OperationTypes = make_set(OperationNameValue)
+    by Caller, CallerIpAddress, bin(TimeGenerated, 15m)
+| where StopCount >= 3
+| extend AlertSeverity = case(
+    StopCount >= 10, "Critical",
+    StopCount >= 5, "High",
+    "Medium"
+);
+
+// Detect out-of-hours service stops
+let OutOfHoursStops = ServiceStops
+| extend HourOfDay = hourofday(TimeGenerated)
+| extend DayOfWeek = dayofweek(TimeGenerated)
+| where HourOfDay < 6 or HourOfDay > 22 or DayOfWeek in (6d, 0d)
+| project TimeGenerated, SubscriptionId, Resource, Caller, CallerIpAddress,
+          OperationNameValue, HourOfDay, DayOfWeek, AlertType = "Out of Hours Stop";
+
+// Combine detections
+BulkStops
+| extend AlertType = "Bulk Service Stop"
+| union OutOfHoursStops
+| union (ServiceStops | extend StopCount = 1, AlertType = "Service Stop")
 | order by TimeGenerated desc""",
                 azure_activity_operations=[
-                    "Microsoft.Compute/virtualMachines/deallocate/",
-                    "stop/",
+                    "Microsoft.Compute/virtualMachines/deallocate/action",
+                    "Microsoft.Compute/virtualMachines/powerOff/action",
+                    "Microsoft.Compute/virtualMachines/delete",
+                    "Microsoft.Compute/virtualMachineScaleSets/deallocate/action",
+                    "Microsoft.Web/sites/stop/action",
+                    "Microsoft.Web/sites/delete",
+                    "Microsoft.ContainerService/managedClusters/stop/action",
+                    "Microsoft.ContainerService/managedClusters/delete",
+                    "Microsoft.Logic/workflows/disable/action",
+                    "Microsoft.Sql/servers/databases/pause/action",
+                    "Microsoft.Sql/servers/delete",
                 ],
                 azure_terraform_template="""# Azure Detection for Service Stop
 # MITRE ATT&CK: T1489

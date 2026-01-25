@@ -826,33 +826,56 @@ resource "google_monitoring_alert_policy" "ssh_brute_force" {
                 defender_alert_types=["Password spray attack", "Brute force attack"],
                 azure_kql_query="""// Azure Entra ID Brute Force Detection
 // MITRE ATT&CK: T1110 - Brute Force
-// Detects password guessing, spraying, and credential stuffing
+// Detects password guessing, spraying, credential stuffing, and MFA bypass attempts
+// Enhanced with complete Entra ID error codes from panel review
 
 let lookback = 1h;
 let failedThreshold = 10;
 let passwordSprayThreshold = 5;
 
-// Brute force against single account
+// Complete Entra ID error codes for authentication failures
+let failed_error_codes = dynamic([
+    50053,  // Account locked out
+    50055,  // Password expired
+    50056,  // Invalid password (alternative)
+    50057,  // User account disabled
+    50058,  // Silent sign-in failed (token stuffing indicator)
+    50076,  // MFA required but not completed
+    50079,  // MFA re-enrolment required
+    50126,  // Invalid username or password
+    50131   // Conditional Access device compliance failure
+]);
+
+// Brute force against single account (enhanced)
 let BruteForceAttempts = SigninLogs
 | where TimeGenerated > ago(lookback)
-| where ResultType == 50126  // Invalid username or password
-    or ResultType == 50053   // Account locked
-    or ResultType == 50057   // User disabled
+| where ResultType in (failed_error_codes)
+| extend
+    IsPasswordSpray = iff(ResultType == 50126, 1, 0),
+    IsMFABypass = iff(ResultType in (50076, 50079), 1, 0),
+    IsAccountTargeted = iff(ResultType in (50053, 50057), 1, 0)
 | summarize
     FailedAttempts = count(),
+    PasswordSprayAttempts = sum(IsPasswordSpray),
+    MFABypassAttempts = sum(IsMFABypass),
     UniqueIPs = dcount(IPAddress),
     IPs = make_set(IPAddress, 10),
     UserAgents = make_set(UserAgent, 5),
+    ErrorCodes = make_set(ResultType, 10),
     FirstAttempt = min(TimeGenerated),
     LastAttempt = max(TimeGenerated)
     by UserPrincipalName, IPAddress
-| where FailedAttempts > failedThreshold
-| extend AlertType = "BruteForce";
+| where FailedAttempts > failedThreshold or MFABypassAttempts > 3
+| extend AlertType = case(
+    MFABypassAttempts > 3, "MFABypass",
+    FailedAttempts > 20, "BruteForce",
+    "SuspiciousActivity"
+);
 
-// Password spray (same IP, multiple accounts)
+// Password spray (same IP, multiple accounts) - enhanced
 let PasswordSpray = SigninLogs
 | where TimeGenerated > ago(lookback)
-| where ResultType == 50126
+| where ResultType in (failed_error_codes)
 | summarize
     TargetedAccounts = dcount(UserPrincipalName),
     Accounts = make_set(UserPrincipalName, 20),

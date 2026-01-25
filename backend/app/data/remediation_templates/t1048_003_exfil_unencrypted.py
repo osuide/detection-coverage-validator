@@ -939,17 +939,110 @@ resource "google_monitoring_alert_policy" "dns_tunnel" {
             implementation=DetectionImplementation(
                 azure_kql_query="""// Exfiltration Over Unencrypted Non-C2 Protocol Detection
 // Technique: T1048.003
-AzureActivity
+// Detects HTTP, FTP, DNS tunnelling, and unencrypted data exfiltration
+// Prerequisites: AzureNetworkAnalytics_CL, DnsEvents, AzureDiagnostics
+
+// Large HTTP (Unencrypted) Egress
+let HTTPExfiltration = AzureNetworkAnalytics_CL
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where DestPort_d == 80  // Unencrypted HTTP
+| where FlowDirection_s == "O"  // Outbound
+| where FlowStatus_s == "A"  // Allowed
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Connections = count(),
+    UniqueDestinations = dcount(DestIP_s),
+    Destinations = make_set(DestIP_s, 10)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 10485760  // > 10 MB unencrypted
+| extend AlertType = "UnencryptedHTTPEgress";
+
+// FTP Exfiltration (Unencrypted File Transfer)
+let FTPExfiltration = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where DestPort_d in (20, 21)  // FTP data and control ports
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Sessions = count(),
+    UniqueFTPServers = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 5242880  // > 5 MB
+| extend AlertType = "FTPExfiltration";
+
+// DNS Tunnelling Detection
+let DNSTunnelling = DnsEvents
+| where TimeGenerated > ago(24h)
+| where QueryType in ("TXT", "NULL", "CNAME", "MX")
+| extend QueryNameLength = strlen(Name)
+| where QueryNameLength > 50  // Unusually long DNS queries
+| summarize
+    QueryCount = count(),
+    AvgQueryLength = avg(QueryNameLength),
+    UniqueQueries = dcount(Name),
+    MaxLength = max(QueryNameLength),
+    SampleQueries = make_set(Name, 10)
+    by ClientIP, bin(TimeGenerated, 5m)
+| where QueryCount > 50 or AvgQueryLength > 60 or MaxLength > 100
+| extend AlertType = "DNSTunnelling";
+
+// SMTP (Unencrypted Email) Exfiltration - Port 25
+let SMTPExfiltration = AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(24h)
+| where DestPort_d == 25  // Unencrypted SMTP
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    EmailConnections = count(),
+    UniqueMailServers = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 5242880 or EmailConnections > 50
+| extend AlertType = "UnencryptedSMTPExfiltration";
+
+// Base64 Encoded DNS Queries (common tunnelling pattern)
+let EncodedDNSQueries = DnsEvents
+| where TimeGenerated > ago(24h)
+| where Name matches regex @"^[A-Za-z0-9+/=]{20,}\\."
+| summarize
+    EncodedQueryCount = count(),
+    UniqueDomains = dcount(Name),
+    SampleQueries = make_set(Name, 5)
+    by ClientIP, bin(TimeGenerated, 5m)
+| where EncodedQueryCount > 20
+| extend AlertType = "Base64EncodedDNS";
+
+// Azure Firewall HTTP/FTP Detection (if using Azure Firewall)
+let FirewallUnencryptedTraffic = AzureDiagnostics
+| where TimeGenerated > ago(24h)
+| where Category == "AzureFirewallApplicationRule"
+| where msg_s has_any ("HTTP", "FTP") and msg_s has "Allow"
+| extend DestURL = extract(@"to (.+?):", 1, msg_s)
+| extend Protocol = extract(@"^(HTTP|FTP)", 1, msg_s)
+| summarize
+    Requests = count(),
+    UniqueURLs = dcount(DestURL)
+    by SrcIP = extract(@"from (.+?):", 1, msg_s), Protocol, bin(TimeGenerated, 1h)
+| where Requests > 50
+| extend AlertType = "FirewallUnencryptedTraffic";
+
+// Combine all detection signals
+HTTPExfiltration
+| union FTPExfiltration
+| union DNSTunnelling
+| union SMTPExfiltration
+| union EncodedDNSQueries
+| union FirewallUnencryptedTraffic
+| project
+    TimeGenerated,
+    AlertType,
+    SourceIP = coalesce(SrcIP_s, ClientIP, SrcIP),
+    Details = pack_all()
+| order by TimeGenerated desc""",
                 azure_terraform_template="""# Azure Detection for Exfiltration Over Unencrypted Non-C2 Protocol
 # MITRE ATT&CK: T1048.003
 
@@ -985,9 +1078,9 @@ variable "location" {
 
 # Action Group for alerts
 resource "azurerm_monitor_action_group" "security_alerts" {
-  name                = "exfiltration-over-unencrypted-non-c2-protocol-alerts"
+  name                = "t1048-003-unencrypted-alerts"
   resource_group_name = var.resource_group_name
-  short_name          = "SecAlerts"
+  short_name          = "T1048003"
 
   email_receiver {
     name          = "security-team"
@@ -995,9 +1088,9 @@ resource "azurerm_monitor_action_group" "security_alerts" {
   }
 }
 
-# Scheduled Query Rule for detection
-resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
-  name                = "exfiltration-over-unencrypted-non-c2-protocol-detection"
+# Alert 1: Large HTTP (Unencrypted) Egress
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "http_exfiltration" {
+  name                = "t1048-003-http-exfiltration"
   resource_group_name = var.resource_group_name
   location            = var.location
 
@@ -1008,19 +1101,18 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
 
   criteria {
     query = <<-QUERY
-// Exfiltration Over Unencrypted Non-C2 Protocol Detection
-// Technique: T1048.003
-AzureActivity
-| where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(1h)
+| where DestPort_d == 80
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
-    by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Connections = count(),
+    UniqueDestinations = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 10485760
     QUERY
 
     time_aggregation_method = "Count"
@@ -1034,23 +1126,241 @@ AzureActivity
   }
 
   auto_mitigation_enabled = false
-
-  action {
-    action_groups = [azurerm_monitor_action_group.security_alerts.id]
-  }
-
-  description = "Detects Exfiltration Over Unencrypted Non-C2 Protocol (T1048.003) activity in Azure environment"
-  display_name = "Exfiltration Over Unencrypted Non-C2 Protocol Detection"
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects large unencrypted HTTP egress (>10MB) to external destinations (T1048.003)"
+  display_name = "Unencrypted HTTP Exfiltration Detected"
   enabled      = true
-
-  tags = {
-    "mitre-technique" = "T1048.003"
-    "detection-type"  = "security"
-  }
+  tags         = { "mitre-technique" = "T1048.003", "detection-type" = "security" }
 }
 
-output "alert_rule_id" {
-  value = azurerm_monitor_scheduled_query_rules_alert_v2.detection.id
+# Alert 2: FTP Exfiltration
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "ftp_exfiltration" {
+  name                = "t1048-003-ftp-exfiltration"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(1h)
+| where DestPort_d in (20, 21)
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    Sessions = count(),
+    UniqueFTPServers = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 5242880
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects FTP exfiltration (>5MB) to external servers (T1048.003)"
+  display_name = "FTP Exfiltration Detected"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.003", "detection-type" = "security" }
+}
+
+# Alert 3: DNS Tunnelling Detection
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "dns_tunnelling" {
+  name                = "t1048-003-dns-tunnelling"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT5M"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+DnsEvents
+| where TimeGenerated > ago(5m)
+| where QueryType in ("TXT", "NULL", "CNAME", "MX")
+| extend QueryNameLength = strlen(Name)
+| where QueryNameLength > 50
+| summarize
+    QueryCount = count(),
+    AvgQueryLength = avg(QueryNameLength),
+    MaxLength = max(QueryNameLength)
+    by ClientIP, bin(TimeGenerated, 5m)
+| where QueryCount > 50 or AvgQueryLength > 60 or MaxLength > 100
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects DNS tunnelling patterns with long query names (T1048.003)"
+  display_name = "DNS Tunnelling Detected"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.003", "detection-type" = "security" }
+}
+
+# Alert 4: Unencrypted SMTP Exfiltration (Port 25)
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "smtp_exfiltration" {
+  name                = "t1048-003-smtp-exfiltration"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureNetworkAnalytics_CL
+| where TimeGenerated > ago(1h)
+| where DestPort_d == 25
+| where FlowDirection_s == "O"
+| where FlowStatus_s == "A"
+| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
+| summarize
+    TotalBytes = sum(todouble(OutboundBytes_d)),
+    EmailConnections = count(),
+    UniqueMailServers = dcount(DestIP_s)
+    by SrcIP_s, bin(TimeGenerated, 1h)
+| where TotalBytes > 5242880 or EmailConnections > 50
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects unencrypted SMTP exfiltration on port 25 (T1048.003)"
+  display_name = "Unencrypted SMTP Exfiltration Detected"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.003", "detection-type" = "security" }
+}
+
+# Alert 5: Base64 Encoded DNS Queries
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "encoded_dns" {
+  name                = "t1048-003-encoded-dns"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT5M"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+DnsEvents
+| where TimeGenerated > ago(5m)
+| where Name matches regex @"^[A-Za-z0-9+/=]{20,}\\."
+| summarize
+    EncodedQueryCount = count(),
+    UniqueDomains = dcount(Name)
+    by ClientIP, bin(TimeGenerated, 5m)
+| where EncodedQueryCount > 20
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects base64-encoded DNS queries indicating tunnelling (T1048.003)"
+  display_name = "Base64 Encoded DNS Queries Detected"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.003", "detection-type" = "security" }
+}
+
+# Alert 6: Azure Firewall HTTP/FTP Detection
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "firewall_unencrypted" {
+  name                = "t1048-003-firewall-unencrypted"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+AzureDiagnostics
+| where TimeGenerated > ago(1h)
+| where Category == "AzureFirewallApplicationRule"
+| where msg_s has_any ("HTTP", "FTP") and msg_s has "Allow"
+| extend Protocol = extract(@"^(HTTP|FTP)", 1, msg_s)
+| extend SrcIP = extract(@"from (.+?):", 1, msg_s)
+| summarize
+    Requests = count(),
+    UniqueURLs = dcount(extract(@"to (.+?):", 1, msg_s))
+    by SrcIP, Protocol, bin(TimeGenerated, 1h)
+| where Requests > 50
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+  action { action_groups = [azurerm_monitor_action_group.security_alerts.id] }
+  description  = "Detects high-volume unencrypted HTTP/FTP traffic via Azure Firewall (T1048.003)"
+  display_name = "Firewall Unencrypted Traffic Detected"
+  enabled      = true
+  tags         = { "mitre-technique" = "T1048.003", "detection-type" = "security" }
+}
+
+output "alert_rule_ids" {
+  value = {
+    http_exfiltration     = azurerm_monitor_scheduled_query_rules_alert_v2.http_exfiltration.id
+    ftp_exfiltration      = azurerm_monitor_scheduled_query_rules_alert_v2.ftp_exfiltration.id
+    dns_tunnelling        = azurerm_monitor_scheduled_query_rules_alert_v2.dns_tunnelling.id
+    smtp_exfiltration     = azurerm_monitor_scheduled_query_rules_alert_v2.smtp_exfiltration.id
+    encoded_dns           = azurerm_monitor_scheduled_query_rules_alert_v2.encoded_dns.id
+    firewall_unencrypted  = azurerm_monitor_scheduled_query_rules_alert_v2.firewall_unencrypted.id
+  }
 }""",
                 alert_severity="high",
                 alert_title="Azure: Exfiltration Over Unencrypted Non-C2 Protocol Detected",

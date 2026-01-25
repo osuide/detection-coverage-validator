@@ -1216,25 +1216,66 @@ resource "google_monitoring_alert_policy" "gcs_cross_project" {
             azure_service="log_analytics",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                azure_kql_query="""// Data from Cloud Storage Detection
-// Technique: T1530
-AzureActivity
+                azure_kql_query="""// T1530 - Data from Cloud Storage Detection
+// Detects bulk blob access patterns indicating data collection/exfiltration
+// Data Sources: StorageBlobLogs (primary), AzureActivity (management operations)
+
+// Strategy 1: StorageBlobLogs - Bulk blob read operations (RECOMMENDED)
+let BulkBlobAccess = StorageBlobLogs
 | where TimeGenerated > ago(24h)
-| where OperationNameValue contains "Microsoft.Storage/storageAccounts/blobServices/"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
-| project
-    TimeGenerated,
-    SubscriptionId,
-    ResourceGroup,
-    Resource,
-    Caller,
-    CallerIpAddress,
-    OperationNameValue,
-    ActivityStatusValue,
-    Properties
+| where OperationName in ("GetBlob", "GetBlobProperties", "ListBlobs", "CopyBlob")
+| where StatusCode == 200
+| summarize
+    BlobCount = count(),
+    TotalBytes = sum(ResponseBodySize),
+    UniqueContainers = dcount(ObjectKey),
+    OperationTypes = make_set(OperationName)
+    by CallerIpAddress,
+       AccountName,
+       RequesterUpn = tostring(split(AuthenticationHash, "/")[0]),
+       bin(TimeGenerated, 1h)
+| where BlobCount > 100 or TotalBytes > 104857600  // 100 blobs or 100MB threshold
+| extend AlertSeverity = case(
+    BlobCount > 1000 or TotalBytes > 1073741824, "Critical",  // 1000 blobs or 1GB
+    BlobCount > 500 or TotalBytes > 536870912, "High",        // 500 blobs or 500MB
+    "Medium"
+)
+| project TimeGenerated, AccountName, CallerIpAddress, RequesterUpn,
+          BlobCount, TotalBytes, UniqueContainers, OperationTypes, AlertSeverity;
+
+// Strategy 2: Cross-tenant/anonymous blob access
+let SuspiciousAccess = StorageBlobLogs
+| where TimeGenerated > ago(24h)
+| where OperationName in ("GetBlob", "CopyBlob")
+| where StatusCode == 200
+| where AuthenticationType in ("Anonymous", "SAS")
+    or CallerIpAddress !startswith "10." and CallerIpAddress !startswith "172." and CallerIpAddress !startswith "192.168."
+| summarize
+    AccessCount = count(),
+    Containers = make_set(ObjectKey, 10)
+    by CallerIpAddress, AccountName, AuthenticationType, bin(TimeGenerated, 1h)
+| where AccessCount > 50;
+
+// Strategy 3: Sensitive container access patterns
+let SensitiveContainerAccess = StorageBlobLogs
+| where TimeGenerated > ago(24h)
+| where OperationName in ("GetBlob", "ListBlobs", "CopyBlob")
+| where StatusCode == 200
+| where ObjectKey matches regex "(backup|secret|credential|pii|sensitive|confidential|key|password)"
+| summarize
+    AccessCount = count(),
+    MatchedPaths = make_set(ObjectKey, 20)
+    by CallerIpAddress, AccountName, RequesterUpn = tostring(split(AuthenticationHash, "/")[0]), bin(TimeGenerated, 1h);
+
+// Combine results
+BulkBlobAccess
+| union SuspiciousAccess
+| union SensitiveContainerAccess
 | order by TimeGenerated desc""",
                 azure_activity_operations=[
-                    "Microsoft.Storage/storageAccounts/blobServices/"
+                    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read",
+                    "Microsoft.Storage/storageAccounts/listkeys/action",
+                    "Microsoft.Storage/storageAccounts/regeneratekey/action",
                 ],
                 azure_terraform_template="""# Azure Detection for Data from Cloud Storage
 # MITRE ATT&CK: T1530
@@ -1294,23 +1335,25 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "detection" {
 
   criteria {
     query = <<-QUERY
-// Data from Cloud Storage Detection
+// Data from Cloud Storage - Bulk Blob Access Detection
 // Technique: T1530
-AzureActivity
-| where TimeGenerated > ago(24h)
-| where OperationNameValue contains "Microsoft.Storage/storageAccounts/blobServices/"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
-| project
-    TimeGenerated,
-    SubscriptionId,
-    ResourceGroup,
-    Resource,
-    Caller,
-    CallerIpAddress,
-    OperationNameValue,
-    ActivityStatusValue,
-    Properties
-| order by TimeGenerated desc
+// Data Source: StorageBlobLogs (primary)
+StorageBlobLogs
+| where TimeGenerated > ago(1h)
+| where OperationName in ("GetBlob", "GetBlobProperties", "ListBlobs", "CopyBlob")
+| where StatusCode == 200
+| summarize
+    BlobCount = count(),
+    TotalBytes = sum(ResponseBodySize),
+    UniqueContainers = dcount(ObjectKey),
+    OperationTypes = make_set(OperationName)
+    by CallerIpAddress, AccountName, bin(TimeGenerated, 1h)
+| where BlobCount > 100 or TotalBytes > 104857600
+| extend AlertSeverity = case(
+    BlobCount > 1000 or TotalBytes > 1073741824, "Critical",
+    BlobCount > 500 or TotalBytes > 536870912, "High",
+    "Medium"
+)
     QUERY
 
     time_aggregation_method = "Count"
@@ -1329,8 +1372,174 @@ AzureActivity
     action_groups = [azurerm_monitor_action_group.security_alerts.id]
   }
 
-  description = "Detects Data from Cloud Storage (T1530) activity in Azure environment"
-  display_name = "Data from Cloud Storage Detection"
+  description = "Detects bulk blob access patterns (T1530)"
+  display_name = "T1530 - Bulk Blob Access"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1530"
+    "detection-type"  = "security"
+  }
+}
+
+# Alert 2: Anonymous/SAS Blob Access
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "anonymous_access" {
+  name                = "t1530-anonymous-blob-access"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+// Data from Cloud Storage - Anonymous/SAS Access
+// Technique: T1530
+StorageBlobLogs
+| where TimeGenerated > ago(1h)
+| where OperationName in ("GetBlob", "CopyBlob")
+| where StatusCode == 200
+| where AuthenticationType in ("Anonymous", "SAS")
+    or (CallerIpAddress !startswith "10." and CallerIpAddress !startswith "172." and CallerIpAddress !startswith "192.168.")
+| summarize
+    AccessCount = count(),
+    Containers = make_set(ObjectKey, 10)
+    by CallerIpAddress, AccountName, AuthenticationType, bin(TimeGenerated, 1h)
+| where AccessCount > 50
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects anonymous or SAS-based blob access (T1530)"
+  display_name = "T1530 - Anonymous/SAS Access"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1530"
+    "detection-type"  = "security"
+  }
+}
+
+# Alert 3: Sensitive Container Access
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "sensitive_access" {
+  name                = "t1530-sensitive-container-access"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+// Data from Cloud Storage - Sensitive Container Access
+// Technique: T1530
+StorageBlobLogs
+| where TimeGenerated > ago(1h)
+| where OperationName in ("GetBlob", "ListBlobs", "CopyBlob")
+| where StatusCode == 200
+| where ObjectKey matches regex "(backup|secret|credential|pii|sensitive|confidential|key|password)"
+| summarize
+    AccessCount = count(),
+    MatchedPaths = make_set(ObjectKey, 20)
+    by CallerIpAddress, AccountName, bin(TimeGenerated, 1h)
+| where AccessCount >= 1
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects access to sensitive-named containers (T1530)"
+  display_name = "T1530 - Sensitive Container Access"
+  enabled      = true
+
+  tags = {
+    "mitre-technique" = "T1530"
+    "detection-type"  = "security"
+  }
+}
+
+# Alert 4: Storage Key Operations (Control Plane)
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "key_operations" {
+  name                = "t1530-storage-key-operations"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+
+  evaluation_frequency = "PT5M"
+  window_duration      = "PT1H"
+  scopes               = [var.log_analytics_workspace_id]
+  severity             = 2
+
+  criteria {
+    query = <<-QUERY
+// Data from Cloud Storage - Key Operations
+// Technique: T1530
+// Data Source: AzureActivity (control plane operations)
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue in (
+    "Microsoft.Storage/storageAccounts/listkeys/action",
+    "Microsoft.Storage/storageAccounts/regeneratekey/action"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| project
+    TimeGenerated,
+    Caller,
+    CallerIpAddress,
+    SubscriptionId,
+    ResourceGroup,
+    Resource,
+    OperationNameValue
+    QUERY
+
+    time_aggregation_method = "Count"
+    threshold               = 1
+    operator                = "GreaterThanOrEqual"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  auto_mitigation_enabled = false
+
+  action {
+    action_groups = [azurerm_monitor_action_group.security_alerts.id]
+  }
+
+  description = "Detects storage account key listing or regeneration (T1530)"
+  display_name = "T1530 - Storage Key Operations"
   enabled      = true
 
   tags = {

@@ -469,18 +469,104 @@ resource "google_monitoring_alert_policy" "gcs_enum" {
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
                 azure_kql_query="""// Cloud Storage Object Discovery Detection
-// Technique: T1619
-AzureActivity
+// Technique: T1619 - Detects enumeration of Azure Blob Storage objects
+// Data sources: StorageBlobLogs (data plane), AzureActivity (control plane)
+
+// Primary detection: Bulk blob/container listing via StorageBlobLogs
+let BulkBlobListing = StorageBlobLogs
 | where TimeGenerated > ago(24h)
-| where CategoryValue == "Administrative"
-| where ActivityStatusValue == "Success" or ActivityStatusValue == "Succeeded"
+| where OperationName in ("ListBlobs", "ListContainers", "GetContainerProperties", "ListBlobsFlatSegment", "ListBlobsHierarchySegment")
+| where StatusCode == 200
 | summarize
-    OperationCount = count(),
-    UniqueCallers = dcount(Caller),
-    Resources = make_set(Resource, 10)
+    ListOperations = count(),
+    UniqueContainers = dcount(ObjectKey),
+    ContainersListed = make_set(ObjectKey, 20),
+    DataScanned = sum(ResponseBodySize),
+    UniqueAccounts = dcount(AccountName)
+    by CallerIpAddress, AccountName, AuthenticationType, bin(TimeGenerated, 1h)
+| where ListOperations > 100 or UniqueContainers > 15
+| extend AlertReason = case(
+    UniqueContainers > 15, "Multi-container enumeration",
+    ListOperations > 200, "High-volume blob listing",
+    "Bulk storage enumeration threshold exceeded"
+);
+
+// Cross-storage-account enumeration (advanced pattern)
+let CrossAccountListing = StorageBlobLogs
+| where TimeGenerated > ago(24h)
+| where OperationName in ("ListBlobs", "ListContainers")
+| where StatusCode == 200
+| summarize
+    UniqueStorageAccounts = dcount(AccountName),
+    StorageAccountsList = make_set(AccountName, 10),
+    TotalListOps = count()
+    by CallerIpAddress, bin(TimeGenerated, 1h)
+| where UniqueStorageAccounts > 3
+| extend AlertReason = "Cross-storage-account enumeration";
+
+// Anonymous or SAS-based bulk listing (potentially leaked credentials)
+let AnonymousBulkListing = StorageBlobLogs
+| where TimeGenerated > ago(24h)
+| where OperationName in ("ListBlobs", "ListContainers")
+| where AuthenticationType in ("Anonymous", "SAS")
+| where StatusCode == 200
+| summarize
+    ListOperations = count(),
+    UniqueContainers = dcount(ObjectKey),
+    ContainersAccessed = make_set(ObjectKey, 10)
+    by CallerIpAddress, AccountName, AuthenticationType, bin(TimeGenerated, 1h)
+| where ListOperations > 20
+| extend AlertReason = strcat("Anonymous/SAS bulk listing: ", AuthenticationType);
+
+// First-time storage enumeration detection
+let FirstTimeEnumeration = StorageBlobLogs
+| where TimeGenerated > ago(24h)
+| where OperationName in ("ListBlobs", "ListContainers")
+| where StatusCode == 200
+| join kind=leftanti (
+    StorageBlobLogs
+    | where TimeGenerated between (ago(30d) .. ago(24h))
+    | where OperationName in ("ListBlobs", "ListContainers")
+    | distinct CallerIpAddress, AccountName
+) on CallerIpAddress, AccountName
+| summarize
+    ListOperations = count(),
+    ContainersListed = make_set(ObjectKey, 10)
+    by CallerIpAddress, AccountName, AuthenticationType
+| where ListOperations > 10
+| extend AlertReason = "First-time storage enumeration from new IP";
+
+// Control plane enumeration (storage account discovery)
+let StorageAccountDiscovery = AzureActivity
+| where TimeGenerated > ago(24h)
+| where OperationNameValue in (
+    "Microsoft.Storage/storageAccounts/read",
+    "Microsoft.Storage/storageAccounts/listKeys/action",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/read"
+)
+| where ActivityStatusValue in ("Success", "Succeeded")
+| summarize
+    ListOperations = count(),
+    UniqueAccounts = dcount(Resource),
+    AccountsEnumerated = make_set(Resource, 10)
     by Caller, CallerIpAddress, bin(TimeGenerated, 1h)
-| where OperationCount > 10
-| order by OperationCount desc""",
+| where ListOperations > 20 or UniqueAccounts > 5
+| extend AlertReason = "Control plane storage account enumeration";
+
+// Combine all detection patterns
+BulkBlobListing
+| union CrossAccountListing
+| union AnonymousBulkListing
+| union FirstTimeEnumeration
+| project
+    TimeGenerated = now(),
+    CallerIpAddress,
+    AccountName,
+    ListOperations,
+    UniqueContainers,
+    ContainersListed,
+    AlertReason
+| order by ListOperations desc""",
                 azure_terraform_template="""# Azure Detection for Cloud Storage Object Discovery
 # MITRE ATT&CK: T1619
 
