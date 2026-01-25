@@ -560,7 +560,12 @@ resource "aws_cloudwatch_metric_alarm" "cross_account_saml" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Abnormal Active Directory Federation Services (AD FS) authentication using a suspicious certificate",
+                    "Suspected AD FS DKM key read",
+                    "Anomalous Token",
+                    "Token issuer anomaly",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Forge Web Credentials: SAML Tokens (T1606.002)
 # Microsoft Defender detects Forge Web Credentials: SAML Tokens activity
@@ -645,7 +650,11 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Abnormal Active Directory Federation Services (AD FS) authentication using a suspicious certificate",
+                    "Suspected AD FS DKM key read",
+                    "Anomalous Token",
+                    "Token issuer anomaly"
                 )
 | project
     TimeGenerated,

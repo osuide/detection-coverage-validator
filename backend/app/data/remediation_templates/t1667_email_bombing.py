@@ -725,7 +725,11 @@ resource "aws_sns_topic_policy" "allow_eventbridge" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspicious sending patterns",
+                    "Suspicious inbox manipulation rules",
+                    "Mass Access to Sensitive Files",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Email Bombing (T1667)
 # Microsoft Defender detects Email Bombing activity
@@ -810,7 +814,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspicious sending patterns",
+                    "Suspicious inbox manipulation rules",
+                    "Mass Access to Sensitive Files"
                 )
 | project
     TimeGenerated,

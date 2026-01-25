@@ -312,7 +312,12 @@ resource "google_monitoring_alert_policy" "mfa_fatigue" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Anomalous user activity",
+                    "Unfamiliar sign-in properties",
+                    "User reported suspicious activity",
+                    "Attacker in the Middle",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Multi-Factor Authentication Request Generation (T1621)
 # Microsoft Defender detects Multi-Factor Authentication Request Generation activity
@@ -397,7 +402,11 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Anomalous user activity",
+                    "Unfamiliar sign-in properties",
+                    "User reported suspicious activity",
+                    "Attacker in the Middle"
                 )
 | project
     TimeGenerated,
