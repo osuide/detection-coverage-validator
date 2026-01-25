@@ -5,7 +5,7 @@ Get up and running with A13E Detection Coverage Validator in under 15 minutes.
 ## TL;DR
 
 - **Create an account** using email/password, Google, or GitHub SSO
-- **Add your AWS or GCP account** with read-only credentials
+- **Add your AWS, GCP, or Azure account** with read-only credentials
 - **Run your first scan** to discover existing security detections
 - **View your coverage** on the MITRE ATT&CK heatmap to identify gaps
 
@@ -15,7 +15,7 @@ Get up and running with A13E Detection Coverage Validator in under 15 minutes.
 
 A13E Detection Coverage Validator helps security teams understand how well their cloud environment can detect attacks. It:
 
-- **Scans** your AWS and GCP accounts for security detections (GuardDuty, Security Hub, EventBridge rules, CloudWatch alarms, Config rules)
+- **Scans** your AWS, GCP, and Azure accounts for security detections (GuardDuty, Security Hub, Defender for Cloud, Azure Policy, and more)
 - **Maps** those detections to the MITRE ATT&CK framework
 - **Identifies gaps** where you lack detection capability
 - **Provides remediation** with ready-to-deploy Infrastructure-as-Code templates
@@ -109,8 +109,8 @@ After signing in, follow these steps to see your first coverage report:
 1. From the Dashboard, click **Add Cloud Account** (or navigate to **Accounts**)
 2. Enter account details:
    - **Account Name**: A descriptive name (e.g., "Production AWS")
-   - **Provider**: AWS or GCP
-   - **Account ID**: Your 12-digit AWS account ID or GCP project ID
+   - **Provider**: AWS, GCP, or Azure
+   - **Account ID**: Your 12-digit AWS account ID, GCP project ID, or Azure subscription ID
    - **Regions**: Select which regions to scan (eu-west-2 is selected by default)
 3. Click **Add Account**
 
@@ -126,7 +126,7 @@ After signing in, follow these steps to see your first coverage report:
 5. Enter the Role ARN and click **Validate Connection**
 6. Click **Done** when validation succeeds
 
-See [Connecting AWS Accounts](./connecting-aws-accounts.md) or [Connecting GCP Accounts](./connecting-gcp-accounts.md) for detailed instructions.
+See [Connecting AWS Accounts](./connecting-aws-accounts.md), [Connecting GCP Accounts](./connecting-gcp-accounts.md), or [Connecting Azure Accounts](./connecting-azure.md) for detailed instructions.
 
 ### Step 3: Run Your First Scan
 
@@ -208,6 +208,7 @@ See [Billing & Subscription](./billing-subscription.md) for full details.
 
 - [Connecting AWS Accounts](./connecting-aws-accounts.md) - Detailed AWS integration guide
 - [Connecting GCP Accounts](./connecting-gcp-accounts.md) - Detailed GCP integration guide
+- [Connecting Azure Accounts](./connecting-azure.md) - Detailed Azure integration guide
 - [Running Scans](./running-scans.md) - Learn about scanning options and schedules
 - [Using the Dashboards](./using-dashboards.md) - Navigate and interpret your results
 - [Understanding Coverage](./understanding-coverage.md) - Deep dive into MITRE ATT&CK coverage

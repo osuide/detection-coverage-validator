@@ -36,12 +36,20 @@ export const docPages: DocPage[] = [
     order: 3,
   },
   {
+    slug: 'connecting-azure',
+    title: 'Connecting Azure Accounts',
+    description: 'Connect Azure subscriptions using Workload Identity Federation.',
+    readTime: '10 min',
+    icon: 'Cloud',
+    order: 4,
+  },
+  {
     slug: 'running-scans',
     title: 'Running Scans',
     description: 'Learn how to scan your cloud accounts for detections.',
     readTime: '12 min',
     icon: 'Play',
-    order: 4,
+    order: 5,
   },
   {
     slug: 'understanding-coverage',
@@ -49,7 +57,7 @@ export const docPages: DocPage[] = [
     description: 'Deep dive into MITRE ATT&CK coverage analysis.',
     readTime: '15 min',
     icon: 'BarChart3',
-    order: 5,
+    order: 6,
   },
   {
     slug: 'using-dashboards',
@@ -57,7 +65,7 @@ export const docPages: DocPage[] = [
     description: 'Navigate coverage visualisations and identify security gaps.',
     readTime: '12 min',
     icon: 'BarChart3',
-    order: 6,
+    order: 7,
   },
   {
     slug: 'team-management',
@@ -65,7 +73,7 @@ export const docPages: DocPage[] = [
     description: 'Manage users, roles, and permissions.',
     readTime: '6 min',
     icon: 'Users',
-    order: 7,
+    order: 8,
   },
   {
     slug: 'billing',
@@ -73,7 +81,7 @@ export const docPages: DocPage[] = [
     description: 'Understand plans, pricing, and manage your subscription.',
     readTime: '8 min',
     icon: 'CreditCard',
-    order: 8,
+    order: 9,
   },
   {
     slug: 'api-keys',
@@ -81,7 +89,7 @@ export const docPages: DocPage[] = [
     description: 'Generate and manage API keys for programmatic access.',
     readTime: '5 min',
     icon: 'Key',
-    order: 9,
+    order: 10,
   },
   {
     slug: 'security-policy',
@@ -89,7 +97,7 @@ export const docPages: DocPage[] = [
     description: 'Our vulnerability disclosure policy and security commitments.',
     readTime: '5 min',
     icon: 'Shield',
-    order: 10,
+    order: 11,
   },
   {
     slug: 'security-thanks',
@@ -97,7 +105,7 @@ export const docPages: DocPage[] = [
     description: 'Recognising security researchers who help keep A13E secure.',
     readTime: '2 min',
     icon: 'Award',
-    order: 11,
+    order: 12,
   },
 ];
 

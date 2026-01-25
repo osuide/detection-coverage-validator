@@ -47,6 +47,15 @@ A scan is the process where A13E:
 | **Cloud Functions** | Functions triggered by security events |
 | **Chronicle** | SIEM detection rules (if enabled) |
 
+**Azure Services:**
+
+| Service | What A13E Discovers |
+|---------|---------------------|
+| **Microsoft Defender for Cloud** | Security assessments, recommendations, and secure score |
+| **Azure Policy** | Policy compliance state and assignments |
+| **Regulatory Compliance** | Framework compliance status (CIS, NIST, etc.) |
+| **Security Center** | Security posture findings and alerts |
+
 ### Scan Duration
 
 Typical scan times based on account complexity:
@@ -339,3 +348,4 @@ After each scan:
 - [Understanding Coverage](./understanding-coverage.md) - Learn about MITRE ATT&CK mapping
 - [Connecting AWS Accounts](./connecting-aws-accounts.md) - Add AWS accounts
 - [Connecting GCP Accounts](./connecting-gcp-accounts.md) - Add GCP projects
+- [Connecting Azure Accounts](./connecting-azure.md) - Add Azure subscriptions
