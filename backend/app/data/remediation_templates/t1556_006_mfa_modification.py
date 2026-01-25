@@ -866,7 +866,11 @@ resource "google_monitoring_alert_policy" "two_sv_alert" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspicious modifications to the AD CS security permissions/settings",
+                    "Suspected skeleton key attack (encryption downgrade)",
+                    "Anomalous Token",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Modify Authentication Process: Multi-Factor Authentication (T1556.006)
 # Microsoft Defender detects Modify Authentication Process: Multi-Factor Authentication activity
@@ -951,7 +955,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspicious modifications to the AD CS security permissions/settings",
+                    "Suspected skeleton key attack (encryption downgrade)",
+                    "Anomalous Token"
                 )
 | project
     TimeGenerated,

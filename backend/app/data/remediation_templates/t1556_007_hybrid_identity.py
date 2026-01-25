@@ -824,7 +824,11 @@ resource "google_monitoring_alert_policy" "sso_config" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspicious modification of the trust relationship of AD FS server",
+                    "Abnormal Active Directory Federation Services (AD FS) authentication using a suspicious certificate",
+                    "Suspected AD FS DKM key read",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Modify Authentication Process: Hybrid Identity (T1556.007)
 # Microsoft Defender detects Modify Authentication Process: Hybrid Identity activity
@@ -909,7 +913,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspicious modification of the trust relationship of AD FS server",
+                    "Abnormal Active Directory Federation Services (AD FS) authentication using a suspicious certificate",
+                    "Suspected AD FS DKM key read"
                 )
 | project
     TimeGenerated,

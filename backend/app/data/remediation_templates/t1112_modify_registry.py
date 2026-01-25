@@ -1150,7 +1150,11 @@ resource "aws_sns_topic_policy" "allow_cloudwatch" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Detected change to a registry key that can be abused to bypass UAC",
+                    "Detected enabling of the WDigest UseLogonCredential registry key",
+                    "Suspicious WindowPosition registry value detected",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Modify Registry (T1112)
 # Microsoft Defender detects Modify Registry activity
@@ -1235,7 +1239,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Detected change to a registry key that can be abused to bypass UAC",
+                    "Detected enabling of the WDigest UseLogonCredential registry key",
+                    "Suspicious WindowPosition registry value detected"
                 )
 | project
     TimeGenerated,

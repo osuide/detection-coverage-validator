@@ -1145,7 +1145,11 @@ resource "aws_cloudwatch_metric_alarm" "cognito_auth" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspected skeleton key attack (encryption downgrade)",
+                    "Suspicious modification of the trust relationship of AD FS server",
+                    "Suspicious modifications to the AD CS security permissions/settings",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Modify Authentication Process (T1556)
 # Microsoft Defender detects Modify Authentication Process activity
@@ -1230,7 +1234,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspected skeleton key attack (encryption downgrade)",
+                    "Suspicious modification of the trust relationship of AD FS server",
+                    "Suspicious modifications to the AD CS security permissions/settings"
                 )
 | project
     TimeGenerated,

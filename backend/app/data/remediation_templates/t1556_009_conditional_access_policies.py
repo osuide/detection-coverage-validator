@@ -660,7 +660,12 @@ resource "google_monitoring_alert_policy" "caa_modifications" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Unfamiliar sign-in properties",
+                    "Atypical travel",
+                    "Anonymous IP address",
+                    "Sign-in from infected device",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Modify Authentication Process: Conditional Access Policies (T1556.009)
 # Microsoft Defender detects Modify Authentication Process: Conditional Access Policies activity
@@ -745,7 +750,11 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Unfamiliar sign-in properties",
+                    "Atypical travel",
+                    "Anonymous IP address",
+                    "Sign-in from infected device"
                 )
 | project
     TimeGenerated,
