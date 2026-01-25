@@ -934,7 +934,12 @@ resource "aws_sns_topic_subscription" "email" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Login from a principal user not seen in 60 days",
+                    "Unfamiliar sign-in properties",
+                    "Anonymous IP address",
+                    "Log on from an unusual location",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Valid Accounts: Default Accounts (T1078.001)
 # Microsoft Defender detects Valid Accounts: Default Accounts activity
@@ -1019,7 +1024,11 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Login from a principal user not seen in 60 days",
+                    "Unfamiliar sign-in properties",
+                    "Anonymous IP address",
+                    "Log on from an unusual location"
                 )
 | project
     TimeGenerated,

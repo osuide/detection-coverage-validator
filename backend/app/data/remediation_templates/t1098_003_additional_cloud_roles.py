@@ -833,7 +833,12 @@ resource "google_monitoring_alert_policy" "sa_impersonation" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspicious additions to sensitive groups",
+                    "Honeytoken group membership changed",
+                    "Suspicious modification of domain AdminSdHolder",
+                    "Suspicious Kerberos delegation attempt by a newly created computer",
+                ],
                 azure_kql_query="""// Azure Entra ID Privileged Role Assignment Detection
 // MITRE ATT&CK: T1098.003 - Account Manipulation: Additional Cloud Roles
 let lookback = 24h;
@@ -1006,7 +1011,11 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspicious additions to sensitive groups",
+                    "Honeytoken group membership changed",
+                    "Suspicious modification of domain AdminSdHolder",
+                    "Suspicious Kerberos delegation attempt by a newly created computer"
                 )
 | project
     TimeGenerated,

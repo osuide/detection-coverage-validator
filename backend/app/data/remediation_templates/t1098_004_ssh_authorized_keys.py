@@ -1070,7 +1070,11 @@ resource "aws_cloudwatch_metric_alarm" "correlated_access" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "New SSH key added",
+                    "Unusual user SSH key reset in your virtual machine",
+                    "Suspicious Account Creation Detected",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Account Manipulation: SSH Authorized Keys (T1098.004)
 # Microsoft Defender detects Account Manipulation: SSH Authorized Keys activity
@@ -1155,7 +1159,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "New SSH key added",
+                    "Unusual user SSH key reset in your virtual machine",
+                    "Suspicious Account Creation Detected"
                 )
 | project
     TimeGenerated,

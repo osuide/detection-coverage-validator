@@ -1218,7 +1218,11 @@ resource "aws_sqs_queue_policy" "dlq_policy" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Detected change to a registry key that can be abused to bypass UAC",
+                    "Suspicious new firewall rule",
+                    "Sticky keys attack detected",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Event Triggered Execution (T1546)
 # Microsoft Defender detects Event Triggered Execution activity
@@ -1303,7 +1307,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Detected change to a registry key that can be abused to bypass UAC",
+                    "Suspicious new firewall rule",
+                    "Sticky keys attack detected"
                 )
 | project
     TimeGenerated,

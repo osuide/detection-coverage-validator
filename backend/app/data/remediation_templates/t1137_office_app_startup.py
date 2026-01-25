@@ -665,7 +665,11 @@ resource "aws_cloudwatch_metric_alarm" "office_registry" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspicious inbox manipulation rules",
+                    "Suspicious inbox forwarding",
+                    "Suspicious OAuth app file download activities",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Office Application Startup (T1137)
 # Microsoft Defender detects Office Application Startup activity
@@ -750,7 +754,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspicious inbox manipulation rules",
+                    "Suspicious inbox forwarding",
+                    "Suspicious OAuth app file download activities"
                 )
 | project
     TimeGenerated,

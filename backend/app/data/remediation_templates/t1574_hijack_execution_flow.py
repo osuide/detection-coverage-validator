@@ -882,7 +882,11 @@ resource "google_monitoring_alert_policy" "metadata_mod" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Detected suspicious execution via rundll32.exe",
+                    "Suspicious process executed",
+                    "Fileless attack technique detected",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Hijack Execution Flow (T1574)
 # Microsoft Defender detects Hijack Execution Flow activity
@@ -967,7 +971,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Detected suspicious execution via rundll32.exe",
+                    "Suspicious process executed",
+                    "Fileless attack technique detected"
                 )
 | project
     TimeGenerated,

@@ -1040,7 +1040,11 @@ resource "google_monitoring_alert_policy" "ssh_key_add" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Detected change to a registry key that can be abused to bypass UAC",
+                    "Suspicious process executed",
+                    "Rare SVCHOST service group executed",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Boot or Logon Autostart Execution (T1547)
 # Microsoft Defender detects Boot or Logon Autostart Execution activity
@@ -1125,7 +1129,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Detected change to a registry key that can be abused to bypass UAC",
+                    "Suspicious process executed",
+                    "Rare SVCHOST service group executed"
                 )
 | project
     TimeGenerated,

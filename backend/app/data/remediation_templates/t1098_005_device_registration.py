@@ -903,7 +903,11 @@ resource "aws_iam_role" "lambda_role" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Honeytoken user attributes modified",
+                    "Suspicious modification of a dNSHostName attribute (CVE-2022-26923)",
+                    "Suspicious Domain Controller certificate request (ESC8)",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Account Manipulation: Device Registration (T1098.005)
 # Microsoft Defender detects Account Manipulation: Device Registration activity
@@ -988,7 +992,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Honeytoken user attributes modified",
+                    "Suspicious modification of a dNSHostName attribute (CVE-2022-26923)",
+                    "Suspicious Domain Controller certificate request (ESC8)"
                 )
 | project
     TimeGenerated,

@@ -1169,7 +1169,11 @@ resource "google_monitoring_alert_policy" "function_mod" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspicious service creation",
+                    "Suspect service installation",
+                    "Suspicious system process executed",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Create or Modify System Process (T1543)
 # Microsoft Defender detects Create or Modify System Process activity
@@ -1254,7 +1258,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspicious service creation",
+                    "Suspect service installation",
+                    "Suspicious system process executed"
                 )
 | project
     TimeGenerated,
