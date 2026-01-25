@@ -852,10 +852,18 @@ let ReplicationConfig = AzureActivity
           Resource, Properties, AlertType = "Replication Configuration";
 
 // Combine all detection patterns
+// Note: Uses coalesce for schema normalization across different data sources
 SnapshotSharing
 | union ImageSharing
 | union ReplicationConfig
 | union (SASGeneration | extend AlertType = "SAS Token Bulk Generation")
+| union (CrossSubCopy | extend AlertType = "Cross-Subscription Blob Copy")
+| project
+    TimeGenerated,
+    AlertType,
+    Caller = coalesce(Caller, ""),
+    SourceIP = coalesce(CallerIpAddress, ""),
+    Details = pack_all()
 | order by TimeGenerated desc""",
                 azure_activity_operations=[
                     "Microsoft.Compute/snapshots/write",

@@ -1323,21 +1323,6 @@ let NetworkWatcherRecon = AzureActivity
 | where WatcherOps > 5
 | extend AlertType = "NetworkWatcherRecon";
 
-// Detect NSG Flow Logs port scanning (if NSG Flow Logs v2 enabled)
-// Note: Requires AzureNetworkAnalytics_CL table from Traffic Analytics
-let PortScanning = AzureNetworkAnalytics_CL
-| where TimeGenerated > ago(24h)
-| where FlowType_s in ("ExternalPublic", "ExternalVirtual")
-| where FlowStatus_s == "D"  // Denied flows
-| where FlowDirection_s == "I"  // Inbound
-| summarize
-    DeniedConnections = count(),
-    UniqueDestPorts = dcount(DestPort_d),
-    DestPorts = make_set(DestPort_d, 50)
-    by SrcIP_s, DestIP_s, bin(TimeGenerated, 5m)
-| where DeniedConnections > 100 or UniqueDestPorts > 20
-| extend AlertType = "PortScanning";
-
 // First-time network enumeration from new IP
 let FirstTimeNetworkEnum = AzureActivity
 | where TimeGenerated > ago(24h)
@@ -1356,7 +1341,9 @@ let FirstTimeNetworkEnum = AzureActivity
 | where FirstTimeEnumOps > 3
 | extend AlertType = "FirstTimeNetworkEnumFromNewIP";
 
-// Combine all detection signals
+// Combine AzureActivity-based detection signals (always available)
+// Note: Port scanning detection via AzureNetworkAnalytics_CL requires Traffic Analytics
+// and is implemented as a separate alert rule in Terraform
 NetworkEnumeration
 | union NetworkWatcherRecon
 | union FirstTimeNetworkEnum

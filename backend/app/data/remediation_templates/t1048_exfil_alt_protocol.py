@@ -1287,6 +1287,7 @@ let UnusualPortActivity = AzureNetworkAnalytics_CL
 | extend AlertType = "UnusualPortExfiltration";
 
 // Azure Firewall DNS Proxy for DNS tunnelling (if Azure Firewall enabled)
+// Note: Requires Azure Firewall with DNS Proxy logging to AzureDiagnostics
 let FirewallDNSTunnel = AzureDiagnostics
 | where TimeGenerated > ago(24h)
 | where Category == "AzureFirewallDnsProxy"
@@ -1301,14 +1302,16 @@ let FirewallDNSTunnel = AzureDiagnostics
 | extend AlertType = "FirewallDNSTunnelling";
 
 // Combine all detection signals
+// Note: Uses coalesce to normalise IP column names across different data sources
 DNSTunnelling
 | union FTPExfiltration
 | union SMTPExfiltration
 | union UnusualPortActivity
+| union FirewallDNSTunnel
 | project
     TimeGenerated,
     AlertType,
-    SourceIP = coalesce(ClientIP, SrcIP_s),
+    SourceIP = coalesce(SourceIP, ClientIP, SrcIP_s),
     Details = pack_all()
 | order by TimeGenerated desc""",
                 azure_terraform_template="""# Azure Detection for Exfiltration Over Alternative Protocol
