@@ -74,12 +74,19 @@ class EffortEstimatesResponse(BaseModel):
 class DetectionImplementationResponse(BaseModel):
     """Implementation details for a detection strategy."""
 
+    # AWS fields
     query: Optional[str] = None
-    gcp_logging_query: Optional[str] = None
     guardduty_finding_types: Optional[list[str]] = None
     cloudformation_template: Optional[str] = None
     terraform_template: Optional[str] = None
+    # GCP fields
+    gcp_logging_query: Optional[str] = None
     gcp_terraform_template: Optional[str] = None
+    # Azure fields
+    azure_kql_query: Optional[str] = None
+    azure_terraform_template: Optional[str] = None
+    arm_template: Optional[str] = None
+    # Common fields
     alert_severity: str
     alert_title: str
     alert_description_template: str
@@ -96,6 +103,7 @@ class DetectionStrategyResponse(BaseModel):
     detection_type: str
     aws_service: Optional[str] = None
     gcp_service: Optional[str] = None
+    azure_service: Optional[str] = None
     cloud_provider: str
     implementation: DetectionImplementationResponse
     estimated_false_positive_rate: str
@@ -270,14 +278,22 @@ async def get_technique_detail(
                 detection_type=s.detection_type.value,
                 aws_service=s.aws_service,
                 gcp_service=s.gcp_service,
+                azure_service=s.azure_service,
                 cloud_provider=s.cloud_provider.value,
                 implementation=DetectionImplementationResponse(
+                    # AWS fields
                     query=s.implementation.query,
-                    gcp_logging_query=s.implementation.gcp_logging_query,
                     guardduty_finding_types=s.implementation.guardduty_finding_types,
                     cloudformation_template=s.implementation.cloudformation_template,
                     terraform_template=s.implementation.terraform_template,
+                    # GCP fields
+                    gcp_logging_query=s.implementation.gcp_logging_query,
                     gcp_terraform_template=s.implementation.gcp_terraform_template,
+                    # Azure fields
+                    azure_kql_query=s.implementation.azure_kql_query,
+                    azure_terraform_template=s.implementation.azure_terraform_template,
+                    arm_template=s.implementation.arm_template,
+                    # Common fields
                     alert_severity=s.implementation.alert_severity,
                     alert_title=s.implementation.alert_title,
                     alert_description_template=s.implementation.alert_description_template,
