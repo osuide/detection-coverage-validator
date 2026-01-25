@@ -774,7 +774,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Privileged container detected",
+                    "A drift binary detected executing in the container",
+                    "Container with a miner image detected"
                 )
 | project
     TimeGenerated,

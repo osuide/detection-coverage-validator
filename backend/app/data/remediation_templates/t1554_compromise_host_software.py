@@ -685,7 +685,11 @@ resource "google_storage_bucket_iam_member" "inventory_writer" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Fileless attack technique detected",
+                    "Fileless attack toolkit detected",
+                    "Detected suspicious execution via rundll32.exe",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Compromise Host Software Binary (T1554)
 # Microsoft Defender detects Compromise Host Software Binary activity
@@ -770,7 +774,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Fileless attack technique detected",
+                    "Fileless attack toolkit detected",
+                    "Detected suspicious execution via rundll32.exe"
                 )
 | project
     TimeGenerated,
