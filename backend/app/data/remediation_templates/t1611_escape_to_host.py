@@ -684,11 +684,9 @@ union privilegedContainers, hostPathMounts, hostNamespace, escapeAlerts, contain
     Namespaces = make_set(Namespace, 10)
     by bin(TimeGenerated, 1h)""",
                 defender_alert_types=[
-                    "Suspicious activity detected",
                     "Privileged container detected",
-                    "Container with sensitive mount detected",
-                    "Container escape attempt",
-                    "Suspicious container behavior",
+                    "A drift binary detected executing in the container",
+                    "Container with a miner image detected",
                 ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Escape to Host (T1611)

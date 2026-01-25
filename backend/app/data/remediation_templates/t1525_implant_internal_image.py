@@ -862,10 +862,9 @@ union acrPush, acrActivity, acrAlerts, imageBuild
     Resources = make_set(Resource, 10)
     by bin(TimeGenerated, 1h)""",
                 defender_alert_types=[
-                    "Suspicious activity detected",
-                    "Malicious container image detected",
-                    "Container image vulnerability",
-                    "Anomalous container registry access",
+                    "Container with a miner image detected",
+                    "A drift binary detected executing in the container",
+                    "Binary drift detection",
                 ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Implant Internal Image (T1525)
