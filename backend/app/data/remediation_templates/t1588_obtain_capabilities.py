@@ -606,7 +606,11 @@ resource "aws_cloudwatch_metric_alarm" "cert_anomaly" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Detected file download from a known malicious source",
+                    "Suspected use of Metasploit hacking framework",
+                    "Potential malware uploaded to a storage account",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Obtain Capabilities (T1588)
 # Microsoft Defender detects Obtain Capabilities activity
@@ -691,7 +695,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Detected file download from a known malicious source",
+                    "Suspected use of Metasploit hacking framework",
+                    "Potential malware uploaded to a storage account"
                 )
 | project
     TimeGenerated,

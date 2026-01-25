@@ -592,7 +592,11 @@ resource "aws_cloudwatch_metric_alarm" "rapid_iam_creation" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspicious Account Creation Detected",
+                    "Unfamiliar sign-in properties",
+                    "Anonymous IP address",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Establish Accounts (T1585)
 # Microsoft Defender detects Establish Accounts activity
@@ -677,7 +681,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspicious Account Creation Detected",
+                    "Unfamiliar sign-in properties",
+                    "Anonymous IP address"
                 )
 | project
     TimeGenerated,

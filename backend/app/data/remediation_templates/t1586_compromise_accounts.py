@@ -769,7 +769,11 @@ resource "aws_sqs_queue_policy" "analyzer_dlq_policy" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Leaked credentials",
+                    "Suspected Brute Force attack (Kerberos, NTLM)",
+                    "Unfamiliar sign-in properties",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Compromise Accounts (T1586)
 # Microsoft Defender detects Compromise Accounts activity
@@ -854,7 +858,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Leaked credentials",
+                    "Suspected Brute Force attack (Kerberos, NTLM)",
+                    "Unfamiliar sign-in properties"
                 )
 | project
     TimeGenerated,

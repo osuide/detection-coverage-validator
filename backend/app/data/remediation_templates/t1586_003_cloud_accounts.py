@@ -850,7 +850,12 @@ resource "google_monitoring_alert_policy" "scc_credential_alerts" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Leaked credentials",
+                    "Unfamiliar sign-in properties",
+                    "Atypical travel",
+                    "Anonymous IP address",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Compromise Accounts: Cloud Accounts (T1586.003)
 # Microsoft Defender detects Compromise Accounts: Cloud Accounts activity
@@ -935,7 +940,11 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Leaked credentials",
+                    "Unfamiliar sign-in properties",
+                    "Atypical travel",
+                    "Anonymous IP address"
                 )
 | project
     TimeGenerated,

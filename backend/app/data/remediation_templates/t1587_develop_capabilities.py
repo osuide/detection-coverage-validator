@@ -607,7 +607,11 @@ resource "google_monitoring_alert_policy" "build_alert" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Detected file download from a known malicious source",
+                    "Potential malware uploaded to a storage account",
+                    "Malicious blob uploaded to storage account",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Develop Capabilities (T1587)
 # Microsoft Defender detects Develop Capabilities activity
@@ -692,7 +696,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Detected file download from a known malicious source",
+                    "Potential malware uploaded to a storage account",
+                    "Malicious blob uploaded to storage account"
                 )
 | project
     TimeGenerated,

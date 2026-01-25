@@ -572,7 +572,11 @@ resource "google_monitoring_alert_policy" "dns_c2" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Communication with suspicious domain identified by threat intelligence",
+                    "Attempted communication with suspicious sinkholed domain",
+                    "Access from a suspicious IP address",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Compromise Infrastructure (T1584)
 # Microsoft Defender detects Compromise Infrastructure activity
@@ -657,7 +661,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Communication with suspicious domain identified by threat intelligence",
+                    "Attempted communication with suspicious sinkholed domain",
+                    "Access from a suspicious IP address"
                 )
 | project
     TimeGenerated,

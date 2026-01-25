@@ -684,7 +684,11 @@ resource "google_monitoring_alert_policy" "storage_downloads" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspected use of Metasploit hacking framework",
+                    "Network scanning tool detected",
+                    "Detected file download from a known malicious source",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Obtain Capabilities: Tool (T1588.002)
 # Microsoft Defender detects Obtain Capabilities: Tool activity
@@ -769,7 +773,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspected use of Metasploit hacking framework",
+                    "Network scanning tool detected",
+                    "Detected file download from a known malicious source"
                 )
 | project
     TimeGenerated,
