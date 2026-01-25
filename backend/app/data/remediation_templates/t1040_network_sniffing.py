@@ -1016,7 +1016,12 @@ AzureActivity
     Operations,
     CaptureTypes,
     Resources""",
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Detected suspicious network activity",
+                    "Suspicious network activity",
+                    "Suspected NTLM authentication tampering",
+                    "Suspected NTLM relay attack (Exchange account)",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Network Sniffing (T1040)
 # Microsoft Defender detects Network Sniffing activity
@@ -1101,7 +1106,11 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Detected suspicious network activity",
+                    "Suspicious network activity",
+                    "Suspected NTLM authentication tampering",
+                    "Suspected NTLM relay attack (Exchange account)"
                 )
 | project
     TimeGenerated,

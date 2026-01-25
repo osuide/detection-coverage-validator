@@ -694,7 +694,11 @@ AKSSecrets
     Secrets,
     Namespaces,
     FirstSeen""",
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspicious Kubernetes service account operation detected",
+                    "Access to cloud metadata service detected",
+                    "Possible secret reconnaissance detected",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Unsecured Credentials: Container API (T1552.007)
 # Microsoft Defender detects Unsecured Credentials: Container API activity
@@ -779,7 +783,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspicious Kubernetes service account operation detected",
+                    "Access to cloud metadata service detected",
+                    "Possible secret reconnaissance detected"
                 )
 | project
     TimeGenerated,

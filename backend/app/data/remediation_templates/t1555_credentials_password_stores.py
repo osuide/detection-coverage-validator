@@ -866,7 +866,11 @@ resource "aws_cloudwatch_metric_alarm" "k8s_secrets" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Malicious request of Data Protection API master key",
+                    "Unusual application accessed a key vault",
+                    "Access from a suspicious IP address to a key vault",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Credentials from Password Stores (T1555)
 # Microsoft Defender detects Credentials from Password Stores activity
@@ -951,7 +955,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Malicious request of Data Protection API master key",
+                    "Unusual application accessed a key vault",
+                    "Access from a suspicious IP address to a key vault"
                 )
 | project
     TimeGenerated,

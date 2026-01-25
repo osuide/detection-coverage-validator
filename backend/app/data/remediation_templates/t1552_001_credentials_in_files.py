@@ -750,7 +750,12 @@ KeyVaultAccess
     Secrets,
     Vaults,
     FirstSeen""",
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Detected suspicious credentials in commandline",
+                    "Detected suspicious document credentials",
+                    "Suspected AD FS DKM key read",
+                    "Suspicious password access",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Unsecured Credentials: Credentials in Files (T1552.001)
 # Microsoft Defender detects Unsecured Credentials: Credentials in Files activity
@@ -835,7 +840,11 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Detected suspicious credentials in commandline",
+                    "Detected suspicious document credentials",
+                    "Suspected AD FS DKM key read",
+                    "Suspicious password access"
                 )
 | project
     TimeGenerated,

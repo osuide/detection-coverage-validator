@@ -622,7 +622,13 @@ resource "google_monitoring_alert_policy" "workspace_stuffing" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Password spray",
+                    "Suspected brute force attack using a valid user",
+                    "Suspected successful brute force attack",
+                    "Unfamiliar sign-in properties",
+                    "Atypical travel",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Brute Force: Credential Stuffing (T1110.004)
 # Microsoft Defender detects Brute Force: Credential Stuffing activity
@@ -707,7 +713,12 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Password spray",
+                    "Suspected brute force attack using a valid user",
+                    "Suspected successful brute force attack",
+                    "Unfamiliar sign-in properties",
+                    "Atypical travel"
                 )
 | project
     TimeGenerated,

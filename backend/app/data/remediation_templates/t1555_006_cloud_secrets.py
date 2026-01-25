@@ -1228,7 +1228,13 @@ AzureDiagnostics
         TotalOperations > 20, "Medium",
         "Low"
     )""",
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Access from a suspicious IP address to a key vault",
+                    "Unusual application accessed a key vault",
+                    "Unusual user accessed a key vault",
+                    "Suspicious secret listing and query in a key vault",
+                    "High volume of operations in a key vault",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Credentials from Password Stores: Cloud Secrets Management Stores (T1555.006)
 # Microsoft Defender detects Credentials from Password Stores: Cloud Secrets Management Stores activity
@@ -1313,7 +1319,12 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Access from a suspicious IP address to a key vault",
+                    "Unusual application accessed a key vault",
+                    "Unusual user accessed a key vault",
+                    "Suspicious secret listing and query in a key vault",
+                    "High volume of operations in a key vault"
                 )
 | project
     TimeGenerated,

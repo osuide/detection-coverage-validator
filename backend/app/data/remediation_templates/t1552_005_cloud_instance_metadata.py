@@ -862,7 +862,11 @@ resource "aws_cloudwatch_metric_alarm" "imds_access" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Access to cloud metadata service detected",
+                    "Unusual application accessed a key vault",
+                    "Unusual user accessed a key vault",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Unsecured Credentials: Cloud Instance Metadata API (T1552.005)
 # Microsoft Defender detects Unsecured Credentials: Cloud Instance Metadata API activity
@@ -947,7 +951,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Access to cloud metadata service detected",
+                    "Unusual application accessed a key vault",
+                    "Unusual user accessed a key vault"
                 )
 | project
     TimeGenerated,

@@ -867,7 +867,15 @@ resource "google_storage_bucket_iam_member" "log_writer" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspected Golden Ticket usage (encryption downgrade)",
+                    "Suspected Golden Ticket usage (nonexistent account)",
+                    "Suspected Golden Ticket usage (ticket anomaly)",
+                    "Suspected Golden Ticket usage (time anomaly)",
+                    "Suspected Kerberos SPN exposure",
+                    "Suspected AS-REP Roasting attack",
+                    "Suspicious certificate usage over Kerberos protocol (PKINIT)",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Steal or Forge Kerberos Tickets (T1558)
 # Microsoft Defender detects Steal or Forge Kerberos Tickets activity
@@ -952,7 +960,14 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspected Golden Ticket usage (encryption downgrade)",
+                    "Suspected Golden Ticket usage (nonexistent account)",
+                    "Suspected Golden Ticket usage (ticket anomaly)",
+                    "Suspected Golden Ticket usage (time anomaly)",
+                    "Suspected Kerberos SPN exposure",
+                    "Suspected AS-REP Roasting attack",
+                    "Suspicious certificate usage over Kerberos protocol (PKINIT)"
                 )
 | project
     TimeGenerated,

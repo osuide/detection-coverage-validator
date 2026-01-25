@@ -969,7 +969,14 @@ resource "aws_cloudwatch_metric_alarm" "bulk_secrets_access" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Possible credential dumping detected",
+                    "Suspected DCSync attack (replication of directory services)",
+                    "Suspected AD FS DKM key read",
+                    "Suspected account takeover using shadow credentials",
+                    "Malicious request of Data Protection API master key",
+                    "Unusual config reset in your virtual machine",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # OS Credential Dumping (T1003)
 # Microsoft Defender detects OS Credential Dumping activity
@@ -1054,7 +1061,13 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Possible credential dumping detected",
+                    "Suspected DCSync attack (replication of directory services)",
+                    "Suspected AD FS DKM key read",
+                    "Suspected account takeover using shadow credentials",
+                    "Malicious request of Data Protection API master key",
+                    "Unusual config reset in your virtual machine"
                 )
 | project
     TimeGenerated,

@@ -916,7 +916,11 @@ resource "google_monitoring_alert_policy" "outbound_smb" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Suspected DFSCoerce attack using Distributed File System Protocol",
+                    "Suspected NTLM relay attack (Exchange account)",
+                    "Suspected NTLM authentication tampering",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Forced Authentication (T1187)
 # Microsoft Defender detects Forced Authentication activity
@@ -1001,7 +1005,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Suspected DFSCoerce attack using Distributed File System Protocol",
+                    "Suspected NTLM relay attack (Exchange account)",
+                    "Suspected NTLM authentication tampering"
                 )
 | project
     TimeGenerated,

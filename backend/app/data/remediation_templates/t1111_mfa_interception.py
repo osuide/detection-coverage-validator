@@ -1356,7 +1356,13 @@ resource "google_logging_project_sink" "mfa_events" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Attacker in the Middle",
+                    "Suspicious inbox manipulation rules",
+                    "Anomalous Token",
+                    "Token issuer anomaly",
+                    "Possible attempt to access Primary Refresh Token (PRT)",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Multi-Factor Authentication Interception (T1111)
 # Microsoft Defender detects Multi-Factor Authentication Interception activity
@@ -1441,7 +1447,12 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Attacker in the Middle",
+                    "Suspicious inbox manipulation rules",
+                    "Anomalous Token",
+                    "Token issuer anomaly",
+                    "Possible attempt to access Primary Refresh Token (PRT)"
                 )
 | project
     TimeGenerated,
