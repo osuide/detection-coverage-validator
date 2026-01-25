@@ -481,7 +481,13 @@ resource "google_monitoring_alert_policy" "high_cpu" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Digital currency mining related behavior detected",
+                    "Digital currency mining activity",
+                    "Container with a miner image detected",
+                    "Process associated with digital currency mining detected",
+                    "Suspicious installation of GPU extension in your virtual machine",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Resource Hijacking: Compute Hijacking (T1496.001)
 # Microsoft Defender detects Resource Hijacking: Compute Hijacking activity
@@ -566,7 +572,12 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Digital currency mining related behavior detected",
+                    "Digital currency mining activity",
+                    "Container with a miner image detected",
+                    "Process associated with digital currency mining detected",
+                    "Suspicious installation of GPU extension in your virtual machine"
                 )
 | project
     TimeGenerated,

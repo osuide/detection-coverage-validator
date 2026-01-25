@@ -959,7 +959,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "High volume of operations in a key vault",
+                    "Network intrusion detection signature activation",
+                    "A possible vulnerability to SQL Injection"
                 )
 | project
     TimeGenerated,

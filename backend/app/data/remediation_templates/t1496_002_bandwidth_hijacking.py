@@ -707,7 +707,11 @@ resource "google_monitoring_alert_policy" "container_egress" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Unusual amount of data extracted from a storage account",
+                    "Possible data exfiltration via DNS tunnel",
+                    "Anomalous network protocol usage",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Resource Hijacking: Bandwidth Hijacking (T1496.002)
 # Microsoft Defender detects Resource Hijacking: Bandwidth Hijacking activity
@@ -792,7 +796,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Unusual amount of data extracted from a storage account",
+                    "Possible data exfiltration via DNS tunnel",
+                    "Anomalous network protocol usage"
                 )
 | project
     TimeGenerated,

@@ -851,7 +851,11 @@ resource "google_monitoring_alert_policy" "rapid_autoscaling" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "High volume of operations in a key vault",
+                    "A possible vulnerability to SQL Injection",
+                    "Potential SQL injection",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Endpoint Denial of Service: Application Exhaustion Flood (T1499.003)
 # Microsoft Defender detects Endpoint Denial of Service: Application Exhaustion Flood activity
@@ -936,7 +940,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "High volume of operations in a key vault",
+                    "A possible vulnerability to SQL Injection",
+                    "Potential SQL injection"
                 )
 | project
     TimeGenerated,

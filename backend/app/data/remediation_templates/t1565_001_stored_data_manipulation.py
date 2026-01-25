@@ -1165,7 +1165,11 @@ resource "google_storage_bucket_iam_member" "audit_writer" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Unusual deletion in a storage account",
+                    "Malicious blob uploaded to storage account",
+                    "A possible vulnerability to SQL Injection",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Data Manipulation: Stored Data Manipulation (T1565.001)
 # Microsoft Defender detects Data Manipulation: Stored Data Manipulation activity
@@ -1250,7 +1254,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Unusual deletion in a storage account",
+                    "Malicious blob uploaded to storage account",
+                    "A possible vulnerability to SQL Injection"
                 )
 | project
     TimeGenerated,

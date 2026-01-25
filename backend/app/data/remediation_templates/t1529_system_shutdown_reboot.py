@@ -989,7 +989,11 @@ resource "aws_cloudwatch_metric_alarm" "mass_shutdown" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Detected the disabling of critical services",
+                    "Unusual config reset in your virtual machine",
+                    "Behavior similar to ransomware detected",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # System Shutdown/Reboot (T1529)
 # Microsoft Defender detects System Shutdown/Reboot activity
@@ -1074,7 +1078,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Detected the disabling of critical services",
+                    "Unusual config reset in your virtual machine",
+                    "Behavior similar to ransomware detected"
                 )
 | project
     TimeGenerated,

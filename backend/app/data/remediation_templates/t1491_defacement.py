@@ -533,7 +533,11 @@ resource "google_monitoring_alert_policy" "bucket_iam_changes" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Unusual deletion in a storage account",
+                    "The access level of a potentially sensitive storage blob container was changed",
+                    "Phishing content hosted on a storage account",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Defacement (T1491)
 # Microsoft Defender detects Defacement activity
@@ -618,7 +622,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Unusual deletion in a storage account",
+                    "The access level of a potentially sensitive storage blob container was changed",
+                    "Phishing content hosted on a storage account"
                 )
 | project
     TimeGenerated,

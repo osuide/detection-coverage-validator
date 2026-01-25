@@ -1018,7 +1018,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Network intrusion detection signature activation",
+                    "Anomalous network protocol usage",
+                    "Detected suspicious network activity"
                 )
 | project
     TimeGenerated,

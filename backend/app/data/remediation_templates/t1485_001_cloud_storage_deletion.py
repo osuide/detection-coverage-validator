@@ -794,7 +794,11 @@ resource "google_monitoring_alert_policy" "mass_deletion" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Unusual deletion in a storage account",
+                    "Unusual amount of data extracted from a storage account",
+                    "The access level of a potentially sensitive storage blob container was changed",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Data Destruction: Cloud Storage Object Deletion (T1485.001)
 # Microsoft Defender detects Data Destruction: Cloud Storage Object Deletion activity
@@ -879,7 +883,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Unusual deletion in a storage account",
+                    "Unusual amount of data extracted from a storage account",
+                    "The access level of a potentially sensitive storage blob container was changed"
                 )
 | project
     TimeGenerated,

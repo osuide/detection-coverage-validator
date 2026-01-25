@@ -751,7 +751,11 @@ resource "google_monitoring_alert_policy" "amplification_attack" {
             azure_service="defender",
             cloud_provider=CloudProvider.AZURE,
             implementation=DetectionImplementation(
-                defender_alert_types=["Suspicious activity detected"],
+                defender_alert_types=[
+                    "Network intrusion detection signature activation",
+                    "Anomalous network protocol usage",
+                    "Communication with suspicious domain identified by threat intelligence",
+                ],
                 azure_terraform_template="""# Microsoft Defender for Cloud Detection
 # Network Denial of Service: Reflection Amplification (T1498.002)
 # Microsoft Defender detects Network Denial of Service: Reflection Amplification activity
@@ -836,7 +840,10 @@ SecurityAlert
 | where TimeGenerated > ago(1h)
 | where ProductName == "Azure Security Center" or ProductName == "Microsoft Defender for Cloud"
 | where AlertName has_any (
-                    "Suspicious activity detected",
+
+                    "Network intrusion detection signature activation",
+                    "Anomalous network protocol usage",
+                    "Communication with suspicious domain identified by threat intelligence"
                 )
 | project
     TimeGenerated,
