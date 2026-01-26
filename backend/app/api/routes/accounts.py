@@ -38,7 +38,6 @@ from app.schemas.cloud_account import (
 from app.core.service_registry import get_all_regions, get_default_regions
 from app.services.region_discovery_service import region_discovery_service
 from app.services.aws_credential_service import aws_credential_service
-from app.services.gcp_wif_service import gcp_wif_service, GCPWIFError
 from app.services.cloud_account_fraud_service import CloudAccountFraudService
 from app.models.cloud_credential import CredentialStatus, CredentialType
 from app.models.billing import AccountTier
@@ -523,64 +522,11 @@ async def discover_regions(
             )
 
     elif account.provider == CloudProvider.GCP:
-        # Validate credential type
-        if credential.credential_type != CredentialType.GCP_WORKLOAD_IDENTITY:
-            raise HTTPException(
-                status_code=400,
-                detail="GCP region discovery requires Workload Identity Federation credentials.",
-            )
-
-        # Get WIF configuration from credential
-        wif_config = credential.get_wif_configuration()
-        if not wif_config:
-            raise HTTPException(
-                status_code=400,
-                detail="Incomplete GCP credential configuration. Missing project_id or service_account_email.",
-            )
-
-        try:
-            # Get GCP credentials via WIF
-            cred_result = await gcp_wif_service.get_credentials(wif_config)
-
-            # Discover active regions
-            discovered_regions = (
-                await region_discovery_service.discover_gcp_active_regions(
-                    credentials=cred_result.credentials,
-                    project_id=wif_config.project_id,
-                )
-            )
-            discovery_method = "GCP (Cloud Asset Inventory + Compute Engine)"
-
-        except GCPWIFError as e:
-            logger.error(
-                "gcp_wif_credential_error",
-                account_id=str(account_id),
-                error=str(e),
-            )
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to obtain GCP credentials: {str(e)}",
-            )
-        except ImportError as e:
-            logger.error(
-                "gcp_libraries_missing",
-                account_id=str(account_id),
-                error=str(e),
-            )
-            raise HTTPException(
-                status_code=500,
-                detail="GCP discovery libraries not installed. Please contact support.",
-            )
-        except Exception as e:
-            logger.error(
-                "gcp_region_discovery_failed",
-                account_id=str(account_id),
-                error=str(e),
-            )
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to discover GCP regions: {str(e)}",
-            )
+        # GCP discovery not yet implemented
+        raise HTTPException(
+            status_code=501,
+            detail="GCP region discovery not yet implemented. Please configure regions manually.",
+        )
 
     else:
         raise HTTPException(
