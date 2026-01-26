@@ -1380,6 +1380,10 @@ class ScanService:
                     ),
                 )
                 self.db.add(detection)
+                # Track newly added detection to handle duplicates in the same batch
+                # This prevents unique constraint violations when scanners return
+                # the same ARN multiple times (e.g., from different regions)
+                existing_by_arn[raw.source_arn] = detection
                 stats["new"] += 1
 
         # Mark detections no longer found as REMOVED
