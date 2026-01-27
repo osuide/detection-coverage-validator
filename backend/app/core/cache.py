@@ -1157,3 +1157,134 @@ async def invalidate_mitre_cache() -> None:
     await delete_cached(f"{mitre_techniques_key()}:cloud=False")
     await delete_cached(mitre_tactics_key())
     logger.info("mitre_cache_invalidated")
+
+
+# ============================================================================
+# AWS Organisation Hierarchy Caching
+# ============================================================================
+# Caches account hierarchy paths (e.g., "Root/Production/WebServices") to
+# reduce AWS Organizations API calls. Org structures rarely change, so
+# 24-hour TTL is appropriate.
+
+HIERARCHY_CACHE_PREFIX = "dcv:hierarchy:"
+HIERARCHY_CACHE_TTL = 86400  # 24 hours
+
+
+def hierarchy_key(account_id: str) -> str:
+    """Cache key for account hierarchy path.
+
+    Args:
+        account_id: AWS account ID (12 digits)
+
+    Returns:
+        Cache key for the hierarchy path
+    """
+    return f"path:{_sanitize_identifier(account_id)}"
+
+
+async def get_cached_hierarchy(account_id: str) -> Optional[dict]:
+    """Get cached hierarchy path for an AWS account.
+
+    Args:
+        account_id: AWS account ID
+
+    Returns:
+        Cached hierarchy data dict with 'hierarchy_path', 'is_in_organization',
+        'cached_at' or None if not found/cache unavailable
+    """
+    if not _redis_cache:
+        record_cache_miss()
+        return None
+
+    try:
+        key = f"{HIERARCHY_CACHE_PREFIX}{hierarchy_key(account_id)}"
+        value = await _redis_cache.get(key)
+        if value:
+            record_cache_hit()
+            return json.loads(value)
+        record_cache_miss()
+        return None
+    except Exception as e:
+        logger.warning(
+            "hierarchy_cache_get_failed",
+            account_id=account_id,
+            error=str(e),
+        )
+        record_cache_miss()
+        return None
+
+
+async def cache_hierarchy(
+    account_id: str,
+    hierarchy_path: Optional[str],
+    is_in_organization: bool,
+) -> bool:
+    """Cache hierarchy path for an AWS account.
+
+    Args:
+        account_id: AWS account ID
+        hierarchy_path: The hierarchy path (e.g., "Root/Production/WebServices")
+        is_in_organization: Whether the account is in an AWS Organisation
+
+    Returns:
+        True if cached successfully, False otherwise
+    """
+    if not _redis_cache:
+        return False
+
+    if not account_id:
+        return False
+
+    try:
+        from datetime import datetime, timezone
+
+        key = f"{HIERARCHY_CACHE_PREFIX}{hierarchy_key(account_id)}"
+        cache_data = {
+            "hierarchy_path": hierarchy_path,
+            "is_in_organization": is_in_organization,
+            "cached_at": datetime.now(timezone.utc).isoformat(),
+        }
+        serialized = json.dumps(cache_data)
+
+        await _redis_cache.setex(key, HIERARCHY_CACHE_TTL, serialized)
+        logger.debug(
+            "hierarchy_cached",
+            account_id=account_id,
+            hierarchy_path=hierarchy_path,
+        )
+        return True
+    except Exception as e:
+        logger.warning(
+            "hierarchy_cache_set_failed",
+            account_id=account_id,
+            error=str(e),
+        )
+        return False
+
+
+async def invalidate_hierarchy_cache(account_id: str) -> bool:
+    """Invalidate cached hierarchy for an account.
+
+    Call this if the account's organisational placement changes.
+
+    Args:
+        account_id: AWS account ID
+
+    Returns:
+        True if invalidated successfully, False otherwise
+    """
+    if not _redis_cache:
+        return False
+
+    try:
+        key = f"{HIERARCHY_CACHE_PREFIX}{hierarchy_key(account_id)}"
+        await _redis_cache.delete(key)
+        logger.debug("hierarchy_cache_invalidated", account_id=account_id)
+        return True
+    except Exception as e:
+        logger.warning(
+            "hierarchy_cache_invalidate_failed",
+            account_id=account_id,
+            error=str(e),
+        )
+        return False

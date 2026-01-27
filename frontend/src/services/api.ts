@@ -138,6 +138,13 @@ export interface DiscoverRegionsResponse {
   discovered_at: string
 }
 
+export interface AccountHierarchyResponse {
+  hierarchy_path: string | null
+  is_in_organization: boolean
+  cached: boolean
+  cached_at: string | null
+}
+
 export interface EvaluationSummary {
   type: 'config_compliance' | 'alarm_state' | 'eventbridge_state'
   // Config compliance fields
@@ -285,6 +292,8 @@ export const accountsApi = {
   create: (data: Partial<CloudAccount>) => api.post<CloudAccount>('/accounts', data).then(r => r.data),
   update: (id: string, data: Partial<CloudAccount>) => api.patch<CloudAccount>(`/accounts/${id}`, data).then(r => r.data),
   delete: (id: string) => api.delete(`/accounts/${id}`),
+  getHierarchy: (id: string) =>
+    api.get<AccountHierarchyResponse>(`/accounts/${id}/hierarchy`).then(r => r.data),
 }
 
 export const regionsApi = {

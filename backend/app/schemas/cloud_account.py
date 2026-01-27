@@ -191,3 +191,24 @@ class DiscoverRegionsResponse(BaseModel):
     discovered_regions: list[str] = Field(description="Regions with active resources")
     discovery_method: str = Field(description="How regions were discovered")
     discovered_at: datetime = Field(description="When discovery was performed")
+
+
+class AccountHierarchyResponse(BaseModel):
+    """Response for AWS account organisational hierarchy path."""
+
+    hierarchy_path: Optional[str] = Field(
+        default=None,
+        description="Organisational hierarchy path, e.g. 'Root/Production/WebServices'",
+    )
+    is_in_organization: bool = Field(
+        default=False,
+        description="Whether the account is part of an AWS Organisation",
+    )
+    cached: bool = Field(
+        default=False,
+        description="Whether this response was served from cache",
+    )
+    cached_at: Optional[datetime] = Field(
+        default=None,
+        description="When the hierarchy was cached (if cached)",
+    )

@@ -34,6 +34,7 @@ from app.schemas.cloud_account import (
     CloudAccountResponse,
     AvailableRegionsResponse,
     DiscoverRegionsResponse,
+    AccountHierarchyResponse,
 )
 from app.core.service_registry import get_all_regions, get_default_regions
 from app.services.region_discovery_service import region_discovery_service
@@ -41,8 +42,10 @@ from app.services.aws_credential_service import aws_credential_service
 from app.services.gcp_wif_service import gcp_wif_service, GCPWIFError
 from app.services.azure_wif_service import AzureWIFConfiguration
 from app.services.cloud_account_fraud_service import CloudAccountFraudService
+from app.services.aws_org_discovery import AWSOrganizationDiscoveryService
 from app.models.cloud_credential import CredentialStatus, CredentialType
 from app.models.billing import AccountTier
+from app.core.cache import get_cached_hierarchy, cache_hierarchy
 from datetime import datetime, timezone
 
 logger = structlog.get_logger()
@@ -645,3 +648,203 @@ async def discover_regions(
         discovery_method=discovery_method,
         discovered_at=now,
     )
+
+
+@router.get(
+    "/{account_id}/hierarchy",
+    response_model=AccountHierarchyResponse,
+    dependencies=[Depends(require_scope("read:accounts"))],
+)
+async def get_account_hierarchy(
+    account_id: UUID,
+    auth: AuthContext = Depends(
+        require_role(UserRole.OWNER, UserRole.ADMIN, UserRole.MEMBER)
+    ),
+    db: AsyncSession = Depends(get_db),
+) -> AccountHierarchyResponse:
+    """
+    Get the organisational hierarchy path for an AWS account.
+
+    Returns the path from root to account (e.g., "Root/Production/WebServices").
+    Results are cached for 24 hours. Only applicable to AWS accounts in an
+    AWS Organisation.
+
+    GCP and Azure accounts will return a null hierarchy path.
+
+    Requires member, admin, or owner role. API keys require 'read:accounts' scope.
+    """
+    # Get the account and validate access
+    query = select(CloudAccount).where(
+        and_(
+            CloudAccount.id == account_id,
+            CloudAccount.organization_id == auth.organization_id,
+        )
+    )
+    result = await db.execute(query)
+    account = result.scalar_one_or_none()
+
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    # Check access for members with restricted accounts
+    if not auth.can_access_account(account_id):
+        raise HTTPException(status_code=403, detail="Access denied to this account")
+
+    # Non-AWS accounts don't have AWS Organisation hierarchy
+    if account.provider != CloudProvider.AWS:
+        return AccountHierarchyResponse(
+            hierarchy_path=None,
+            is_in_organization=False,
+            cached=False,
+            cached_at=None,
+        )
+
+    # Check Redis cache first
+    cached_data = await get_cached_hierarchy(account.account_id)
+    if cached_data:
+        return AccountHierarchyResponse(
+            hierarchy_path=cached_data.get("hierarchy_path"),
+            is_in_organization=cached_data.get("is_in_organization", False),
+            cached=True,
+            cached_at=(
+                datetime.fromisoformat(cached_data["cached_at"])
+                if cached_data.get("cached_at")
+                else None
+            ),
+        )
+
+    # Get credentials for this account
+    cred_result = await db.execute(
+        select(CloudCredential).where(CloudCredential.cloud_account_id == account_id)
+    )
+    credential = cred_result.scalar_one_or_none()
+
+    if not credential:
+        # No credentials - can't determine hierarchy
+        return AccountHierarchyResponse(
+            hierarchy_path=None,
+            is_in_organization=False,
+            cached=False,
+            cached_at=None,
+        )
+
+    if credential.status != CredentialStatus.VALID:
+        # Invalid credentials - can't determine hierarchy
+        return AccountHierarchyResponse(
+            hierarchy_path=None,
+            is_in_organization=False,
+            cached=False,
+            cached_at=None,
+        )
+
+    if credential.credential_type != CredentialType.AWS_IAM_ROLE:
+        # Not an IAM role credential - can't use for hierarchy discovery
+        return AccountHierarchyResponse(
+            hierarchy_path=None,
+            is_in_organization=False,
+            cached=False,
+            cached_at=None,
+        )
+
+    try:
+        # Assume the role to get temporary credentials
+        creds = await aws_credential_service.assume_role_async(
+            role_arn=credential.aws_role_arn,
+            external_id=credential.aws_external_id,
+            session_name=f"A13E-Hierarchy-{str(account.id)[:8]}",
+        )
+
+        import boto3
+
+        session = boto3.Session(
+            aws_access_key_id=creds["access_key_id"],
+            aws_secret_access_key=creds["secret_access_key"],
+            aws_session_token=creds["session_token"],
+        )
+
+        # Use the organisation discovery service
+        org_service = AWSOrganizationDiscoveryService(session)
+
+        # First, check if the account is in an organisation and get the root
+        try:
+            org_info = await org_service._get_organisation_info()
+            if not org_info:
+                # Account is not in an organisation
+                await cache_hierarchy(
+                    account.account_id,
+                    hierarchy_path="Standalone",
+                    is_in_organization=False,
+                )
+                return AccountHierarchyResponse(
+                    hierarchy_path="Standalone",
+                    is_in_organization=False,
+                    cached=False,
+                    cached_at=None,
+                )
+
+            # Get the root ID
+            roots = await org_service._list_roots()
+            if not roots:
+                # No roots found (unexpected)
+                await cache_hierarchy(
+                    account.account_id,
+                    hierarchy_path=None,
+                    is_in_organization=True,
+                )
+                return AccountHierarchyResponse(
+                    hierarchy_path=None,
+                    is_in_organization=True,
+                    cached=False,
+                    cached_at=None,
+                )
+
+            root_id = roots[0]["Id"]
+
+            # Get the hierarchy path
+            hierarchy_path = await org_service.get_account_hierarchy_path(
+                account_id=account.account_id,
+                root_id=root_id,
+            )
+
+            # Cache the result
+            await cache_hierarchy(
+                account.account_id,
+                hierarchy_path=hierarchy_path,
+                is_in_organization=True,
+            )
+
+            return AccountHierarchyResponse(
+                hierarchy_path=hierarchy_path,
+                is_in_organization=True,
+                cached=False,
+                cached_at=None,
+            )
+
+        except PermissionError:
+            # Access denied to AWS Organizations - likely not in an org
+            # or the role doesn't have organizations:* permissions
+            await cache_hierarchy(
+                account.account_id,
+                hierarchy_path=None,
+                is_in_organization=False,
+            )
+            return AccountHierarchyResponse(
+                hierarchy_path=None,
+                is_in_organization=False,
+                cached=False,
+                cached_at=None,
+            )
+
+    except Exception as e:
+        logger.error(
+            "hierarchy_discovery_failed",
+            account_id=str(account_id),
+            error=str(e),
+        )
+        # Return empty result on error rather than failing
+        return AccountHierarchyResponse(
+            hierarchy_path=None,
+            is_in_organization=False,
+            cached=False,
+            cached_at=None,
+        )
