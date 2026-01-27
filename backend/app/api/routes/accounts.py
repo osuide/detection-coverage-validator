@@ -464,13 +464,15 @@ async def discover_regions(
     )
     credential = cred_result.scalar_one_or_none()
 
-    if not credential:
+    # Azure stores WIF config on the CloudAccount itself, not in CloudCredential
+    # So we only require a CloudCredential for AWS/GCP
+    if not credential and account.provider != CloudProvider.AZURE:
         raise HTTPException(
             status_code=400,
             detail="No credentials configured for this account. Please add credentials first.",
         )
 
-    if credential.status != CredentialStatus.VALID:
+    if credential and credential.status != CredentialStatus.VALID:
         raise HTTPException(
             status_code=400,
             detail=f"Credentials are not valid (status: {credential.status.value}). Please re-validate.",
@@ -584,14 +586,15 @@ async def discover_regions(
             )
 
     elif account.provider == CloudProvider.AZURE:
-        # Validate credential type
-        if credential.credential_type != CredentialType.AZURE_WORKLOAD_IDENTITY:
+        # Azure stores WIF config on the CloudAccount itself, not in CloudCredential
+        # Check Azure is enabled (equivalent to credential validation)
+        if not account.azure_enabled:
             raise HTTPException(
                 status_code=400,
-                detail="Azure region discovery requires Workload Identity Federation credentials.",
+                detail="Azure credentials are not validated. Please validate your Azure connection first.",
             )
 
-        # Validate Azure WIF configuration exists
+        # Validate Azure WIF configuration exists on the account
         config_data = account.azure_workload_identity_config
         if not config_data:
             raise HTTPException(
