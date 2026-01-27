@@ -39,6 +39,7 @@ from app.core.service_registry import get_all_regions, get_default_regions
 from app.services.region_discovery_service import region_discovery_service
 from app.services.aws_credential_service import aws_credential_service
 from app.services.gcp_wif_service import gcp_wif_service, GCPWIFError
+from app.services.azure_wif_service import AzureWIFConfiguration
 from app.services.cloud_account_fraud_service import CloudAccountFraudService
 from app.models.cloud_credential import CredentialStatus, CredentialType
 from app.models.billing import AccountTier
@@ -581,6 +582,42 @@ async def discover_regions(
                 status_code=500,
                 detail=f"Failed to discover GCP regions: {str(e)}",
             )
+
+    elif account.provider == CloudProvider.AZURE:
+        # Validate credential type
+        if credential.credential_type != CredentialType.AZURE_WORKLOAD_IDENTITY:
+            raise HTTPException(
+                status_code=400,
+                detail="Azure region discovery requires Workload Identity Federation credentials.",
+            )
+
+        # Validate Azure WIF configuration exists
+        config_data = account.azure_workload_identity_config
+        if not config_data:
+            raise HTTPException(
+                status_code=400,
+                detail="Incomplete Azure credential configuration. Missing tenant_id, client_id, or subscription_id.",
+            )
+
+        try:
+            azure_config = AzureWIFConfiguration.from_dict(config_data)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid Azure WIF configuration: {str(e)}",
+            )
+
+        # Azure scans are subscription-level, not regional
+        # Return "global" to match how scans actually work
+        discovered_regions = ["global"]
+        discovery_method = "Azure (Subscription-level)"
+
+        logger.info(
+            "azure_region_discovery",
+            account_id=str(account_id),
+            subscription_id=azure_config.subscription_id,
+            regions=discovered_regions,
+        )
 
     else:
         raise HTTPException(
