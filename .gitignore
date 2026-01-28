@@ -106,6 +106,7 @@ docs/support-system/google-apps-script/
 !CLAUDE.md
 !frontend/public/docs/*.md
 !docs/guides/*.md
+!docs/runbooks/**/*.md
 
 # Performance testing (local only)
 performance-tests/
