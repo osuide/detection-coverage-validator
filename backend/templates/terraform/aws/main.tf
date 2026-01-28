@@ -72,7 +72,7 @@ resource "aws_iam_role" "a13e_scanner" {
     ]
   })
 
-  max_session_duration = 3600  # 1 hour max
+  max_session_duration = 3600 # 1 hour max
 
   tags = {
     Purpose   = "A13E-Detection-Scanning"
@@ -209,6 +209,20 @@ resource "aws_iam_role_policy" "a13e_scanner" {
           "macie2:ListClassificationJobs",
           "macie2:GetFindingStatistics",
           "macie2:GetBucketStatistics"
+        ]
+        Resource = "*"
+      },
+      # AWS Organizations - for account hierarchy discovery (optional)
+      # Enables display of OU hierarchy path for accounts in AWS Organizations.
+      # Safe to omit for standalone accounts not in an AWS Organization.
+      {
+        Sid    = "A13EOrganizationsAccess"
+        Effect = "Allow"
+        Action = [
+          "organizations:DescribeOrganization",
+          "organizations:ListRoots",
+          "organizations:ListParents",
+          "organizations:DescribeOrganizationalUnit"
         ]
         Resource = "*"
       }
