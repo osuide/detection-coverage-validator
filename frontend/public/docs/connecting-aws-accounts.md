@@ -42,6 +42,7 @@ A13E uses **read-only permissions** following the principle of least privilege.
 | Macie | Read findings | Discover data protection detections |
 | Lambda | List functions (metadata only) | Identify custom detections |
 | IAM | Read role info (self only) | Validate connection |
+| Organizations | Read org structure (optional) | Display account hierarchy path |
 
 ### What A13E Cannot Access
 
@@ -308,6 +309,44 @@ When A13E adds new features requiring additional permissions:
    - Terraform: Update module and run `terraform apply`
    - Manual: Update the IAM policy JSON
 3. Re-validate the connection in A13E
+
+---
+
+## AWS Organizations Integration
+
+If your AWS account is part of an AWS Organization, A13E can display the organisational hierarchy path for each account (e.g., "Root/Production/WebServices").
+
+### Enabling Hierarchy Display
+
+The IAM role requires these additional permissions:
+
+```json
+{
+  "Sid": "A13EOrganizationsAccess",
+  "Effect": "Allow",
+  "Action": [
+    "organizations:DescribeOrganization",
+    "organizations:ListRoots",
+    "organizations:ListParents",
+    "organizations:DescribeOrganizationalUnit"
+  ],
+  "Resource": "*"
+}
+```
+
+### Hierarchy Behaviour
+
+| Account Type | Hierarchy Display |
+|--------------|-------------------|
+| Account in AWS Organization (with permissions) | Shows full path: "Root/Production/WebServices" |
+| Standalone account (not in any org) | Shows "Standalone" |
+| Account in org (without permissions) | Shows nothing (null) |
+
+### Notes
+
+- **Optional feature**: Accounts work fully without these permissions; you just won't see the hierarchy path
+- **Read-only access**: A13E cannot modify your organisation structure
+- **Cached for 24 hours**: Hierarchy paths are cached to reduce API calls
 
 ---
 
