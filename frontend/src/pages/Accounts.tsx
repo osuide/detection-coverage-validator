@@ -742,12 +742,21 @@ function AccountCard({
             {account.provider === 'aws' && hierarchy?.hierarchy_path && (
               <div className="flex items-center gap-1 mt-0.5">
                 <Building2 className="h-3 w-3 text-gray-500" />
-                <span
-                  className="text-xs text-gray-500 truncate max-w-[200px]"
-                  title={hierarchy.hierarchy_path}
-                >
-                  {hierarchy.hierarchy_path}
-                </span>
+                {hierarchy.hierarchy_path === 'Permissions Required' ? (
+                  <span
+                    className="text-xs text-amber-500 truncate max-w-[200px]"
+                    title="Update your IAM role to include AWS Organizations permissions for hierarchy display"
+                  >
+                    Org permissions required
+                  </span>
+                ) : (
+                  <span
+                    className="text-xs text-gray-500 truncate max-w-[200px]"
+                    title={hierarchy.hierarchy_path}
+                  >
+                    {hierarchy.hierarchy_path}
+                  </span>
+                )}
               </div>
             )}
           </div>

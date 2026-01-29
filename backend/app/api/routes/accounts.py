@@ -821,15 +821,14 @@ async def get_account_hierarchy(
             )
 
         except PermissionError:
-            # Access denied to AWS Organizations - likely not in an org
-            # or the role doesn't have organizations:* permissions
+            # Access denied to AWS Organizations - role lacks organisations:* permissions
             await cache_hierarchy(
                 account.account_id,
-                hierarchy_path=None,
+                hierarchy_path="Permissions Required",
                 is_in_organization=False,
             )
             return AccountHierarchyResponse(
-                hierarchy_path=None,
+                hierarchy_path="Permissions Required",
                 is_in_organization=False,
                 cached=False,
                 cached_at=None,
