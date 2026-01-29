@@ -60,7 +60,7 @@ dnspython==2.7.0
 
 # Security & Authentication
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.21
+python-multipart==0.0.22  # CVE fix: arbitrary file write via non-default config
 bcrypt==5.0.0
 PyJWT[crypto]==2.10.1
 pyotp==2.9.0
