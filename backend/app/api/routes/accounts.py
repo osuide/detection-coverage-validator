@@ -699,9 +699,10 @@ async def get_account_hierarchy(
             cached_at=None,
         )
 
-    # Check Redis cache first
+    # Check Redis cache first - skip stale null entries from before the
+    # "Permissions Required" fix so they get re-evaluated
     cached_data = await get_cached_hierarchy(account.account_id)
-    if cached_data:
+    if cached_data and cached_data.get("hierarchy_path") is not None:
         return AccountHierarchyResponse(
             hierarchy_path=cached_data.get("hierarchy_path"),
             is_in_organization=cached_data.get("is_in_organization", False),

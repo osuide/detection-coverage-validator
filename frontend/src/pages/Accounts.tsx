@@ -907,6 +907,7 @@ function AccountCard({
             <span className="text-xs bg-gray-700/30 px-2 py-0.5 rounded-sm">
               {credential.credential_type === 'aws_iam_role' ? 'IAM Role' :
                credential.credential_type === 'gcp_workload_identity' ? 'Workload Identity' :
+               credential.credential_type === 'azure_workload_identity' ? 'Workload Identity' :
                'Service Account Key'}
             </span>
           )}
