@@ -103,7 +103,7 @@ export default function ConnectOrganization() {
     <div className="max-w-2xl mx-auto">
       <PageHeader
         title="Connect Cloud Organisation"
-        description="Connect your AWS or GCP organisation to discover all accounts"
+        description="Connect your AWS, GCP or Azure organisation to discover all accounts"
         back={{ label: "Organisations", fallback: "/organizations" }}
       />
 

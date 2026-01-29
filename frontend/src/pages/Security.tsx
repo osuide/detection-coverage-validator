@@ -157,7 +157,7 @@ export default function Security() {
 
               <h3 className="text-xl font-medium text-white mt-6">Cloud Credential Handling</h3>
               <p className="text-gray-300">
-                When you connect your AWS or GCP accounts, we follow security best practices:
+                When you connect your AWS, GCP or Azure accounts, we follow security best practices:
               </p>
               <ul className="text-gray-300 space-y-1">
                 <li><strong className="text-white">Read-Only Access:</strong> We request only the minimum permissions required for security analysis</li>

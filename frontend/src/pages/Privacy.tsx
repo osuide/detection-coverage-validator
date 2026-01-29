@@ -79,7 +79,7 @@ export default function Privacy() {
 
               <h3 className="text-xl font-medium text-white mt-4">3.3 Cloud Configuration Data</h3>
               <p className="text-gray-300">
-                To provide the Service, we access and process metadata from your connected cloud accounts (AWS, GCP), including:
+                To provide the Service, we access and process metadata from your connected cloud accounts (AWS, GCP, Azure), including:
               </p>
               <ul className="text-gray-300 space-y-1">
                 <li>Security detection configurations (GuardDuty, Security Hub, CloudWatch, etc.)</li>

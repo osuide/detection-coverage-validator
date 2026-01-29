@@ -66,7 +66,7 @@ export default function Terms() {
                 The Service provides cloud security detection coverage analysis, including:
               </p>
               <ul className="text-gray-300 space-y-1">
-                <li>Scanning and analysis of AWS and GCP security detection configurations</li>
+                <li>Scanning and analysis of AWS, GCP and Azure security detection configurations</li>
                 <li>Mapping of detections to the MITRE ATT&amp;CK framework</li>
                 <li>Identification of coverage gaps and remediation guidance</li>
                 <li>Infrastructure-as-Code templates for implementing security controls</li>
@@ -96,7 +96,7 @@ export default function Terms() {
               </ul>
               <h3 className="text-xl font-medium text-white mt-4">4.3 Cloud Account Credentials</h3>
               <p className="text-gray-300">
-                The Service requires read-only access to your cloud provider accounts (AWS, GCP) to perform security analysis. You are responsible for:
+                The Service requires read-only access to your cloud provider accounts (AWS, GCP, Azure) to perform security analysis. You are responsible for:
               </p>
               <ul className="text-gray-300 space-y-1">
                 <li>Ensuring credentials provided follow the principle of least privilege</li>

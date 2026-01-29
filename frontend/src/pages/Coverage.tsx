@@ -187,7 +187,7 @@ export default function Coverage() {
             <>
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-white">MITRE ATT&CK Cloud Technique Heatmap</h3>
-                <p className="text-sm text-gray-400 mt-1">Coverage across 168 cloud-applicable techniques (IaaS, AWS, GCP)</p>
+                <p className="text-sm text-gray-400 mt-1">Coverage across 168 cloud-applicable techniques (IaaS, AWS, GCP, Azure)</p>
               </div>
               {techniquesLoading ? (
                 <div className="flex items-center justify-center h-64">

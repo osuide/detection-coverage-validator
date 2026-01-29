@@ -2,7 +2,7 @@
  * Technique Detail Page.
  *
  * Displays remediation templates and detection strategies for a MITRE ATT&CK technique.
- * Shows cloud-specific implementation guidance (AWS/GCP) with IaC templates.
+ * Shows cloud-specific implementation guidance (AWS/GCP/Azure) with IaC templates.
  */
 
 import { useState, useEffect, useMemo } from 'react'

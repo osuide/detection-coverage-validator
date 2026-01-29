@@ -84,7 +84,7 @@ export default function Organizations() {
               Cloud Organisations
             </h1>
             <p className="text-gray-400">
-              Connect and manage your AWS and GCP organisations
+              Connect and manage your AWS, GCP and Azure organisations
             </p>
           </div>
         </div>
@@ -131,7 +131,7 @@ export default function Organizations() {
             Cloud Organisations
           </h1>
           <p className="text-gray-400">
-            Connect and manage your AWS and GCP organisations
+            Connect and manage your AWS, GCP and Azure organisations
           </p>
         </div>
         <Link
@@ -175,7 +175,7 @@ export default function Organizations() {
             No organisations connected
           </h3>
           <p className="mt-1 text-sm text-gray-400">
-            Connect your AWS or GCP organisation to get started.
+            Connect your AWS, GCP or Azure organisation to get started.
           </p>
           <Link
             to="/organizations/connect"

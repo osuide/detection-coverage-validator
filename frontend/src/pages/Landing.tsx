@@ -155,7 +155,7 @@ export default function Landing() {
             {/* Badge */}
             <div className="inline-flex items-center space-x-2 bg-linear-to-r from-blue-600/10 to-cyan-600/10 border border-blue-500/20 rounded-full px-4 py-2 mb-8 backdrop-blur-xs">
               <Sparkles className="h-4 w-4 text-blue-400" />
-              <span className="text-sm text-blue-300 font-medium">AWS + GCP Security Coverage Analysis</span>
+              <span className="text-sm text-blue-300 font-medium">AWS, GCP & Azure Security Coverage Analysis</span>
             </div>
 
             {/* Headline */}
@@ -168,7 +168,7 @@ export default function Landing() {
             </h1>
 
             <p className="text-xl md:text-2xl text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Instantly map your AWS and GCP security detections to MITRE ATT&CK framework.
+              Instantly map your AWS, GCP and Azure security detections to MITRE ATT&CK framework.
               Identify coverage gaps before attackers do.
             </p>
 
@@ -198,7 +198,7 @@ export default function Landing() {
               </div>
               <div className="flex items-center space-x-2">
                 <Shield className="h-5 w-5 text-blue-500" />
-                <span>AWS + GCP Support</span>
+                <span>AWS, GCP & Azure Support</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Zap className="h-5 w-5 text-yellow-500" />
@@ -318,7 +318,7 @@ export default function Landing() {
                   </li>
                   <li className="flex items-start space-x-3">
                     <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-                    <span>AWS & GCP integration via CloudWatch, EventBridge, Cloud Logging & SCC</span>
+                    <span>AWS, GCP & Azure integration via CloudWatch, EventBridge, Cloud Logging, SCC & Sentinel</span>
                   </li>
                   <li className="flex items-start space-x-3">
                     <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
@@ -532,7 +532,7 @@ export default function Landing() {
               <ul className="space-y-3 mb-8 text-sm flex-1">
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                  <span className="text-gray-300">1 cloud account (AWS or GCP)</span>
+                  <span className="text-gray-300">1 cloud account (AWS, GCP or Azure)</span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
@@ -581,7 +581,7 @@ export default function Landing() {
               <ul className="space-y-3 mb-8 text-sm flex-1">
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-white mt-0.5 shrink-0" />
-                  <span className="text-white">Up to 6 accounts (AWS + GCP)</span>
+                  <span className="text-white">Up to 6 accounts (AWS, GCP & Azure)</span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-white mt-0.5 shrink-0" />
@@ -646,7 +646,7 @@ export default function Landing() {
                 </li>
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
-                  <span className="text-gray-300">AWS/GCP Organisation connection</span>
+                  <span className="text-gray-300">AWS/GCP/Azure Organisation connection</span>
                 </li>
                 <li className="flex items-start space-x-2">
                   <CheckCircle className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
