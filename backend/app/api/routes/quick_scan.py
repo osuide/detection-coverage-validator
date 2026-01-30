@@ -2,8 +2,10 @@
 
 Security controls:
 - Rate limited: 5 requests per 5 minutes per IP
-- Content size: 250 KB maximum
-- Parse timeout: 10 seconds
+- Content size: 128K chars (128 KB for ASCII HCL)
+- Concurrency: max 5 concurrent scans (semaphore with 5s acquire timeout)
+- Pipeline timeout: 30 seconds via asyncio.wait_for
+- Parse timeout: 10 seconds (HCL parser level)
 - No database writes
 - Request body logged to SENSITIVE_PATHS (no content logged)
 - CORS: Allow all origins via per-path middleware (public endpoint)
@@ -24,6 +26,9 @@ logger = structlog.get_logger()
 
 router = APIRouter(tags=["Quick Scan"])
 
+# Limit concurrent scans to prevent resource exhaustion
+_scan_semaphore = asyncio.Semaphore(5)
+
 
 class QuickScanRequest(BaseModel):
     """Request body for quick scan endpoint.
@@ -34,7 +39,7 @@ class QuickScanRequest(BaseModel):
     content: str = Field(
         ...,
         min_length=1,
-        max_length=256_000,
+        max_length=128_000,
         description="Terraform HCL configuration content",
     )
 
@@ -109,8 +114,18 @@ async def analyse_quick_scan(
         content_length=len(body.content),
     )
 
+    # Acquire concurrency semaphore (with timeout to avoid indefinite queueing)
     try:
-        result = await run_quick_scan(body.content)
+        async with asyncio.timeout(5):
+            await _scan_semaphore.acquire()
+    except TimeoutError:
+        raise HTTPException(
+            status_code=429,
+            detail="Service busy — too many concurrent scans. Try again shortly.",
+        )
+
+    try:
+        result = await asyncio.wait_for(run_quick_scan(body.content), timeout=30)
     except ValueError as e:
         logger.warning(
             "quick_scan_validation_error",
@@ -129,7 +144,6 @@ async def analyse_quick_scan(
             detail="Parse timeout — content too complex. Try a smaller configuration.",
         )
     except Exception as exc:
-        # Log exception class (safe) but NOT str(e) which may leak user content
         logger.error(
             "quick_scan_error",
             client_ip=client_ip,
@@ -140,6 +154,8 @@ async def analyse_quick_scan(
             status_code=422,
             detail="Failed to parse Terraform content. Ensure valid HCL syntax.",
         )
+    finally:
+        _scan_semaphore.release()  # Always release — acquire succeeded before try block
 
     logger.info(
         "quick_scan_complete",

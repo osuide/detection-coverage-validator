@@ -6,7 +6,7 @@ validation, and error handling.
 
 import asyncio
 import os
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
@@ -323,3 +323,108 @@ class TestQuickScanRateLimiting:
             pytest.skip("Rate limiter did not trigger within 8 requests")
 
         assert response.status_code == 429
+
+
+class TestQuickScanSecurityHardening:
+    """Tests for security hardening fixes (#1–#7)."""
+
+    @patch("app.services.quick_scan_service._get_all_techniques")
+    async def test_credential_value_redacted_in_response(
+        self, mock_techniques, client: AsyncClient
+    ):
+        """AWS key in a non-secret key name must still be redacted (#3)."""
+        mock_techniques.return_value = SAMPLE_TECHNIQUES
+        hcl = """
+resource "aws_guardduty_detector" "main" {
+  enable      = true
+  description = "key is AKIAIOSFODNN7EXAMPLE embedded here"
+}
+"""
+        response = await client.post(
+            QUICK_SCAN_URL,
+            json={"content": hcl},
+        )
+        assert response.status_code == 200
+        assert "AKIAIOSFODNN7EXAMPLE" not in response.text
+
+    @patch("app.services.quick_scan_service._get_all_techniques")
+    async def test_deeply_nested_config_returns_200(
+        self, mock_techniques, client: AsyncClient
+    ):
+        """Deeply nested HCL must not crash the parser (#4)."""
+        mock_techniques.return_value = SAMPLE_TECHNIQUES
+        # Build deeply nested tags: tags = { a = { b = { ... } } }
+        depth = 60
+        nested = '{ v = "ok" }'
+        for i in range(depth):
+            nested = f'{{ "k{i}" = {nested} }}'
+        hcl = f"""
+resource "aws_guardduty_detector" "main" {{
+  enable = true
+  tags   = {nested}
+}}
+"""
+        response = await client.post(
+            QUICK_SCAN_URL,
+            json={"content": hcl},
+        )
+        # Should succeed or return 422 for invalid HCL, but never 500
+        assert response.status_code in (200, 422)
+
+    @patch("app.api.routes.quick_scan._scan_semaphore", new=asyncio.Semaphore(1))
+    @patch("app.services.quick_scan_service._get_all_techniques")
+    async def test_semaphore_limits_concurrent_scans(
+        self, mock_techniques, client: AsyncClient
+    ):
+        """When semaphore is full, additional requests get 429 (#5)."""
+        mock_techniques.return_value = SAMPLE_TECHNIQUES
+
+        # Slow scan mock to hold the semaphore
+        async def slow_scan(content: str) -> dict:
+            await asyncio.sleep(3)
+            return {
+                "summary": {
+                    "total_techniques": 0,
+                    "covered_techniques": 0,
+                    "coverage_percentage": 0.0,
+                    "detections_found": 0,
+                    "resources_parsed": 0,
+                    "truncated": False,
+                },
+                "tactic_coverage": {},
+                "technique_coverage": [],
+                "top_gaps": [],
+                "detections": [],
+            }
+
+        with patch("app.api.routes.quick_scan.run_quick_scan", side_effect=slow_scan):
+            # Fire multiple concurrent requests against a semaphore of 1
+            tasks = [
+                client.post(QUICK_SCAN_URL, json={"content": VALID_TERRAFORM})
+                for _ in range(4)
+            ]
+            responses = await asyncio.gather(*tasks)
+
+        statuses = [r.status_code for r in responses]
+        # At least one should succeed and at least one should be 429
+        assert 200 in statuses, f"Expected at least one 200, got {statuses}"
+        assert 429 in statuses, f"Expected at least one 429, got {statuses}"
+
+    @patch(
+        "app.api.routes.quick_scan.run_quick_scan",
+        new_callable=AsyncMock,
+    )
+    async def test_total_pipeline_timeout(self, mock_scan, client: AsyncClient):
+        """A slow run_quick_scan must be cut off by asyncio.wait_for (#1)."""
+
+        async def hang_forever(content: str) -> dict:
+            await asyncio.sleep(120)
+            return {}
+
+        mock_scan.side_effect = hang_forever
+        response = await client.post(
+            QUICK_SCAN_URL,
+            json={"content": VALID_TERRAFORM},
+        )
+        assert response.status_code == 408
+        assert "timeout" in response.json()["detail"].lower()

@@ -6,6 +6,7 @@ All input is untrusted and size-bounded before parsing.
 
 import asyncio
 import io
+import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -20,6 +21,7 @@ logger = structlog.get_logger()
 # Hard limits for untrusted input
 MAX_CONTENT_BYTES = 256_000  # 250 KB
 MAX_DETECTIONS = 500
+MAX_RESOURCES = 1000
 PARSE_TIMEOUT_SECONDS = 10
 
 # Dedicated thread pool for HCL parsing — isolates parser threads from
@@ -39,6 +41,9 @@ _SECRET_SUBSTRINGS = {
     "credential",
     "auth",
 }
+
+# Matches AWS access key IDs regardless of key name
+_CREDENTIAL_VALUE_RE = re.compile(r"(?:AKIA|ASIA)[0-9A-Z]{16}")
 
 # Terraform resource type -> DetectionType mapping
 RESOURCE_TYPE_MAP: dict[str, DetectionType] = {
@@ -98,28 +103,61 @@ def _parse_hcl_sync(content: str) -> dict:
     return hcl2.load(io.StringIO(content))
 
 
-def _sanitise_config(config: dict) -> dict:
+def _sanitise_config(config: dict, _depth: int = 50) -> dict:
     """Recursively remove keys containing known secret substrings.
 
     This prevents accidental leakage of credentials that users may have
     embedded in their Terraform configurations.
+
+    A max recursion depth guard prevents stack overflow on deeply nested input.
     """
+    if _depth <= 0:
+        return config
+
     sanitised = {}
     for k, v in config.items():
         if any(pat in k.lower() for pat in _SECRET_SUBSTRINGS):
             continue
         if isinstance(v, dict):
-            sanitised[k] = _sanitise_config(v)
+            sanitised[k] = _sanitise_config(v, _depth - 1)
         elif isinstance(v, list):
             sanitised[k] = [
-                _sanitise_config(item) if isinstance(item, dict) else item for item in v
+                (
+                    _sanitise_config(item, _depth - 1)
+                    if isinstance(item, dict)
+                    else (
+                        _redact_if_credential(item) if isinstance(item, str) else item
+                    )
+                )
+                for item in v
             ]
+        elif isinstance(v, str):
+            sanitised[k] = _redact_if_credential(v)
         else:
             sanitised[k] = v
     return sanitised
 
 
-def _extract_detections(parsed: dict) -> list[RawDetection]:
+def _redact_if_credential(value: str) -> str:
+    """Replace value with [REDACTED] if it matches a known credential pattern."""
+    if _CREDENTIAL_VALUE_RE.search(value):
+        return "[REDACTED]"
+    return value
+
+
+class _ExtractionResult:
+    """Internal result from _extract_detections with truncation metadata."""
+
+    __slots__ = ("detections", "resource_cap_hit")
+
+    def __init__(
+        self, detections: list[RawDetection], resource_cap_hit: bool = False
+    ) -> None:
+        self.detections = detections
+        self.resource_cap_hit = resource_cap_hit
+
+
+def _extract_detections(parsed: dict) -> _ExtractionResult:
     """Extract RawDetection objects from parsed HCL dict.
 
     python-hcl2 returns resource blocks as:
@@ -127,23 +165,33 @@ def _extract_detections(parsed: dict) -> list[RawDetection]:
 
     Values inside config dicts are wrapped in single-element lists
     by python-hcl2 (e.g., {"alarm_name": ["my-alarm"]}).
+
+    Stops early if MAX_RESOURCES resource instances are seen (regardless
+    of whether they match detection types) or MAX_DETECTIONS detections
+    are collected.
     """
     detections: list[RawDetection] = []
     resource_blocks = parsed.get("resource", [])
+    resources_seen = 0
 
     for block in resource_blocks:
         if not isinstance(block, dict):
             continue
 
         for resource_type, instances in block.items():
-            detection_type = RESOURCE_TYPE_MAP.get(resource_type)
-            if detection_type is None:
-                continue  # Not a detection resource
-
             if not isinstance(instances, dict):
                 continue
 
+            detection_type = RESOURCE_TYPE_MAP.get(resource_type)
+
             for resource_name, config in instances.items():
+                resources_seen += 1
+                if resources_seen > MAX_RESOURCES:
+                    return _ExtractionResult(detections, resource_cap_hit=True)
+
+                if detection_type is None:
+                    continue  # Not a detection resource
+
                 if not isinstance(config, dict):
                     continue
 
@@ -169,9 +217,9 @@ def _extract_detections(parsed: dict) -> list[RawDetection]:
                 detections.append(detection)
 
                 if len(detections) >= MAX_DETECTIONS:
-                    return detections
+                    return _ExtractionResult(detections)
 
-    return detections
+    return _ExtractionResult(detections)
 
 
 def _unwrap_hcl_value(value: object) -> object:
@@ -210,11 +258,13 @@ async def parse_terraform_content(content: str) -> ParseResult:
         timeout=PARSE_TIMEOUT_SECONDS,
     )
 
-    detections = _extract_detections(parsed)
-    truncated = len(detections) >= MAX_DETECTIONS
+    extraction = _extract_detections(parsed)
+    truncated = (
+        len(extraction.detections) >= MAX_DETECTIONS or extraction.resource_cap_hit
+    )
 
     return ParseResult(
-        detections=detections,
+        detections=extraction.detections,
         resource_count=len(parsed.get("resource", [])),
         truncated=truncated,
     )

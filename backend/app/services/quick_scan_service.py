@@ -5,6 +5,8 @@ Coverage calculation functions (build_technique_coverage_from_mappings,
 calculate_tactic_summary) are inlined here to avoid a separate file.
 """
 
+import asyncio
+
 import structlog
 
 from app.analyzers.coverage_calculator import TechniqueCoverageInfo
@@ -139,6 +141,15 @@ async def _get_all_techniques() -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
+def _map_detections(detections: list) -> list[MappingResult]:
+    """Map RawDetections to MappingResults (CPU-bound, runs in thread)."""
+    mapper = PatternMapper()
+    all_mappings: list[MappingResult] = []
+    for rd in detections:
+        all_mappings.extend(mapper.map_detection(rd))
+    return all_mappings
+
+
 async def run_quick_scan(content: str) -> dict:
     """Run a quick scan on Terraform HCL content.
 
@@ -161,12 +172,8 @@ async def run_quick_scan(content: str) -> dict:
     if not parse_result.detections:
         return _empty_result(parse_result)
 
-    # Step 2: Map to MITRE techniques
-    mapper = PatternMapper()
-    all_mappings = []
-    for rd in parse_result.detections:
-        mappings = mapper.map_detection(rd)
-        all_mappings.extend(mappings)
+    # Step 2: Map to MITRE techniques (CPU-bound — offload to thread)
+    all_mappings = await asyncio.to_thread(_map_detections, parse_result.detections)
 
     # Step 3: Build coverage
     all_techniques = await _get_all_techniques()
