@@ -27,10 +27,21 @@ export interface QuickScanGap {
   priority: string
 }
 
+/** Per-technique coverage info for the MITRE ATT&CK heatmap. */
+export interface QuickScanTechnique {
+  technique_id: string
+  technique_name: string
+  tactic_id: string
+  detection_count: number
+  max_confidence: number
+  status: string
+}
+
 /** Full response from the quick scan endpoint. */
 export interface QuickScanResponse {
   summary: QuickScanSummary
   tactic_coverage: Record<string, { total: number; covered: number; percentage: number }>
+  technique_coverage: QuickScanTechnique[]
   top_gaps: QuickScanGap[]
   detections: QuickScanDetection[]
   error?: string | null

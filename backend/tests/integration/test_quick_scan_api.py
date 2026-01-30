@@ -104,6 +104,7 @@ class TestQuickScanEndpoint:
         data = response.json()
         assert "summary" in data
         assert "tactic_coverage" in data
+        assert "technique_coverage" in data
         assert "top_gaps" in data
         assert "detections" in data
         assert data["summary"]["detections_found"] >= 1
@@ -248,6 +249,17 @@ class TestQuickScanResponseSchema:
         assert isinstance(summary["detections_found"], int)
         assert isinstance(summary["resources_parsed"], int)
         assert isinstance(summary["truncated"], bool)
+
+        assert isinstance(data["technique_coverage"], list)
+        for tc in data["technique_coverage"]:
+            assert "technique_id" in tc
+            assert "technique_name" in tc
+            assert "tactic_id" in tc
+            assert "detection_count" in tc
+            assert "max_confidence" in tc
+            assert "status" in tc
+            # Pre-compromise tactics must be filtered out
+            assert tc["tactic_id"] not in ("TA0043", "TA0042")
 
         for det in data["detections"]:
             assert "name" in det

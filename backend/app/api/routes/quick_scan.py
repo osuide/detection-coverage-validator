@@ -67,11 +67,23 @@ class QuickScanGap(BaseModel):
     priority: str
 
 
+class QuickScanTechnique(BaseModel):
+    """Per-technique coverage info for the MITRE ATT&CK heatmap."""
+
+    technique_id: str
+    technique_name: str
+    tactic_id: str
+    detection_count: int
+    max_confidence: float
+    status: str
+
+
 class QuickScanResponse(BaseModel):
     """Response from quick scan endpoint."""
 
     summary: QuickScanSummary
     tactic_coverage: dict
+    technique_coverage: list[QuickScanTechnique] = []
     top_gaps: list[QuickScanGap]
     detections: list[QuickScanDetection]
     error: str | None = None

@@ -15,6 +15,9 @@ from app.parsers.terraform_hcl_parser import parse_terraform_content, ParseResul
 
 logger = structlog.get_logger()
 
+# Pre-compromise tactics excluded from quick scan results (not cloud-detectable)
+_PRE_COMPROMISE_TACTICS = {"TA0043", "TA0042"}  # Reconnaissance, Resource Development
+
 
 # ---------------------------------------------------------------------------
 # Coverage functions (standalone, no DB dependency)
@@ -179,9 +182,13 @@ async def run_quick_scan(content: str) -> dict:
     gaps = gap_analyzer.analyze_gaps(technique_coverage, limit=10)
 
     # Step 5: Build response
-    tactic_summary = calculate_tactic_summary(technique_coverage)
-    covered = sum(1 for tc in technique_coverage if tc.status == "covered")
-    total = len(technique_coverage)
+    # Filter out pre-compromise tactics from coverage and summaries
+    filtered_coverage = [
+        tc for tc in technique_coverage if tc.tactic_id not in _PRE_COMPROMISE_TACTICS
+    ]
+    tactic_summary = calculate_tactic_summary(filtered_coverage)
+    covered = sum(1 for tc in filtered_coverage if tc.status == "covered")
+    total = len(filtered_coverage)
 
     return {
         "summary": {
@@ -195,6 +202,17 @@ async def run_quick_scan(content: str) -> dict:
             "truncated": parse_result.truncated,
         },
         "tactic_coverage": tactic_summary,
+        "technique_coverage": [
+            {
+                "technique_id": tc.technique_id,
+                "technique_name": tc.technique_name,
+                "tactic_id": tc.tactic_id,
+                "detection_count": tc.detection_count,
+                "max_confidence": tc.max_confidence,
+                "status": tc.status,
+            }
+            for tc in filtered_coverage
+        ],
         "top_gaps": [
             {
                 "technique_id": g.technique_id,
@@ -227,6 +245,7 @@ def _empty_result(parse_result: ParseResult, error: str | None = None) -> dict:
             "truncated": False,
         },
         "tactic_coverage": {},
+        "technique_coverage": [],
         "top_gaps": [],
         "detections": [],
     }

@@ -1,12 +1,16 @@
+import { useState } from 'react'
 import {
   Shield,
   ShieldAlert,
   ChevronRight,
+  ChevronDown,
   AlertTriangle,
   CheckCircle,
   Layers,
+  Grid3X3,
 } from 'lucide-react'
 import type { QuickScanResponse } from '../services/quickScanApi'
+import MitreHeatmap from './MitreHeatmap'
 
 interface Props {
   data: QuickScanResponse
@@ -43,7 +47,20 @@ function priorityBadge(priority: string) {
 /* ---------- component ---------- */
 
 export default function QuickScanResults({ data }: Props) {
-  const { summary, tactic_coverage, top_gaps, detections } = data
+  const { summary, tactic_coverage, technique_coverage, top_gaps, detections } = data
+  const [expandedIdx, setExpandedIdx] = useState<Set<number>>(new Set())
+
+  const toggleExpanded = (idx: number) => {
+    setExpandedIdx((prev) => {
+      const next = new Set(prev)
+      if (next.has(idx)) {
+        next.delete(idx)
+      } else {
+        next.add(idx)
+      }
+      return next
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -110,6 +127,29 @@ export default function QuickScanResults({ data }: Props) {
         </div>
       )}
 
+      {/* ---- MITRE ATT&CK Heatmap ---- */}
+      {technique_coverage && technique_coverage.length > 0 && (
+        <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-cyan-500/10">
+              <Grid3X3 className="w-5 h-5 text-cyan-400" />
+            </div>
+            <h2 className="text-lg font-semibold text-white">MITRE ATT&CK Coverage</h2>
+          </div>
+
+          <MitreHeatmap
+            techniques={technique_coverage.map((tc) => ({
+              technique_id: tc.technique_id,
+              technique_name: tc.technique_name,
+              tactic_id: tc.tactic_id,
+              detection_count: tc.detection_count,
+              max_confidence: tc.max_confidence,
+              status: tc.status as 'covered' | 'partial' | 'uncovered',
+            }))}
+          />
+        </div>
+      )}
+
       {/* ---- Top gaps ---- */}
       {top_gaps.length > 0 && (
         <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
@@ -156,14 +196,40 @@ export default function QuickScanResults({ data }: Props) {
 
           <div className="divide-y divide-gray-700">
             {detections.map((det, i) => (
-              <div
-                key={i}
-                className="py-3 first:pt-0 last:pb-0 flex items-center gap-3"
-              >
-                <ChevronRight className="h-4 w-4 text-gray-500 shrink-0" />
-                <div className="min-w-0">
-                  <span className="text-sm text-white truncate block">{det.name}</span>
-                  <span className="text-xs text-gray-500">{det.detection_type}</span>
+              <div key={i}>
+                <button
+                  type="button"
+                  onClick={() => toggleExpanded(i)}
+                  className="w-full py-3 first:pt-0 last:pb-0 flex items-center gap-3 text-left hover:bg-gray-700/30 rounded transition-colors"
+                >
+                  {expandedIdx.has(i) ? (
+                    <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-gray-500 shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <span className="text-sm text-white truncate block">{det.name}</span>
+                  </div>
+                </button>
+                <div
+                  className={`overflow-hidden transition-all duration-200 ${
+                    expandedIdx.has(i) ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <div className="ml-7 pb-3 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Type:</span>
+                      <span className="text-xs text-gray-300">{det.detection_type}</span>
+                    </div>
+                    {det.source_arn && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Source:</span>
+                        <span className="text-xs text-gray-300 font-mono break-all">
+                          {det.source_arn}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
