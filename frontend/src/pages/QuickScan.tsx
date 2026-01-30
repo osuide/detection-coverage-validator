@@ -90,8 +90,8 @@ export default function QuickScan() {
           </div>
           <h1 className="text-4xl font-bold text-white mb-3">Quick Scan</h1>
           <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-            Paste your Terraform configuration and get instant MITRE ATT&amp;CK
-            coverage analysis — no account required.
+            Paste your Terraform detection configuration or try our example to get
+            instant MITRE ATT&amp;CK coverage analysis — no account required.
           </p>
         </div>
       </div>
