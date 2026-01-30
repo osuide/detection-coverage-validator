@@ -5,10 +5,15 @@ validation, and error handling.
 """
 
 import asyncio
+import os
 from unittest.mock import patch
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
+from redis import asyncio as aioredis
+
+TEST_REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
 QUICK_SCAN_URL = "/api/v1/quick-scan/analyse"
 
@@ -63,6 +68,24 @@ SAMPLE_TECHNIQUES = [
         "is_subtechnique": False,
     },
 ]
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _flush_rate_limit(request: pytest.FixtureRequest) -> None:
+    """Flush fastapi-limiter rate limit keys from Redis before each test.
+
+    Skipped for TestQuickScanRateLimiting so those tests can verify
+    the limiter actually triggers.
+    """
+    if request.node.cls and request.node.cls.__name__ == "TestQuickScanRateLimiting":
+        return
+    redis = await aioredis.from_url(TEST_REDIS_URL, decode_responses=True)
+    try:
+        keys = [k async for k in redis.scan_iter("fastapi-limiter*")]
+        if keys:
+            await redis.delete(*keys)
+    finally:
+        await redis.aclose()
 
 
 class TestQuickScanEndpoint:
@@ -255,6 +278,17 @@ class TestQuickScanResponseSchema:
 
 class TestQuickScanRateLimiting:
     """Tests for rate limiting on the quick scan endpoint."""
+
+    @pytest_asyncio.fixture(autouse=True)
+    async def _flush_rate_limit_for_class(self) -> None:
+        """Flush rate limit keys so each rate limit test starts fresh."""
+        redis = await aioredis.from_url(TEST_REDIS_URL, decode_responses=True)
+        try:
+            keys = [k async for k in redis.scan_iter("fastapi-limiter*")]
+            if keys:
+                await redis.delete(*keys)
+        finally:
+            await redis.aclose()
 
     async def test_rate_limit_headers_present(self, client: AsyncClient):
         """Rate limit headers should be in response."""
