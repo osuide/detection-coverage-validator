@@ -107,17 +107,28 @@ def calculate_tactic_summary(
 
 
 async def _get_all_techniques() -> list[dict]:
-    """Retrieve all MITRE ATT&CK techniques from Redis cache.
+    """Retrieve all MITRE ATT&CK techniques (cache-first, DB fallback).
 
-    Uses get_cached() from app.core.cache. The cache key mirrors what
-    get_cached_techniques() uses.
+    Tries Redis cache first. On miss, queries the database directly
+    and populates the cache for subsequent requests.
     """
+    from app.core.cache import get_cached_techniques
+    from app.core.database import get_db_session
+
+    # Fast path: cache hit
     cache_key = f"{mitre_techniques_key()}:cloud=True"
     cached = await get_cached(cache_key)
-    if not cached:
-        logger.warning("quick_scan_mitre_cache_miss")
+    if cached:
+        return cached
+
+    # Slow path: cache miss — query DB and populate cache
+    logger.info("quick_scan_mitre_cache_miss_falling_back_to_db")
+    try:
+        async with get_db_session() as db:
+            return await get_cached_techniques(db, cloud_only=True)
+    except Exception:
+        logger.warning("quick_scan_mitre_db_fallback_failed", exc_info=True)
         return []
-    return cached
 
 
 # ---------------------------------------------------------------------------
