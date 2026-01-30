@@ -41,6 +41,7 @@ const Privacy = lazy(() => import('./pages/Privacy'))
 const Security = lazy(() => import('./pages/Security'))
 const ComplianceInfo = lazy(() => import('./pages/ComplianceInfo'))
 const Support = lazy(() => import('./pages/Support'))
+const QuickScan = lazy(() => import('./pages/QuickScan'))
 
 // Organisation pages (lazy)
 const Organizations = lazy(() => import('./pages/Organizations'))
@@ -106,6 +107,7 @@ function App() {
           <Route path="/security" element={<Security />} />
           <Route path="/compliance-info" element={<ComplianceInfo />} />
           <Route path="/support" element={<Support />} />
+          <Route path="/quick-scan" element={<QuickScan />} />
 
           {/* Documentation routes (public, lazy) */}
           <Route path="/docs" element={<DocsIndex />} />
