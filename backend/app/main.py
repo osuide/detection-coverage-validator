@@ -545,6 +545,12 @@ class QuickScanCORSMiddleware(BaseHTTPMiddleware):
                     },
                 )
             response = await call_next(request)
+            # Remove credentials header — `allow-credentials: true` +
+            # `allow-origin: *` is invalid per the CORS spec and browsers
+            # silently reject the response.  The quick-scan endpoint is
+            # public and never uses credentials.
+            if "access-control-allow-credentials" in response.headers:
+                del response.headers["access-control-allow-credentials"]
             response.headers["Access-Control-Allow-Origin"] = "*"
             response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
             return response
