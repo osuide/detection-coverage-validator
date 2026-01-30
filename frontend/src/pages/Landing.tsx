@@ -46,7 +46,7 @@ export default function Landing() {
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
               <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">Pricing</a>
-              <a href="#demo" className="text-gray-300 hover:text-white transition-colors">Demo</a>
+              <Link to="/quick-scan" className="text-gray-300 hover:text-white transition-colors">Demo</Link>
               <Link to="/docs" className="text-gray-300 hover:text-white transition-colors">Docs</Link>
               {isAuthenticated ? (
                 <Link to="/dashboard" className="bg-linear-to-r from-blue-600 to-cyan-600 text-white px-5 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg shadow-blue-500/25">
@@ -93,13 +93,13 @@ export default function Landing() {
                 >
                   Pricing
                 </a>
-                <a
-                  href="#demo"
+                <Link
+                  to="/quick-scan"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block text-gray-300 hover:text-white transition-colors py-2"
                 >
                   Demo
-                </a>
+                </Link>
                 <Link
                   to="/docs"
                   onClick={() => setMobileMenuOpen(false)}
@@ -181,13 +181,13 @@ export default function Landing() {
                 <span>Start Free Scan</span>
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <a
-                href="#demo"
+              <Link
+                to="/quick-scan"
                 className="group border border-gray-700 text-white px-8 py-4 rounded-xl font-semibold hover:bg-slate-800/50 transition-all backdrop-blur-xs flex items-center space-x-2"
               >
                 <span>View Demo</span>
                 <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </a>
+              </Link>
             </div>
 
             {/* Trust Indicators */}
