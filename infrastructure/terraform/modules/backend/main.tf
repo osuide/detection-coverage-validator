@@ -1216,6 +1216,18 @@ resource "aws_wafv2_web_acl" "api" {
       managed_rule_group_statement {
         name        = "AWSManagedRulesCommonRuleSet"
         vendor_name = "AWS"
+
+        # SizeRestrictions_BODY blocks requests with bodies > 8 KB.
+        # The quick-scan endpoint legitimately accepts up to 128 KB of
+        # Terraform HCL.  The application already enforces its own size
+        # limit (128 KB Pydantic + 256 KB parser), so we set this rule
+        # to count-only to avoid false-positive blocks.
+        rule_action_override {
+          name = "SizeRestrictions_BODY"
+          action_to_use {
+            count {}
+          }
+        }
       }
     }
 
