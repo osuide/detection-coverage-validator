@@ -116,12 +116,14 @@ async def analyse_quick_scan(
             status_code=408,
             detail="Parse timeout — content too complex. Try a smaller configuration.",
         )
-    except Exception:
-        # SANITISED: Do NOT log str(e) — parser errors may contain user content
+    except Exception as exc:
+        # Log exception class + repr (safe) but NOT str(e) which may leak user content
         logger.error(
             "quick_scan_error",
             client_ip=client_ip,
             error_type="parse_failure",
+            exc_class=type(exc).__qualname__,
+            exc_repr=repr(exc)[:200],
         )
         raise HTTPException(
             status_code=422,
