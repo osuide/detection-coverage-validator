@@ -517,31 +517,38 @@ if static_dir.exists():
 
 # === Per-path CORS for public quick-scan endpoint ===
 # The main CORSMiddleware uses allow_credentials=True with an origin
-# allowlist, so we cannot add wildcard '*' there. This middleware
-# intercepts quick-scan requests first and applies open CORS headers.
-# @app.middleware("http") decorators naturally execute before class-based
-# middleware added via add_middleware().
+# allowlist, so we cannot add wildcard '*' there. This class-based
+# middleware is registered via add_middleware() AFTER CORSMiddleware,
+# which makes it run BEFORE CORSMiddleware in the request chain
+# (Starlette processes last-added middleware outermost). This ensures
+# quick-scan requests are handled with open CORS headers before the
+# restrictive CORSMiddleware can reject unknown origins.
 
 
-@app.middleware("http")
-async def quick_scan_cors_middleware(request: Request, call_next: Callable) -> Response:
-    """Per-path CORS for the quick-scan endpoint."""
-    if request.url.path.startswith("/api/v1/quick-scan"):
-        if request.method == "OPTIONS":
-            return Response(
-                status_code=200,
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "POST, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type",
-                    "Access-Control-Max-Age": "3600",
-                },
-            )
-        response = await call_next(request)
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-        return response
-    return await call_next(request)
+class QuickScanCORSMiddleware(BaseHTTPMiddleware):
+    """Per-path CORS for the public quick-scan endpoint.
+
+    Must be added AFTER CORSMiddleware via add_middleware() so it
+    wraps CORSMiddleware and intercepts requests first.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if request.url.path.startswith("/api/v1/quick-scan"):
+            if request.method == "OPTIONS":
+                return Response(
+                    status_code=200,
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "POST, OPTIONS",
+                        "Access-Control-Allow-Headers": "Content-Type",
+                        "Access-Control-Max-Age": "3600",
+                    },
+                )
+            response = await call_next(request)
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+            return response
+        return await call_next(request)
 
 
 # === Public API Documentation ===
@@ -789,6 +796,10 @@ app.add_middleware(
     ],
     expose_headers=["X-Total-Count", "X-Page-Count", "X-Request-ID"],
 )
+
+# Per-path CORS for quick-scan — MUST be after CORSMiddleware so it runs
+# before it in the request chain (last added = outermost in Starlette).
+app.add_middleware(QuickScanCORSMiddleware)
 
 # Add secure logging middleware (excludes sensitive endpoint bodies from logs)
 app.add_middleware(SecureLoggingMiddleware)

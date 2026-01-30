@@ -13,7 +13,7 @@ import QuickScanResults from '../components/QuickScanResults'
 import { quickScanApi, type QuickScanResponse } from '../services/quickScanApi'
 import { EXAMPLE_TERRAFORM } from '../data/exampleTerraform'
 
-const MAX_CONTENT_LENGTH = 256_000
+const MAX_CONTENT_LENGTH = 128_000
 
 export default function QuickScan() {
   const [content, setContent] = useState('')
