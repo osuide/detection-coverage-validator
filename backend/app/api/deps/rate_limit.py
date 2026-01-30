@@ -104,3 +104,12 @@ def support_ticket_rate_limit() -> dict:
     CWE-799: Improper Control of Interaction Frequency
     """
     return RateLimiter(times=5, seconds=3600)
+
+
+def quick_scan_rate_limit() -> dict:
+    """Rate limit for quick scan: 5 requests per 5 minutes per IP.
+
+    Public endpoint accepting untrusted input — strict limit to prevent
+    abuse whilst allowing legitimate experimentation.
+    """
+    return RateLimiter(times=5, seconds=300)
