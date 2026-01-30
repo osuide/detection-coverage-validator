@@ -179,7 +179,7 @@ class TestExtractDetections:
         parsed = {
             "resource": [{"aws_guardduty_detector": {"main": {"enable": [True]}}}]
         }
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == 1
         assert detections[0].detection_type == DetectionType.GUARDDUTY_FINDING
         assert detections[0].name == "aws_guardduty_detector.main"
@@ -199,7 +199,7 @@ class TestExtractDetections:
                 }
             ]
         }
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == 1
         assert detections[0].detection_type == DetectionType.CLOUDWATCH_ALARM
         assert detections[0].raw_config is not None
@@ -217,7 +217,7 @@ class TestExtractDetections:
                 }
             ]
         }
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == 1
         assert detections[0].detection_type == DetectionType.EVENTBRIDGE_RULE
         assert detections[0].raw_config is not None
@@ -237,7 +237,7 @@ class TestExtractDetections:
                 },
             ]
         }
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == 2
         types = {d.detection_type for d in detections}
         assert DetectionType.GCP_CLOUD_LOGGING in types
@@ -254,7 +254,7 @@ class TestExtractDetections:
                 {"azurerm_policy_assignment": {"audit_vms": {"name": ["audit-vms"]}}},
             ]
         }
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == 2
         types = {d.detection_type for d in detections}
         assert DetectionType.AZURE_DEFENDER in types
@@ -267,7 +267,7 @@ class TestExtractDetections:
                 {"aws_vpc": {"main": {"cidr_block": ["10.0.0.0/16"]}}},
             ]
         }
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == 0
 
     def test_truncate_at_max_detections(self):
@@ -278,12 +278,12 @@ class TestExtractDetections:
                 {"aws_guardduty_detector": {f"detector_{i}": {"enable": [True]}}}
             )
         parsed = {"resource": resources}
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == MAX_DETECTIONS
 
     def test_no_resources_key(self):
         parsed = {"variable": [{"region": {"default": ["us-east-1"]}}]}
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == 0
 
     def test_malformed_resource_block_skipped(self):
@@ -295,7 +295,7 @@ class TestExtractDetections:
                 {"aws_guardduty_detector": {"valid": {"enable": [True]}}},
             ]
         }
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == 1
 
     def test_mixed_detection_and_infra_resources(self):
@@ -311,7 +311,7 @@ class TestExtractDetections:
                 },
             ]
         }
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == 2
         types = {d.detection_type for d in detections}
         assert DetectionType.GUARDDUTY_FINDING in types
@@ -331,7 +331,7 @@ class TestExtractDetections:
                 }
             ]
         }
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == 1
         assert "access_key" not in detections[0].raw_config
 
@@ -373,7 +373,7 @@ class TestParametrisedResourceTypeMappings:
     )
     def test_all_resource_type_mappings(self, resource_type, expected_type):
         parsed = {"resource": [{resource_type: {"test": {"enabled": [True]}}}]}
-        detections = _extract_detections(parsed)
+        detections = _extract_detections(parsed).detections
         assert len(detections) == 1
         assert detections[0].detection_type == expected_type
 
