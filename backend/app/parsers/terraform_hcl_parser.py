@@ -149,6 +149,14 @@ def _extract_detections(parsed: dict) -> list[RawDetection]:
 
                 sanitised = _sanitise_config(config)
 
+                # event_pattern must be a dict for PatternMapper.
+                # python-hcl2 returns Terraform functions (e.g. jsonencode())
+                # as interpolation strings — discard those.
+                raw_event_pattern = _unwrap_hcl_value(sanitised.get("event_pattern"))
+                event_pattern = (
+                    raw_event_pattern if isinstance(raw_event_pattern, dict) else None
+                )
+
                 detection = RawDetection(
                     name=f"{resource_type}.{resource_name}",
                     detection_type=detection_type,
@@ -156,7 +164,7 @@ def _extract_detections(parsed: dict) -> list[RawDetection]:
                     region="iac-static",
                     raw_config=sanitised,
                     description=_unwrap_hcl_value(sanitised.get("description", "")),
-                    event_pattern=_unwrap_hcl_value(sanitised.get("event_pattern")),
+                    event_pattern=event_pattern,
                 )
                 detections.append(detection)
 

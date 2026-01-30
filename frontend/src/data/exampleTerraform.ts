@@ -1,8 +1,8 @@
 /**
  * Example Terraform configuration for the Quick Scan "Try Example" button.
  *
- * Covers multiple AWS detection resource types to produce a meaningful
- * coverage result on first click.
+ * Uses only literal values (no Terraform functions or references) so
+ * python-hcl2 can parse it without interpolation issues.
  */
 export const EXAMPLE_TERRAFORM = `# AWS Detection Coverage — Example Configuration
 # Paste your own Terraform HCL to analyse your detection coverage.
@@ -32,7 +32,7 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   statistic           = "Average"
   threshold           = 80
   alarm_description   = "Alert when CPU exceeds 80%"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+  alarm_actions       = ["arn:aws:sns:eu-west-2:123456789012:security-alerts"]
 }
 
 resource "aws_config_config_rule" "encrypted_volumes" {
@@ -48,9 +48,11 @@ resource "aws_cloudwatch_event_rule" "console_sign_in" {
   name        = "capture-console-sign-in"
   description = "Capture each AWS Console Sign In"
 
-  event_pattern = jsonencode({
-    "detail-type" = ["AWS Console Sign In via CloudTrail"]
-  })
+  event_pattern = <<EOF
+{
+  "detail-type": ["AWS Console Sign In via CloudTrail"]
+}
+EOF
 }
 
 resource "aws_securityhub_account" "main" {}
